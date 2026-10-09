@@ -1,4 +1,4 @@
 #pragma once
 #include <stdint.h>
 #include <stdlib.h>
-inline uint32_t esp_random() { return uint32_t(rand()); }
+inline uint32_t esp_random() { return uint32_t(rand()) << 16 ^ uint32_t(rand()); }  // rand() is only 31 bits

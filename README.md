@@ -9,7 +9,7 @@ PMU, QMI8658 IMU, PCF85063 RTC, ES8311 audio, microSD.
 
 A scrolling menu of round app icons, with **Home Assistant lights** (2×2
 switches), a **bot face**, **Pomodoro** (with a low-power minimal view),
-an **espresso shot timer** and **System** (info + wireless update). BOOT is
+an **espresso shot timer**, **Dice** (wireframe d4–d100, multiple dice, advantage) and **System** (info + wireless update). BOOT is
 Back and PWR is Home, a long press powers off into deep sleep, and BOOT wakes
 it. Battery and charger power profiles dim and blank the screen when idle. See
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/ROADMAP.md](docs/ROADMAP.md)

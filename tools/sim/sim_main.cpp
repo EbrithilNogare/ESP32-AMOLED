@@ -14,6 +14,7 @@
 #include "Arduino.h"
 #include "apps/app_manager.h"
 #include "apps/bot_face/bot_face_app.h"
+#include "apps/dice/dice_app.h"
 #include "apps/espresso/espresso_app.h"
 #include "apps/home_assistant/ha_app.h"
 #include "apps/menu/menu_app.h"
@@ -29,6 +30,7 @@ static apps::HomeAssistantApp haApp;
 static apps::BotFaceApp botApp([]() { return sim::stage == power::Stage::Dimmed; });
 static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
+static apps::DiceApp diceApp;
 static apps::SystemApp systemApp;
 
 static uint16_t fb[LCD_WIDTH * LCD_HEIGHT];
@@ -168,6 +170,7 @@ int main() {
   apps::manager::add(&botApp);
   apps::manager::add(&pomodoroApp);
   apps::manager::add(&espressoApp);
+  apps::manager::add(&diceApp);
   apps::manager::add(&systemApp);
   apps::manager::begin();
   advance(100);
@@ -263,17 +266,60 @@ int main() {
   advance(400);
   CHECK(apps::manager::inMenu());
 
+  // ---- dice: idle, mid-spin, d20 with advantage, 6d6 with advantage, d12, d100
+  tapIcon(&diceApp);
+  CHECK(apps::manager::current() == &diceApp);
+  CHECK(diceApp.die() == 20 && diceApp.count() == 1 && diceApp.mode() == dice::Mode::Flat);
+  capture("16-dice-idle");
+  auto dieX = [](int i) { return int32_t(24 + i * (LCD_WIDTH - 90) / 6.0f + 21); };
+  const int32_t barY = LCD_HEIGHT - 16 - 24;
+  tap(184, 220);  // the stage rolls
+  CHECK(diceApp.rolling());
+  capture("17-dice-rolling");
+  advance(1600);
+  CHECK(!diceApp.rolling());
+  tap(263, barY);  // Adv
+  CHECK(diceApp.mode() == dice::Mode::Adv);
+  tap(184, 220);
+  advance(1800);
+  capture("18-dice-d20-adv");
+  tap(dieX(1), 37);  // d6
+  CHECK(diceApp.die() == 6);
+  for (int i = 0; i < 5; i++) tap(22 + 142 - 21, barY);  // + five times
+  CHECK(diceApp.count() == 6);
+  tap(184, 220);
+  advance(3000);
+  CHECK(!diceApp.rolling());
+  capture("19-dice-6d6-adv");
+  tap(206, barY);  // Flat
+  CHECK(diceApp.mode() == dice::Mode::Flat);
+  for (int i = 0; i < 6; i++) tap(22 + 21, barY);  // − down to 1 (one extra tap is ignored)
+  CHECK(diceApp.count() == 1);
+  tap(dieX(4), 37);  // d12
+  CHECK(diceApp.die() == 12);
+  tap(184, 220);
+  advance(1800);
+  capture("20-dice-d12");
+  tap(dieX(6), 37);  // d100
+  CHECK(diceApp.die() == 100);
+  tap(184, 220);
+  advance(1800);
+  capture("21-dice-d100");
+  apps::manager::back();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+
   // ---- system + wireless update
   drag(184, 380, 204);  // scroll to the end of the list
   tapIcon(&systemApp);
   CHECK(apps::manager::current() == &systemApp);
-  capture("16-system");
+  capture("22-system");
   tap(184, LCD_HEIGHT - 22 - 28);  // "Wireless update"
   CHECK(systemApp.powerPolicy() == power::Policy::KeepAwake);
   sim::otaState = core::ota::State::Receiving;
   sim::otaProgress = 42;
   advance(100);
-  capture("17-wireless-update");
+  capture("23-wireless-update");
   CHECK(systemApp.blocksNavigation());
   apps::manager::home();  // ignored mid-transfer
   advance(100);
@@ -289,7 +335,7 @@ int main() {
   static bool animDone;
   ui::power_anim::off([]() { animDone = true; });
   advance(450);
-  capture("18-power-off");
+  capture("24-power-off");
   advance(700);
   CHECK(animDone);
 

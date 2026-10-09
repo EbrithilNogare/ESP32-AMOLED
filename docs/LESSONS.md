@@ -5,6 +5,22 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## Taps on a button do nothing when they hit its child
+
+`lv_obj_create()` children (and `ui::box()`) are clickable by default, so a
+tap on a decorative child (the die icon in a strip button) is taken by the
+child and never reaches the button's `CLICKED` handler. Labels aren't
+clickable, which is why it only shows up with plain objects. Call
+`lv_obj_set_clickable(child, false)` on decoration inside a button. The
+simulator flow test caught it.
+
+## A dodecahedron "face direction" that is really a vertex
+
+For the dodecahedron with vertices (±1, ±1, ±1), (0, ±1/φ, ±φ), …, the
+direction (0, 1, φ) points at a *vertex*; the face centres are along
+(0, φ, 1) and its cyclic permutations. `test_dice_core` checks that the
+rest pose puts a whole face (5 vertices at one depth) toward the viewer.
+
 ## OTA progress screen freezes during the upload
 
 `ArduinoOTA.handle()` receives the whole image inside one call, so the main

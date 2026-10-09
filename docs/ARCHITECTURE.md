@@ -259,6 +259,7 @@ src/
 │   ├── bot_face/
 │   ├── pomodoro/
 │   ├── espresso/
+│   ├── dice/             wireframe dice roller
 │   └── system/           info + wireless update
 └── ui/
     ├── theme.{h,cpp}     design tokens and shared widgets
@@ -266,7 +267,7 @@ src/
     └── generated/        fonts + icon codepoints from tools/assets.py (committed)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
 lib/       Arduino-free logic (host-testable):
-           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/
+           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/  DiceCore/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
 tools/     assets.py, version.py, size_check.py, sim/ (PC simulator + screenshots)

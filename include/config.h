@@ -96,3 +96,8 @@
 #define BOT_FACE_COLOR          0x00E5FF
 #define BOT_FACE_FPS            30
 #define BOT_FACE_FPS_DIM        10
+
+// ---- dice (docs/apps/dice.md) ----
+#define DICE_COLOR              0xFF8A1F  // primary colour: wireframes, kept roll, selected die
+#define DICE_ROLL_MS            1150      // spin time of one die; later dice start 80 ms apart
+#define DICE_FPS                30        // frame rate while dice are spinning

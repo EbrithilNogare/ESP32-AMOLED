@@ -182,6 +182,15 @@ logs 401.
 
 **On device:** spec acceptance list.
 
+### M16 — Dice ◐ — [spec](apps/dice.md)
+
+`lib/DiceCore` (rolls, advantage, percentile d100, solids with face-on rest
+pose, spin, projection) with host tests; `DiceApp` draws wireframe dice in
+the stage's draw event; NVS keeps the last die/count/mode.
+
+**On device:** the checklist in the spec (smooth spins with 20 dice, every
+die lands face-on, controls don't roll, settings survive deep sleep).
+
 ## M15 — Polish & merge ◐
 
 Icons and fonts, menu fisheye effect (optional), README usage section,

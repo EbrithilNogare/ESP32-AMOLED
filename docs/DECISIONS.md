@@ -5,6 +5,22 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — Dice: wireframe design, drawn in the draw event
+
+**Context:** Five dice designs were drafted (tumbling silhouettes, a physics
+tray, slot reels, 3D wireframes, a dial). The owner picked the wireframes,
+with an orange colour set in `config.h`, green Adv / red Dis, and dice that
+must land exactly face-on.
+**Decision:** The spin is a rotation matrix `rest × axisAngle(axis, θ(1−ease))`
+that reaches the rest pose exactly, so the last frame is always perfectly
+face-on. The dice are drawn with `lv_draw_line` / `lv_draw_triangle` /
+`lv_draw_label` inside the stage object's `LV_EVENT_DRAW_MAIN` instead of an
+`lv_canvas`: no 200 KB pixel buffer, and LVGL only re-renders the stage.
+Projection runs once per frame in `onTick`, not per draw chunk.
+**Consequences:** `LV_USE_CANVAS` stays off. Up to 20 solids × 30 edges are
+re-drawn per frame while spinning (checked in the simulator, to be measured
+on the board, see the spec's checklist).
+
 ## 2026-10-09 — Own small drivers instead of SensorLib and vendored libs
 
 **Context:** The plan used SensorLib for touch/RTC and vendored

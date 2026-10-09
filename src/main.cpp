@@ -7,6 +7,7 @@
 
 #include "apps/app_manager.h"
 #include "apps/bot_face/bot_face_app.h"
+#include "apps/dice/dice_app.h"
 #include "apps/espresso/espresso_app.h"
 #include "apps/home_assistant/ha_app.h"
 #include "apps/menu/menu_app.h"
@@ -35,6 +36,7 @@ static apps::HomeAssistantApp haApp;
 static apps::BotFaceApp botApp([]() { return core::power::stage() == power::Stage::Dimmed; });
 static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
+static apps::DiceApp diceApp;
 static apps::SystemApp systemApp;
 
 static void dispatch(const core::Event &e) {
@@ -84,6 +86,7 @@ void setup() {
   apps::manager::add(&botApp);
   apps::manager::add(&pomodoroApp);
   apps::manager::add(&espressoApp);
+  apps::manager::add(&diceApp);
   apps::manager::add(&systemApp);
   apps::manager::begin();
   ui::power_anim::on();

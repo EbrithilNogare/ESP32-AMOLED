@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Approved Dice app design (option D, revised). Open in a browser; the firmware is src/apps/dice/. -->
+</head>
+<body>
+<title>Dice App Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the same lab-bench look as ui-mockup.html: settings panel up top, five live screens below, comparison in the sixth cell. */
+:root {
+  --bg: #E9ECEF;
+  --panel: #F7F8F9;
+  --ink: #14181D;
+  --muted: #5A6470;
+  --line: #CDD3DA;
+  --accent: #0A7584;
+  --accent-ink: #FFFFFF;
+  --chip: #DDE3E8;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+    --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+  --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 32px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 600; text-wrap: balance; }
+h2 { font-size: 18px; line-height: 1.25; margin: 0; font-weight: 600; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 70ch; margin: 0; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+
+/* ---------- settings panel ---------- */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
+.field { display: grid; gap: 6px; }
+.field > span { font: 500 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink); font: 500 14px var(--body); padding: 7px 12px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.stepper button { border: 0; background: transparent; color: var(--ink); font: 500 16px var(--body); width: 36px; height: 36px; cursor: pointer; }
+.stepper button:disabled { color: var(--line); cursor: default; }
+.stepper output { min-width: 64px; text-align: center; font: 500 15px var(--mono); font-variant-numeric: tabular-nums; }
+.go { border: 0; border-radius: 9px; background: var(--accent); color: var(--accent-ink); font: 600 14px var(--body); padding: 9px 16px; cursor: pointer; align-self: end; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.readout { margin: 0; font: 400 14px/1.5 var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); overflow-wrap: anywhere; }
+.readout b { font-weight: 500; }
+.rule { margin: 0; color: var(--muted); font-size: 14px; max-width: 80ch; }
+
+/* ---------- design cards ---------- */
+.designs { display: grid; gap: 28px; }
+.card { grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 760px) { .card { grid-template-columns: minmax(0, 1fr); } }
+.colorfield { display: inline-flex; align-items: center; gap: 8px; }
+.colorfield input[type=color] { width: 38px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 9px; background: transparent; cursor: pointer; }
+.colorfield input[type=text] { width: 110px; height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); font: 500 14px var(--mono); }
+.colorfield input[type=text][aria-invalid=true] { border-color: #D4483B; }
+.mini { height: 36px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); font: 500 13px var(--body); padding: 0 10px; cursor: pointer; }
+code { font: 500 .92em var(--mono); }
+.card { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.screen { width: 100%; max-width: 420px; justify-self: center; }
+.bezel { padding: 10px; border-radius: 32px; background: linear-gradient(145deg, #2B2F35, #15181C 60%, #0D0F12); box-shadow: inset 0 0 0 1px #3A4048, 0 14px 30px rgba(0,0,0,.22); }
+.glassbox { position: relative; width: 100%; aspect-ratio: 368 / 448; border-radius: 22px; overflow: hidden; background: #000; }
+.glass { position: absolute; left: 0; top: 0; width: 368px; height: 448px; transform-origin: 0 0; }
+.glass canvas { position: absolute; inset: 0; width: 368px; height: 448px; display: block; }
+.meta { display: grid; gap: 6px; min-width: 0; }
+.meta p { margin: 0; }
+.meta .desc { color: var(--ink); }
+.meta .device { color: var(--muted); font-size: 14px; }
+.meta .device b { color: var(--ink); font-weight: 500; }
+
+/* ---------- on-screen controls (device pixels, firmware tokens) ---------- */
+.glass button { -webkit-tap-highlight-color: transparent; }
+.glass .tap { position: absolute; left: 0; right: 0; top: 70px; bottom: 72px; border: 0; background: transparent; cursor: pointer; padding: 0; }
+.glass .tap:focus-visible { outline: 2px solid var(--dice, #FF8A1F); outline-offset: -6px; border-radius: 18px; }
+.glass .strip { position: absolute; top: 10px; left: 24px; right: 24px; display: flex; justify-content: space-between; }
+.glass .strip button { width: 42px; height: 54px; border: 0; border-radius: 14px; background: transparent; color: #5A5A5A; display: grid; justify-items: center; align-content: center; gap: 1px; padding: 0; cursor: pointer; font: 500 11px/1 Inter, system-ui, sans-serif; }
+.glass .strip svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: .11; stroke-linejoin: round; stroke-linecap: round; overflow: visible; }
+.glass .strip button[aria-pressed="true"] { color: var(--dice, #FF8A1F); background: var(--dice-fill, #26170A); }
+.glass .bar { position: absolute; left: 22px; right: 22px; bottom: 16px; display: flex; justify-content: space-between; gap: 8px; }
+.glass .step { display: flex; align-items: center; height: 48px; border-radius: 24px; background: #141414; }
+.glass .step button { width: 40px; height: 48px; border: 0; border-radius: 24px; background: transparent; color: #EDEDED; font: 500 22px/1 Inter, system-ui, sans-serif; cursor: pointer; padding: 0; }
+.glass .step button:disabled { color: #3A3A3A; cursor: default; }
+.glass .step output { min-width: 60px; text-align: center; color: #EDEDED; font: 500 17px "Roboto Mono", ui-monospace, monospace; }
+.glass .mode { display: flex; height: 48px; padding: 4px; border-radius: 24px; background: #141414; }
+.glass .mode button { border: 0; border-radius: 20px; background: transparent; color: #9A9A9A; font: 600 13px/1 Inter, system-ui, sans-serif; padding: 0 11px; cursor: pointer; }
+.glass .mode button[aria-pressed="true"] { background: var(--dice, #FF8A1F); color: var(--dice-ink, #241300); }
+.glass .mode button[data-mode="adv"][aria-pressed="true"] { background: #4CD07D; color: #06210F; }
+.glass .mode button[data-mode="dis"][aria-pressed="true"] { background: #FF5A5F; color: #2A0607; }
+#g-mode button[data-mode="adv"][aria-pressed="true"] { background: #2E9E5B; color: #fff; }
+#g-mode button[data-mode="dis"][aria-pressed="true"] { background: #D4483B; color: #fff; }
+.glass .strip button:focus-visible, .glass .bar button:focus-visible { outline: 2px solid var(--dice, #FF8A1F); outline-offset: 1px; }
+
+/* ---------- comparison ---------- */
+.glance { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 11px/1.2 var(--mono); letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.dots { font-family: var(--mono); letter-spacing: .1em; color: var(--accent); white-space: nowrap; }
+.glance .note { margin: 0; color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">ESP32-AMOLED · Dice app · design D, revision 2</p>
+    <h1>Wireframe dice</h1>
+    <p class="lede">Design D with your changes: an orange primary colour taken from a hex value in <code>config.h</code>, green Adv and red Dis buttons, and every roll landing exactly face-on. The screen is live at the real 368 × 448 size: tap its middle to roll, or use the panel.</p>
+  </header>
+
+  <section class="panel" aria-label="Settings for all screens">
+    <div class="controls">
+      <div class="field"><span>Die</span><div class="seg" id="g-die"></div></div>
+      <div class="field"><span>Count</span>
+        <div class="stepper"><button id="g-minus" aria-label="Fewer dice">−</button><output id="g-count">1d20</output><button id="g-plus" aria-label="More dice">+</button></div>
+      </div>
+      <div class="field"><span>Mode</span>
+        <div class="seg" id="g-mode">
+          <button data-mode="flat" aria-pressed="true">Flat</button>
+          <button data-mode="adv" aria-pressed="false">Advantage</button>
+          <button data-mode="dis" aria-pressed="false">Disadvantage</button>
+        </div>
+      </div>
+      <div class="field"><span>DICE_COLOR (config.h)</span>
+        <div class="colorfield"><input type="color" id="g-color" value="#FF8A1F" aria-label="Pick colour"><input type="text" id="g-hex" value="0xFF8A1F" spellcheck="false" aria-label="Hex value"><button id="g-reset" class="mini">Default</button></div>
+      </div>
+      <button class="go" id="g-roll">Roll</button>
+    </div>
+    <p class="readout" id="readout">No roll yet. Try a d20 with advantage, or 6d6.</p>
+    <p class="rule">Advantage throws the whole set twice and keeps the higher total; disadvantage keeps the lower. On a single d20 that is the standard 5e rule. d100 is thrown as percentile dice, a tens d10 (00–90) and a ones d10 (0–9), with 00 + 0 counting as 100. Up to 10 dice per throw (4 for d100). On the device it can also roll on a shake, using the board’s QMI8658 motion sensor.</p>
+  </section>
+
+  <section class="designs" id="designs" aria-label="Designs"></section>
+</div>
+
+<script>
+/* ===================== shared model ===================== */
+const W = 368, H = 448, TOP = 70, BOT = 376;           // roll area between die strip and bottom bar
+const C = { bg:'#000', surface:'#141414', track:'#1E1E1E', outline:'#3A3A3A', text:'#EDEDED', dim:'#9A9A9A',
+            off:'#5A5A5A', ok:'#4CD07D', err:'#FF5A5F', accent:'#FF8A1F', accentFill:'#26170A', ghost:'#0C0C0C' };
+const DEFAULT_COLOR = '#FF8A1F';                      // DICE_COLOR in include/config.h
+function mixBlack(hex, pct) { const n = parseInt(hex.slice(1), 16), k = pct / 100; return '#' + [16, 8, 0].map(sh => Math.round(((n >> sh) & 255) * k).toString(16).padStart(2, '0')).join(''); }
+function setAccent(hex) { C.accent = hex; C.accentFill = mixBlack(hex, 15); document.documentElement.style.setProperty('--dice', hex); document.documentElement.style.setProperty('--dice-fill', mixBlack(hex, 15)); document.documentElement.style.setProperty('--dice-ink', mixBlack(hex, 14)); }
+const DICE = [4, 6, 8, 10, 12, 20, 100];
+const MONO = '"Roboto Mono", ui-monospace, monospace', SANS = 'Inter, system-ui, sans-serif';
+const state = { die: 20, count: 1, mode: 'flat' };
+const maxCount = () => state.die === 100 ? 4 : 10;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const dur = ms => reduced ? Math.min(ms, 160) : ms;
+
+function rand(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n + 1; }
+const sum = a => a.reduce((x, y) => x + y, 0);
+const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outQuart = t => 1 - Math.pow(1 - t, 4);
+const outBack = t => { const c1 = 1.1, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const label = d => 'd' + d;
+
+function makeRoll(idle = false) {
+  const n = state.mode === 'flat' ? 1 : 2;
+  const sets = [];
+  for (let s = 0; s < n; s++) sets.push(Array.from({ length: state.count }, () => idle ? state.die : rand(state.die)));
+  const totals = sets.map(sum);
+  let kept = 0;
+  if (n === 2) kept = state.mode === 'adv' ? (totals[1] > totals[0] ? 1 : 0) : (totals[1] < totals[0] ? 1 : 0);
+  let crit = null;
+  if (!idle && state.die === 20 && state.count === 1) crit = sets[kept][0] === 20 ? 'nat20' : sets[kept][0] === 1 ? 'nat1' : null;
+  return { die: state.die, count: state.count, mode: state.mode, sets, totals, kept, crit, idle };
+}
+function pct(v) { return { tens: String(Math.floor((v % 100) / 10) * 10).padStart(2, '0'), ones: String(v % 10) }; }
+function face(die) { if (die !== 100) return rand(die); return rand(100); }
+const critColor = c => c === 'nat20' ? C.ok : c === 'nat1' ? C.err : null;
+const critText = c => c === 'nat20' ? 'NATURAL 20' : c === 'nat1' ? 'NATURAL 1' : '';
+const modeText = m => m === 'adv' ? 'Advantage · higher total kept' : m === 'dis' ? 'Disadvantage · lower total kept' : '';
+
+/* ===================== die silhouettes (2D, unit radius) ===================== */
+const D2R = Math.PI / 180, pol = (deg, r) => [Math.cos(deg * D2R) * r, Math.sin(deg * D2R) * r];
+const GEOM = {};
+function geom(die) {
+  if (GEOM[die]) return GEOM[die];
+  let g;
+  if (die === 4) {
+    const o = [-90, 30, 150].map(a => pol(a, 1.08)).map(([x, y]) => [x, y + .2]), c = [0, .2];
+    g = { o, l: o.map(p => [c, p]), round: .1, at: [0, .38], fs: .44 };
+  } else if (die === 6) {
+    g = { o: [45, 135, 225, 315].map(a => pol(a, 1)), l: [], round: .24, at: [0, 0], fs: .62 };
+  } else if (die === 8) {
+    const h = [0, 1, 2, 3, 4, 5].map(i => pol(-90 + 60 * i, 1));
+    g = { o: h, l: [[h[0], h[2]], [h[2], h[4]], [h[4], h[0]]], round: .07, at: [0, .1], fs: .4 };
+  } else if (die === 10) {
+    const T = [0, -1], R = [.92, .1], B = [0, 1], L = [-.92, .1], FR = [.56, 0], M = [0, .42], FL = [-.56, 0];
+    g = { o: [T, R, B, L], l: [[T, FR], [FR, M], [M, FL], [FL, T], [FR, R], [FL, L], [M, B]], round: .07, at: [0, -.06], fs: .38 };
+  } else if (die === 12) {
+    const out = [...Array(10)].map((_, i) => pol(-90 + 36 * i, 1)), inn = [...Array(5)].map((_, i) => pol(-90 + 72 * i, .6)), l = [];
+    for (let i = 0; i < 5; i++) { l.push([inn[i], inn[(i + 1) % 5]]); l.push([inn[i], out[2 * i]]); }
+    g = { o: out, l, round: .05, at: [0, .04], fs: .44 };
+  } else {
+    const hx = [...Array(6)].map((_, i) => pol(-90 + 60 * i, 1)), tr = [0, 1, 2].map(i => pol(-90 + 120 * i, .58)), l = [];
+    for (let i = 0; i < 3; i++) { l.push([tr[i], tr[(i + 1) % 3]]); [-1, 0, 1].forEach(k => l.push([tr[i], hx[(2 * i + k + 6) % 6]])); }
+    g = { o: hx, l, round: .06, at: [0, .08], fs: .34 };
+  }
+  return GEOM[die] = g;
+}
+function roundPoly(ctx, p, rad) {
+  const n = p.length;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = p[(i - 1 + n) % n], b = p[i], c = p[(i + 1) % n];
+    if (i === 0) ctx.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    ctx.arcTo(b[0], b[1], (b[0] + c[0]) / 2, (b[1] + c[1]) / 2, rad);
+  }
+  ctx.closePath();
+}
+/* st: stroke, fill, text, lw, value, alpha, glow, upright */
+function drawDie(ctx, die, x, y, r, rot, st) {
+  if (die === 100) {
+    const v = st.value == null || st.value === '' ? null : pct(+st.value);
+    drawDie(ctx, 10, x - r * .52, y, r * .58, rot, { ...st, value: v ? v.tens : '' });
+    drawDie(ctx, 10, x + r * .52, y, r * .58, -rot * .8, { ...st, value: v ? v.ones : '' });
+    return;
+  }
+  const g = geom(die), a = st.alpha ?? 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = a;
+  ctx.save();
+  ctx.rotate(rot);
+  roundPoly(ctx, g.o.map(([px, py]) => [px * r, py * r]), g.round * r);
+  ctx.fillStyle = st.fill; ctx.fill();
+  if (st.glow) { ctx.shadowColor = st.glow; ctx.shadowBlur = 16; }
+  ctx.lineWidth = st.lw; ctx.strokeStyle = st.stroke; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.shadowBlur = 0;
+  if (g.l.length) {
+    ctx.beginPath();
+    for (const [p, q] of g.l) { ctx.moveTo(p[0] * r, p[1] * r); ctx.lineTo(q[0] * r, q[1] * r); }
+    ctx.lineWidth = Math.max(1, st.lw * .5); ctx.globalAlpha = a * .5; ctx.stroke(); ctx.globalAlpha = a;
+  }
+  if (!st.upright) drawNum(ctx, g, r, st);
+  ctx.restore();
+  if (st.upright) drawNum(ctx, g, r, st);
+  ctx.restore();
+}
+function drawNum(ctx, g, r, st) {
+  if (st.value == null || st.value === '') return;
+  const s = String(st.value), k = s.length >= 3 ? .7 : s.length === 2 ? .86 : 1;
+  const fs = Math.max(8, r * g.fs * k * (st.fsMul || 1));
+  ctx.font = `500 ${fs}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = st.text; ctx.fillText(s, g.at[0] * r, g.at[1] * r + fs * .05);
+}
+function iconSVG(die) {
+  const pts = (p, s = 1, dx = 0) => p.map(([x, y]) => `${(x * s + dx).toFixed(3)},${(y * s).toFixed(3)}`).join(' ');
+  const one = (d, s = 1, dx = 0) => { const g = geom(d); return `<polygon points="${pts(g.o, s, dx)}"/>` + g.l.map(([a, b]) => `<line x1="${(a[0]*s+dx).toFixed(3)}" y1="${(a[1]*s).toFixed(3)}" x2="${(b[0]*s+dx).toFixed(3)}" y2="${(b[1]*s).toFixed(3)}" opacity=".55"/>`).join(''); };
+  const body = die === 100 ? one(10, .62, -.55) + one(10, .62, .55) : one(die);
+  return `<svg viewBox="-1.2 -1.2 2.4 2.4" aria-hidden="true">${body}</svg>`;
+}
+/* best grid for n dice inside a rect; aspect = cell width / height */
+function grid(n, x, y, w, h, maxR, aspect = 1) {
+  let best = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), ch = Math.min(w / (cols * aspect), h / rows);
+    if (!best || ch > best.ch) best = { cols, rows, ch };
+  }
+  const ch = best.ch, cw = ch * aspect, r = Math.min(maxR, ch * .42), out = [];
+  const y0 = y + (h - best.rows * ch) / 2;
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / best.cols), col = i % best.cols, inRow = Math.min(best.cols, n - row * best.cols);
+    const x0 = x + (w - inRow * cw) / 2;
+    out.push({ x: x0 + cw * (col + .5), y: y0 + ch * (row + .5), r });
+  }
+  return out;
+}
+function text(ctx, s, x, y, font, color, align = 'center', spacing = 0) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+  ctx.fillText(s, x, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function hint(ctx, s, y = BOT - 20) { text(ctx, s, W / 2, y, `500 15px ${SANS}`, C.dim); }
+
+/* ===================== screen base ===================== */
+class Screen {
+  constructor(host) {
+    this.glass = host;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = W * 2; this.canvas.height = H * 2;
+    this.ctx = this.canvas.getContext('2d');
+    host.appendChild(this.canvas);
+    this.busy = false; this.dirty = true; this.t0 = 0;
+    this.reset();
+  }
+  reset() { this.roll = makeRoll(true); this.busy = false; this.setup(this.roll); this.dirty = true; }
+  start(roll) { this.roll = roll; this.t0 = performance.now(); this.busy = true; this.setup(roll); }
+  tick(now) {
+    if (!this.busy && !this.dirty) return;
+    const t = this.busy ? now - this.t0 : 1e9, c = this.ctx;
+    c.setTransform(2, 0, 0, 2, 0, 0);
+    c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+    this.draw(t);
+    this.dirty = false;
+    if (this.busy && this.done(t)) { this.busy = false; this.dirty = true; }
+  }
+}
+
+/* shared layout + summary for the "dice on a stage" designs (A, D) */
+function stageSlots(roll, maxSingle) {
+  const sets = roll.sets.length, multi = roll.count > 1, aspect = roll.die === 100 ? 1.75 : 1, slots = [];
+  if (sets === 1) {
+    const y1 = multi ? BOT - 76 : BOT - 40;
+    grid(roll.count, 24, TOP + 8, W - 48, y1 - TOP - 8, multi ? 70 : maxSingle, aspect).forEach((p, i) => slots.push({ ...p, s: 0, i }));
+  } else {
+    const y0 = TOP + 34, y1 = multi ? BOT - 70 : BOT - 44;
+    [[16, 0], [W / 2 + 6, 1]].forEach(([x, s]) =>
+      grid(roll.count, x, y0, W / 2 - 22, y1 - y0, multi ? 60 : 74, aspect).forEach((p, i) => slots.push({ ...p, s, i })));
+  }
+  return slots;
+}
+function stageSummary(ctx, roll, finished) {
+  if (roll.idle) { hint(ctx, roll.sets.length === 2 ? 'Tap to roll twice' : 'Tap to roll'); return; }
+  const cc = critColor(roll.crit);
+  if (roll.sets.length === 1) {
+    if (roll.count > 1 && finished) {
+      text(ctx, 'TOTAL', W / 2, BOT - 62, `500 11px ${SANS}`, C.dim, 'center', 1.2);
+      text(ctx, String(roll.totals[0]), W / 2, BOT - 32, `500 38px ${MONO}`, C.text);
+    } else if (finished && cc) text(ctx, critText(roll.crit), W / 2, BOT - 20, `600 14px ${SANS}`, cc, 'center', 1.4);
+    return;
+  }
+  [W / 4 + 2, W * 3 / 4 - 2].forEach((x, s) => {
+    const kept = s === roll.kept;
+    const lab = !finished ? (s ? '2ND' : '1ST') : kept ? 'KEPT' : 'DROPPED';
+    text(ctx, lab, x, TOP + 16, `600 11px ${SANS}`, !finished ? C.dim : kept ? C.accent : C.off, 'center', 1.2);
+    if (roll.count > 1 && finished) {
+      const tx = String(roll.totals[s]);
+      text(ctx, tx, x, BOT - 46, `500 28px ${MONO}`, kept ? C.text : C.off);
+      if (!kept) { ctx.fillStyle = C.off; const w = tx.length * 17 + 8; ctx.fillRect(x - w / 2, BOT - 46, w, 2); }
+    }
+  });
+  if (finished) text(ctx, cc ? critText(roll.crit) : modeText(roll.mode), W / 2, BOT - 14, `${cc ? 600 : 500} 12px ${SANS}`, cc || C.dim, 'center', cc ? 1.4 : 0);
+}
+
+/* ===================== D · Wireframe ===================== */
+const PHI = (1 + Math.sqrt(5)) / 2, SOLIDS = {};
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], scale3 = (a, k) => a.map(c => c * k);
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = a => scale3(a, 1 / Math.hypot(...a));
+const mul = (M, v) => [dot(M[0], v), dot(M[1], v), dot(M[2], v)];
+const mulM = (A, B) => A.map(row => [0, 1, 2].map(j => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+function axisAngle(a, th) {                       // Rodrigues rotation matrix
+  const [x, y, z] = a, c = Math.cos(th), s = Math.sin(th), t = 1 - c;
+  return [[t * x * x + c, t * x * y - s * z, t * x * z + s * y], [t * x * y + s * z, t * y * y + c, t * y * z - s * x], [t * x * z - s * y, t * y * z + s * x, t * z * z + c]];
+}
+function solid(die) {
+  if (SOLIDS[die]) return SOLIDS[die];
+  let V = [], E = [];
+  if (die === 4) V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+  else if (die === 6) { for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) V.push([a, b, c]); }
+  else if (die === 8) V = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  else if (die === 12) {
+    for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) V.push([a, b, c]);
+    for (const a of [-1, 1]) for (const b of [-1, 1]) V.push([0, a / PHI, b * PHI], [a / PHI, b * PHI, 0], [a * PHI, 0, b / PHI]);
+  } else if (die === 20) { for (const a of [-1, 1]) for (const b of [-1, 1]) V.push([0, a, b * PHI], [a, b * PHI, 0], [a * PHI, 0, b]); }
+  else {                                           // d10: pentagonal trapezohedron, apexes on the y axis
+    V = [[0, -1.25, 0], [0, 1.25, 0]];
+    for (let i = 0; i < 5; i++) V.push([Math.cos(72 * i * D2R), -.13, Math.sin(72 * i * D2R)]);
+    for (let i = 0; i < 5; i++) V.push([Math.cos((72 * i + 36) * D2R), .13, Math.sin((72 * i + 36) * D2R)]);
+    for (let i = 0; i < 5; i++) E.push([0, 2 + i], [1, 7 + i], [2 + i, 7 + i], [2 + i, 7 + (i + 4) % 5]);
+  }
+  const m = Math.max(...V.map(v => Math.hypot(...v)));
+  V = V.map(v => scale3(v, 1 / m));
+  if (!E.length) {
+    const dist = (i, j) => Math.hypot(...sub(V[i], V[j]));
+    let min = Infinity;
+    for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) min = Math.min(min, dist(i, j));
+    for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) if (dist(i, j) < min * 1.01) E.push([i, j]);
+  }
+  return SOLIDS[die] = { V, E, pose: restPose(die, V) };
+}
+/* Rest pose: the rotation that turns one face straight at the viewer, upright
+   (a vertex up for triangles and pentagons, an edge up for the cube, the apex
+   up for the d10 kite). The roll always ends exactly on this matrix. */
+function restPose(die, V) {
+  let face, n, u;
+  if (die === 10) {
+    face = [0, 2, 7, 3];                           // top apex, ring vertex, lower ring vertex, next ring vertex
+    const P = face.map(i => V[i]);
+    n = unit(cross(sub(P[3], P[1]), sub(P[2], P[0])));
+    const c0 = scale3(P.reduce(add), 1 / 4);
+    if (dot(n, c0) < 0) n = scale3(n, -1);
+    u = sub(P[0], c0);                             // towards the apex
+  } else {
+    const dir = { 4: scale3(V[0], -1), 6: [0, 0, 1], 8: [1, 1, 1], 12: [0, PHI, 1], 20: [1, 1, 1] }[die];
+    n = unit(dir);
+    const best = Math.max(...V.map(v => dot(v, n)));
+    face = V.map((v, i) => i).filter(i => dot(V[i], n) > best - 1e-6);
+    const c0 = scale3(face.map(i => V[i]).reduce(add), 1 / face.length);
+    if (die === 6) u = [0, -1, 0];
+    else u = sub(V[face.reduce((b, i) => (dot(sub(V[i], c0), [0, -1, 0]) > dot(sub(V[b], c0), [0, -1, 0]) ? i : b), face[0])], c0);
+  }
+  u = unit(sub(u, scale3(n, dot(u, n))));
+  const w = cross(n, u), tn = [0, 0, -1], tu = [0, -1, 0], tw = [-1, 0, 0];
+  const M = [0, 1, 2].map(i => [0, 1, 2].map(j => tn[i] * n[j] + tu[i] * u[j] + tw[i] * w[j]));
+  // order the face vertices around the centre so the face can be filled
+  const fp = face.map(i => mul(M, V[i]));
+  face = face.map((i, k) => [i, Math.atan2(fp[k][1], fp[k][0])]).sort((a, b) => a[1] - b[1]).map(f => f[0]);
+  return { M, face };
+}
+const FACE_FS = { 4: .38, 6: .56, 8: .34, 10: .32, 12: .44, 20: .31 };
+function drawSolid(ctx, die, x, y, r, M, color, opts) {
+  const { V, E, pose } = solid(die);
+  const P = V.map(v => { const q = mul(M, v), k = 4 / (4 + q[2]); return [x + q[0] * r * k, y + q[1] * r * k, q[2]]; });
+  const edges = E.map(([i, j]) => ({ a: P[i], b: P[j], z: (P[i][2] + P[j][2]) / 2 })).sort((p, q) => q.z - p.z);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const e of edges) {
+    const front = e.z < 0, depth = clamp01((1 - e.z) / 2);
+    ctx.globalAlpha = (front ? .55 + .45 * depth : .14 + .2 * depth) * opts.bright;
+    ctx.lineWidth = front ? Math.max(1.6, r * .028) : Math.max(1, r * .016);
+    ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.moveTo(e.a[0], e.a[1]); ctx.lineTo(e.b[0], e.b[1]); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  if (opts.reveal > 0) {                           // landed: the face toward the viewer gets a solid fill and the number
+    ctx.beginPath();
+    pose.face.forEach((i, k) => k ? ctx.lineTo(P[i][0], P[i][1]) : ctx.moveTo(P[i][0], P[i][1]));
+    ctx.closePath();
+    ctx.globalAlpha = opts.reveal;
+    ctx.fillStyle = opts.fill; ctx.fill();
+    ctx.lineWidth = Math.max(1.8, r * .032); ctx.strokeStyle = color; ctx.stroke();
+    const s = String(opts.value), fs = Math.max(9, r * FACE_FS[die] * (s.length >= 3 ? .62 : s.length === 2 ? .8 : 1));
+    text(ctx, s, x, y + fs * .05, `500 ${fs}px ${MONO}`, opts.text);
+    ctx.globalAlpha = 1;
+  }
+}
+const randAxis = () => { const z = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - z * z); return [s * Math.cos(a), s * Math.sin(a), z]; };
+class Wireframe extends Screen {
+  setup(roll) {
+    this.slots = stageSlots(roll, 112).map((sl, k) => ({
+      ...sl, delay: k * 80, len: dur(1100 + Math.random() * 300),
+      spins: [0, 1].map(() => ({ axis: randAxis(), turns: (2.2 + Math.random() * 1.6) * Math.PI * 2 })),
+    }));
+    this.end = Math.max(...this.slots.map(s => s.delay + s.len)) + 260;
+  }
+  done(t) { return t > this.end; }
+  draw(t) {
+    const r = this.roll, ctx = this.ctx, finished = t >= this.end - 260;
+    for (const sl of this.slots) {
+      const lt = t - sl.delay, p = clamp01(lt / sl.len), e = outQuart(p);
+      const dropped = finished && r.sets.length > 1 && sl.s !== r.kept;
+      const cc = !r.idle && p >= 1 && sl.s === r.kept ? critColor(r.crit) : null;
+      const color = r.idle || dropped ? C.off : cc || C.accent;
+      const reveal = r.idle ? 1 : clamp01((lt - sl.len + 40) / 180);
+      const after = lt - sl.len, pop = p >= 1 && !r.idle ? 1 + .06 * Math.exp(-after / 80) * Math.sin(after / 30) : 1;
+      const v = r.sets[sl.s][sl.i];
+      const pieces = r.die === 100 ? [[-sl.r * .66, 10, pct(v).tens, .72], [sl.r * .66, 10, pct(v).ones, .72]] : [[0, r.die, String(v), 1]];
+      pieces.forEach(([dx, d, val, sc], j) => {
+        const sp = sl.spins[j], M = r.idle ? solid(d).pose.M : mulM(solid(d).pose.M, axisAngle(sp.axis, sp.turns * (1 - e)));
+        if (p < 1 && !r.idle) { ctx.shadowColor = C.accent; ctx.shadowBlur = 10; }
+        drawSolid(ctx, d, sl.x + dx, sl.y, sl.r * sc * 1.08 * pop, M, color, {
+          bright: r.idle ? .7 : 1, reveal, value: r.idle ? '?' : val,
+          fill: r.idle || dropped ? '#050505' : C.accentFill, text: r.idle || dropped ? C.off : cc || C.text,
+        });
+        ctx.shadowBlur = 0;
+      });
+    }
+    stageSummary(ctx, r, finished);
+  }
+}
+
+/* ===================== cards + controls ===================== */
+const DESIGNS = [
+  { key: 'D', name: 'Wireframe', cls: Wireframe,
+    desc: 'True 3D polyhedra (tetrahedron, cube, octahedron, pentagonal trapezohedron, dodecahedron, icosahedron) spin as glowing wireframes around a random axis, slow down and land exactly face-on: one face points straight at you, upright, and lights up with the number. Every roll ends on the same precise pose, never a few degrees off.',
+    device: 'The spin is a rotation matrix (rest pose × axis-angle spin) that decays to exactly the rest pose, so the final frame is pixel-identical every time. Vertices projected in software, edges drawn with lv_draw_line on a canvas layer (6–30 edges per die); the landed face is a filled polygon plus a label.' },
+];
+const screens = [];
+const designsEl = document.getElementById('designs');
+
+function controlsHTML(id) {
+  const strip = DICE.map(d => `<button data-die="${d}" aria-pressed="false" aria-label="${label(d)}">${iconSVG(d)}<span>${label(d)}</span></button>`).join('');
+  return `<button class="tap" aria-label="Roll"></button>
+    <div class="strip" role="group" aria-label="Die">${strip}</div>
+    <div class="bar">
+      <div class="step"><button data-step="-1" aria-label="Fewer dice">−</button><output>1d20</output><button data-step="1" aria-label="More dice">+</button></div>
+      <div class="mode" role="group" aria-label="Mode"><button data-mode="flat" aria-pressed="true">Flat</button><button data-mode="adv" aria-pressed="false">Adv</button><button data-mode="dis" aria-pressed="false">Dis</button></div>
+    </div>`;
+}
+
+DESIGNS.forEach(d => {
+  const card = document.createElement('article');
+  card.className = 'card';
+  card.innerHTML = `<div class="screen"><div class="bezel"><div class="glassbox"><div class="glass"></div></div></div></div>
+    <div class="meta"><p class="eyebrow">Chosen design · ${d.key}</p><h2>${d.name}</h2><p class="desc">${d.desc}</p><p class="device"><b>On the device:</b> ${d.device}</p></div>`;
+  designsEl.appendChild(card);
+  const glass = card.querySelector('.glass');
+  const scr = new d.cls(glass);
+  glass.insertAdjacentHTML('beforeend', controlsHTML(d.key));
+  glass.querySelector('.tap').addEventListener('click', () => { const r = makeRoll(); scr.start(r); showReadout(r, 'the screen'); });
+  glass.querySelectorAll('[data-die]').forEach(b => b.addEventListener('click', () => setState({ die: +b.dataset.die })));
+  glass.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => setState({ count: state.count + +b.dataset.step })));
+  glass.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setState({ mode: b.dataset.mode })));
+  const box = card.querySelector('.glassbox');
+  new ResizeObserver(() => { glass.style.transform = `scale(${box.clientWidth / W})`; }).observe(box);
+  screens.push(scr);
+});
+
+
+
+/* global panel */
+const gDie = document.getElementById('g-die');
+gDie.innerHTML = DICE.map(d => `<button data-die="${d}" aria-pressed="false">${label(d)}</button>`).join('');
+gDie.querySelectorAll('button').forEach(b => b.addEventListener('click', () => setState({ die: +b.dataset.die })));
+document.getElementById('g-minus').addEventListener('click', () => setState({ count: state.count - 1 }));
+document.getElementById('g-plus').addEventListener('click', () => setState({ count: state.count + 1 }));
+document.querySelectorAll('#g-mode button').forEach(b => b.addEventListener('click', () => setState({ mode: b.dataset.mode })));
+document.getElementById('g-roll').addEventListener('click', () => { const r = makeRoll(); screens.forEach(s => s.start(r)); showReadout(r, 'the screen'); });
+
+function setState(p) {
+  Object.assign(state, p);
+  state.count = Math.max(1, Math.min(maxCount(), state.count));
+  sync();
+  screens.forEach(s => s.reset());
+}
+function sync() {
+  const tag = `${state.count}d${state.die}`;
+  document.querySelectorAll('[data-die]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.die === state.die)));
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === state.mode)));
+  document.querySelectorAll('.glass output').forEach(o => { o.textContent = tag; });
+  document.getElementById('g-count').textContent = tag;
+  document.querySelectorAll('[data-step="-1"], #g-minus').forEach(b => { b.disabled = state.count <= 1; });
+  document.querySelectorAll('[data-step="1"], #g-plus').forEach(b => { b.disabled = state.count >= maxCount(); });
+}
+function showReadout(r, where) {
+  const fmt = set => r.die === 100 ? set.join(', ') : set.join(' + ');
+  let s = `<b>${r.count}d${r.die}</b>${r.mode === 'flat' ? '' : r.mode === 'adv' ? ' with advantage' : ' with disadvantage'} on ${where}: `;
+  if (r.sets.length === 1) s += r.count > 1 ? `${fmt(r.sets[0])} = <b>${r.totals[0]}</b>` : `<b>${r.totals[0]}</b>`;
+  else s += r.sets.map((set, i) => `${r.count > 1 ? fmt(set) + ' = ' : ''}${i === r.kept ? '<b>' + r.totals[i] + '</b> (kept)' : r.totals[i]}`).join(' · ');
+  if (r.crit) s += r.crit === 'nat20' ? ' · natural 20' : ' · natural 1';
+  document.getElementById('readout').innerHTML = s;
+}
+
+const gColor = document.getElementById('g-color'), gHex = document.getElementById('g-hex');
+function applyColor(hex, from) {
+  setAccent(hex);
+  if (from !== 'picker') gColor.value = hex;
+  if (from !== 'text') gHex.value = '0x' + hex.slice(1).toUpperCase();
+  gHex.removeAttribute('aria-invalid');
+  screens.forEach(s => { s.dirty = true; });
+}
+gColor.addEventListener('input', () => applyColor(gColor.value, 'picker'));
+gHex.addEventListener('input', () => {
+  const m = gHex.value.trim().match(/^(?:0x|#)?([0-9a-f]{6})$/i);
+  if (m) applyColor('#' + m[1].toLowerCase(), 'text'); else gHex.setAttribute('aria-invalid', 'true');
+});
+document.getElementById('g-reset').addEventListener('click', () => applyColor(DEFAULT_COLOR.toLowerCase()));
+setAccent(DEFAULT_COLOR);
+sync();
+function frame(now) { screens.forEach(s => s.tick(now)); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+Promise.all([document.fonts.load(`500 20px ${MONO}`), document.fonts.load(`500 15px ${SANS}`), document.fonts.load(`600 13px ${SANS}`)])
+  .catch(() => {}).then(() => screens.forEach(s => { s.dirty = true; }));
+</script>
+</body>
+</html>
