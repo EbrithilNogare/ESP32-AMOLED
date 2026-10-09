@@ -1,0 +1,7 @@
+{
+  "name": "HaParse",
+  "version": "0.1.0",
+  "description": "Home Assistant REST helpers: parse light states, build request bodies, map HTTP status",
+  "platforms": "*",
+  "frameworks": "*"
+}

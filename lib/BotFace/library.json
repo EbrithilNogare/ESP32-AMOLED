@@ -1,0 +1,7 @@
+{
+  "name": "BotFace",
+  "version": "0.1.0",
+  "description": "Animated bot face parameters, easing and geometry (port of the UI mockup)",
+  "platforms": "*",
+  "frameworks": "*"
+}

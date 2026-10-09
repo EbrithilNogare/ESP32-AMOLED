@@ -1,0 +1,7 @@
+{
+  "name": "PixelShift",
+  "version": "0.1.0",
+  "description": "Slow Lissajous pixel-shift path for AMOLED burn-in protection",
+  "platforms": "*",
+  "frameworks": "*"
+}
