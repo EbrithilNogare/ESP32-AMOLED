@@ -408,12 +408,12 @@ press, with a short power-on animation (the dot expands into the screen).
 | --- | --- | --- |
 | BOOT (GPIO0) | ESP32-S3 deep sleep, `esp_sleep_enable_ext1_wakeup(1ULL << 0, ESP_EXT1_WAKEUP_ANY_LOW)` | high — GPIO0 is an RTC GPIO. Verify that holding it through the wake doesn't enter download mode (strapping pin). |
 | PWR (AXP2101) | Option A: PEK IRQ → TCA9554 EXIO5 → TCA9554 INT → an ESP RTC GPIO → ext1 wake. Works only if the expander INT line reaches an RTC-capable GPIO — **unknown, no schematic**. Test in M6 by watching all free RTC GPIOs while pressing PWR. | unknown |
-| PWR (AXP2101) | Option B: **"deep off"** — instead of ESP deep sleep, call `pmu.shutdown()`. The AXP2101 cuts all rails (lowest drain); pressing PWR powers the board on again (cold boot, `setPowerKeyPressOnTime()` sets the press length). RTC memory is lost, so the state goes to NVS before shutdown; the PCF85063 keeps the time. BOOT can't wake from this. | high (standard AXP behaviour) |
+| PWR (AXP2101) | ~~Option B~~ (not used, see below): **"deep off"** — instead of ESP deep sleep, call `pmu.shutdown()`. The AXP2101 cuts all rails (lowest drain); pressing PWR powers the board on again (cold boot, `setPowerKeyPressOnTime()` sets the press length). RTC memory is lost, so the state goes to NVS before shutdown; the PCF85063 keeps the time. BOOT can't wake from this. | high (standard AXP behaviour) |
 
-**Plan:** implement BOOT ext1 wake first (M6). Then test Option A; if it
-works, both buttons wake from deep sleep. If it doesn't, offer Option B as a
-config switch (`SLEEP_MODE_DEEP_OFF`): PWR wakes, BOOT doesn't, best
-standby time. Record the outcome in HARDWARE.md and LESSONS.md.
+**Decision:** BOOT (ext1) is the wake button; one wake button is enough
+(owner, 2026-10-09). In M6 we still try Option A, and if PWR can wake too,
+that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
+(AXP power-off) isn't built. Record the outcome in HARDWARE.md and LESSONS.md.
 
 ### 8.5 Persistence
 
@@ -442,12 +442,10 @@ periodically (flash wear).
 #define BAT_IDLE_SLEEP_MS          20000
 #define CHG_IDLE_DIM_MS            60000
 #define CHG_IDLE_BLACK_MS          300000   // plain black (display off)
-#define SLEEP_MODE_DEEP_OFF        0     // 1 = AXP power-off instead of ESP deep sleep (§8.4)
 // ---- buttons ----
 #define BUTTON_BACK_IS_BOOT        1     // 1: BOOT = back, PWR = home; 0: swapped
 // ---- OTA (§12) ----
 #define OTA_HOSTNAME               "esp32-amoled"
-#define OTA_LISTEN_ON_CHARGER      0
 #define OTA_MIN_BATTERY_PCT        30
 #define OTA_HEALTHY_AFTER_MS       10000
 #define BUTTON_LONG_PRESS_MS       1000  // long press → power-off animation → deep sleep
@@ -517,9 +515,8 @@ partition table would need one USB flash, so it's the last resort.
   starts.
 - The LittleFS image (`data/`) can be pushed the same way
   (`-t uploadfs` on the OTA env).
-- **Convenience option:** `OTA_LISTEN_ON_CHARGER` (default 0). When 1, the
-  listener also runs whenever the device is on the charger with Wi-Fi up, so
-  an update needs no tap on the device.
+- The listener runs **only** while the update screen is open (owner's
+  choice); there's no background listening, even on the charger.
 
 **Later — pull from GitHub Releases:** CI attaches `firmware.bin` and a
 `version.json` to tagged releases; System → "Check for updates" downloads
@@ -533,7 +530,7 @@ exists. Needs the repo releases to be reachable without auth.
 | Bad firmware boots and crashes / hangs | **Rollback.** The Arduino core ships its bootloader with `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1`. We override the core's weak `verifyRollbackLater()` to return `true`, then mark the image valid (`esp_ota_mark_app_valid_cancel_rollback()`) only after a **health check**: display + touch initialised, menu rendered, 10 s without a reset. A crash or watchdog reset before that → the bootloader boots the previous slot. |
 | Power loss mid-transfer | the old slot stays active until the new image is complete and verified (SHA-256 check by the OTA library) |
 | Flat battery during update | listener refuses to start below **30 %** unless on the charger |
-| Someone else on the LAN flashes it | listener runs only while the update screen is open (or on the charger when opted in); password required; never enabled when `OTA_PASSWORD` is empty |
+| Someone else on the LAN flashes it | listener runs only while the update screen is open; password required; never enabled when `OTA_PASSWORD` is empty |
 | Wrong board / wrong project image | image `project_name` must match (`esp_app_desc_t`), checked in `onStart` |
 
 ### 12.4 Versioning
@@ -545,19 +542,12 @@ update screen, logged at boot, and embedded in `esp_app_desc_t`.
 
 ## 13. Open questions
 
-Answered (2026-10-09, see DECISIONS.md): back + home buttons like a
-smartwatch; wake → always the menu; battery dim level 25 %; portrait
-orientation; board is V2; long press → animation → deep sleep; charger:
-dim at 60 s to 40 %, then plain black (no screensaver animation); policies
-like pomodoro behave the same on the charger as on battery; speaker beeps OK.
+None right now. All answers are recorded in DECISIONS.md (2026-10-09):
+back + home buttons like a smartwatch (BOOT = Back, PWR = Home); wake →
+always the menu; battery dim level 25 %; portrait orientation; board is V2;
+long press → animation → deep sleep; BOOT alone is enough as the wake button;
+charger: dim at 60 s to 40 %, then plain black; policies like pomodoro behave
+the same on the charger as on battery; speaker beeps OK; OTA only from the
+update screen.
 
-Still open:
-
-1. **Which physical button is on top?** The plan assumes BOOT = Back, PWR =
-   Home (`BUTTON_BACK_IS_BOOT`). Tell me if the top one should be Home.
-2. **Can PWR wake from deep sleep?** Unknown until M6 (§8.4). If it can't,
-   choose between: BOOT-only wake from ESP deep sleep, or "deep off"
-   (PWR-only wake, lowest drain).
-3. **OTA listener:** only from System → Wireless update (default,
-   `OTA_LISTEN_ON_CHARGER 0`), or also automatically while on the charger
-   with Wi-Fi up (`1`, more convenient, slightly larger attack surface)?
+New questions found during implementation go here.

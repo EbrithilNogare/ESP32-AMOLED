@@ -5,6 +5,15 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — Last open questions closed
+
+**Decision:** Keep BOOT = Back, PWR = Home. BOOT alone as the deep-sleep wake
+button is enough; PWR wake is a bonus if M6 shows the hardware allows it,
+and the AXP2101 power-off ("deep off") mode won't be built. OTA listens only
+while the update screen is open.
+**Consequences:** No `SLEEP_MODE_DEEP_OFF` or `OTA_LISTEN_ON_CHARGER`
+options; fewer code paths to test.
+
 ## 2026-10-09 — OTA updates (plan)
 
 **Context:** The owner wants wireless updates if the firmware stays within the
@@ -16,7 +25,8 @@ marked valid. Firmware budget ≤ 3.0 MB target, 3.5 MB hard limit, checked
 in CI. Version from `git describe`. Pulling from GitHub Releases comes later.
 **Consequences:** Every milestone keeps the image inside the budget; big
 assets go to LittleFS. The listener never runs without a password, and only
-on demand (or on the charger if opted in).
+while System → Wireless update is open (owner's choice: no background
+listening, not even on the charger).
 
 ## 2026-10-09 — Libraries, rendering and assets (plan)
 

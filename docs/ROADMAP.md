@@ -17,7 +17,7 @@ Status: ☐ not started · ◐ in progress · ☑ done
 
 - [x] Architecture, app specs, roadmap written
 - [x] Most open questions answered (DECISIONS.md, 2026-10-09)
-- [ ] Remaining questions (ARCHITECTURE §13) answered
+- [x] Remaining questions answered (ARCHITECTURE §13)
 - [ ] Plan reviewed → start M1
 
 ## Platform
@@ -91,7 +91,7 @@ power-on animation. Long press on either button → power-off animation
 (CRT collapse, ~1 s) → wait for release → deep sleep.
 1. BOOT wake via ext1.
 2. **Experiment:** does PWR reach any RTC GPIO (Option A, ARCHITECTURE §8.4)?
-3. If not: `SLEEP_MODE_DEEP_OFF` (AXP2101 shutdown, PWR powers on, state in NVS).
+   If yes, PWR wakes too; if not, BOOT alone is fine (decided).
 
 **On device:** sleeps after 20 s idle on battery, never on the charger by
 idle; long press sleeps in any profile and the held button doesn't

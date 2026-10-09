@@ -48,7 +48,7 @@ which confirms itself after the health check).
 
 ## Config
 
-`OTA_HOSTNAME`, `OTA_LISTEN_ON_CHARGER`, `OTA_MIN_BATTERY_PCT`,
+`OTA_HOSTNAME`, `OTA_MIN_BATTERY_PCT`,
 `OTA_HEALTHY_AFTER_MS` in `config.h`; `OTA_PASSWORD` in `secrets.h` (empty
 disables OTA).
 
