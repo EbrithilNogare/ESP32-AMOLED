@@ -2,8 +2,7 @@
 
 ## Purpose
 
-A simple, friendly animated face: a desk companion and the charger
-screensaver.
+A simple, friendly animated face: a desk companion.
 
 ## Screens
 
@@ -61,10 +60,8 @@ Expressions are tweens between `FaceParams` presets over 150–400 ms.
 `Normal`: on battery it follows dim → black → sleep. The animation runs at
 ~30 fps while active and drops to ~10 fps while dimmed.
 
-**Screensaver role (charger):** after `CHG_IDLE_SCREENSAVER_MS` the
-PowerManager shows the face at ~40 % size, low brightness, drifting slowly
-across the screen (burn-in safe), with blinks continuing. Touch returns to
-the previous app.
+On the charger it follows the charger timeline (dim at 60 s, plain black at
+5 min). The eyes and mouth keep moving, so the face itself doesn't burn in.
 
 ## Persistence
 
@@ -82,7 +79,7 @@ None needed.
 
 - [ ] Smooth blinking and looking around, no tearing
 - [ ] Tap / double tap reactions
-- [ ] On the charger, the screensaver face drifts and never stays in one place
+- [ ] On the charger: dims at 60 s, goes black at 5 min, touch restores it
 - [ ] On battery the device still sleeps after the idle timeout
 
 ## Later

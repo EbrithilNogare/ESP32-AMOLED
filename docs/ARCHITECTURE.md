@@ -99,8 +99,7 @@ live.
 | --- | --- | --- |
 | Max brightness | 100 % (`BRIGHTNESS_MAX_BATTERY`) | **80 %** (`BRIGHTNESS_MAX_CHARGER`) |
 | Idle → dim | 10 s → 25 % | 60 s → 40 % |
-| Idle → black | 15 s | — |
-| Idle → screensaver | — | 5 min → drifting bot face / clock, low brightness (§7) |
+| Idle → black | 15 s | **5 min → plain black** (display off; touch/button restores, §7) |
 | Idle → deep sleep | 20 s | never |
 | Wi-Fi | only while an app needs it | can stay connected |
 | Pixel shift | yes | yes |
@@ -120,6 +119,12 @@ Each app declares how it interacts with the idle timeline:
 A policy can change at runtime (`setPowerPolicy()`), e.g. the espresso timer
 becomes `KeepAwake` only while the stopwatch runs.
 
+**Policies beat profiles.** A non-`Normal` policy behaves the same on the
+charger as on battery. A running pomodoro switches to its minimal view after
+the *battery* dim delay even while charging; the charger profile only keeps
+its 80 % brightness cap. The charger timeline (dim → plain black) applies
+only to `Normal` apps.
+
 ## 4. Hardware used
 
 | Part | Use | Notes |
@@ -132,24 +137,27 @@ becomes `KeepAwake` only while the stopwatch runs.
 | AXP2101 PMU | VBUS detect, charging, battery %, power-off/on | XPowersLib: `isVbusIn()`, `isCharging()`, `getBatteryPercent()`, `shutdown()`, VBUS insert/remove + PEK IRQs |
 | ES8311 + speaker amp (PA GPIO46) | short beeps (pomodoro phase end) | amp off except while beeping |
 | QMI8658 IMU | later: shake/tilt for bot face, pump-vibration auto-start for espresso | optional |
-| PCF85063 RTC | wall clock in the status bar / screensaver | keeps time through deep sleep and AXP power-off |
+| PCF85063 RTC | wall clock in the status bar | keeps time through deep sleep and AXP power-off |
 | ESP32-S3 Wi-Fi | Home Assistant | station mode, only when needed on battery |
 
 ## 5. Software stack
 
-| Layer | Choice | Why |
-| --- | --- | --- |
-| Framework | Arduino core 3.x (pioarduino) | already set up; ESP-IDF APIs available for sleep/PM |
-| Display driver | GFX Library for Arduino — `Arduino_ESP32QSPI` + `Arduino_CO5300` (V1: `Arduino_SH8601`) | what Waveshare's examples use |
-| UI | **LVGL 9.x** | scrolling with snap, animations, styles, canvas for the bot face |
-| Touch | SensorLib touch drivers | CST820 (V2), FT3168 (V1) |
-| PMU | XPowersLib | profiles, battery, PEK, shutdown |
-| IO expander | Adafruit XCA9554 | vendor-proven |
-| HTTP / JSON | `HTTPClient` + ArduinoJson 7 | Home Assistant REST |
-| Persistence | `Preferences` (NVS) + `RTC_DATA_ATTR` | settings, app state across sleep |
+Full list with versions, licences and the options we rejected:
+[LIBRARIES.md](LIBRARIES.md). Design system, fonts, images, sprites and the
+asset pipeline: [UI_DESIGN.md](UI_DESIGN.md).
 
-LVGL draw buffers: two partial buffers of 368 × 45 lines × 2 B ≈ 33 KB each
-in PSRAM, RGB565 byte-swapped. All pinned versions go into `platformio.ini`.
+| Layer | Choice |
+| --- | --- |
+| Framework | Arduino core 3.x (pioarduino), ESP-IDF APIs where needed (sleep, PM, esp_lcd) |
+| UI | **LVGL 9.6**, rendering `RGB565_SWAPPED`, partial mode, 2 DMA buffers |
+| Display | **esp_lcd** QSPI panel IO (async DMA) + vendored SH8601/CO5300 panel driver |
+| Touch / IMU / RTC | SensorLib |
+| PMU | XPowersLib |
+| IO expander | own TCA9554 driver |
+| Audio | vendored Espressif es8311 + core `ESP_I2S` |
+| Network / data | core `WiFi`, `HTTPClient`, ArduinoJson 7 |
+| Storage | `Preferences` (NVS), `LittleFS`, `RTC_DATA_ATTR` |
+| Assets | `assets/` sources → `tools/assets.py` (lv_font_conv + LVGLImage.py) → `src/ui/generated/` |
 
 ## 6. Core services
 
@@ -248,8 +256,74 @@ src/
     ├── theme.{h,cpp}     colours, fonts, shared styles
     └── icons/            round app icons (LVGL image C arrays)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
+lib/       Arduino-free logic (host-testable) + vendored drivers:
+           PowerFsm/  PomodoroCore/  ShotTimer/  HaParse/  esp_lcd_amoled/  es8311/
+test/      Unity tests for lib/ (run with `pio test -e native`)
+assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
+tools/     assets.py, converters
+src/ui/generated/   generated fonts/images/sprites (committed)
+data/      LittleFS content (big/optional assets)
 docs/apps/ one spec per app
 ```
+
+### 6.3 Runtime model
+
+**Tasks**
+
+| Task | Core | Priority | Owns |
+| --- | --- | --- | --- |
+| UI (Arduino `loop()`) | 1 | normal | LVGL (only task calling `lv_*`), AppManager, PowerManager, input polling |
+| Net | 0 | normal | Wi-Fi state machine, SNTP |
+| HA client | 0 | low | HTTP requests (spawned by the HA app) |
+| Sound | 0 | high, short-lived | I2S beep playback |
+
+LVGL runs with `LV_OS_NONE`. Concurrency safety comes from ownership, not
+locks: other tasks never touch UI objects.
+
+**Event bus.** Cross-task and cross-module communication goes through one
+FreeRTOS queue of small typed events, drained by the UI task once per frame
+and dispatched to services and the current app:
+
+```cpp
+enum class Ev : uint8_t { BackPressed, HomePressed, LongPress, Touch,
+                          VbusChanged, BatteryLevel, WifiState, HaResult,
+                          TimerDue, ... };
+struct Event { Ev type; uint32_t a; uint32_t b; void *ptr; };  // ptr: owned by receiver
+bool events::post(const Event &e);            // any task, ISR-safe variant too
+```
+
+ISRs (button GPIO, PMU IRQ) only set flags or post events; the I2C work they
+trigger runs in the UI task.
+
+**I2C.** One bus with 7 devices. Every access goes through
+`I2cBus::lock()` (FreeRTOS mutex). In practice almost all I2C traffic (touch,
+PMU, RTC, expander) comes from the UI task.
+
+**Memory.**
+
+| What | Where |
+| --- | --- |
+| LVGL draw buffers (2 × ~29 KB) | internal DMA RAM |
+| LVGL heap (widgets, styles), image cache | PSRAM |
+| Network buffers, JSON documents | PSRAM (`ArduinoJson` custom allocator) |
+| Fonts, images, sprites | flash (memory-mapped) |
+| Stack sizes | UI 16 KB, Net 8 KB, HA 8 KB |
+
+No allocation in per-frame paths; apps are static objects; screens are
+created on open and deleted on close.
+
+**Time.** The PCF85063 RTC is the clock source (it survives sleep and
+power-off). When Wi-Fi is up, SNTP corrects it. Timezone is a POSIX TZ
+string in `config.h` (`TIMEZONE`, e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`).
+
+**Settings.** Compile-time defaults in `config.h`. A `Settings` service reads
+NVS overrides on top of them (written by a future Settings app), so apps read
+settings through `Settings`, never directly from macros.
+
+**Conventions.** C++17, one namespace per area (`core::`, `apps::`, `ui::`),
+`.clang-format` (2-space indent, 100 columns, matching the current code) added
+in M1, no exceptions in firmware code, `ESP_LOGx` with a per-module tag.
+
 
 ## 7. AMOLED burn-in protection
 
@@ -263,10 +337,9 @@ screen is on for hours.
    Implemented in the display driver: on each shift the whole screen is
    invalidated and the flush draws at the new offset, so apps don't have to
    care. Layouts keep a 4 px black safe margin on every edge.
-3. **Screensaver (charger, 5 min idle):** black screen with a small, dim
-   bot face or clock drifting slowly around the screen. Touch or a button
-   restores the previous app. The screensaver content is pluggable;
-   the bot face is the first one.
+3. **Plain black after 5 min idle on the charger** (`Normal` apps): the
+   panel's display-off command, so every pixel is off. A touch or button
+   brings back the previous screen.
 4. **Minimal render modes** (pomodoro) use thin, dim elements, a ring rather
    than filled shapes, and also drift.
 5. No app may show a full-screen bright fill for more than a few seconds.
@@ -367,7 +440,7 @@ periodically (flash wear).
 #define BAT_IDLE_BLACK_MS          15000
 #define BAT_IDLE_SLEEP_MS          20000
 #define CHG_IDLE_DIM_MS            60000
-#define CHG_IDLE_SCREENSAVER_MS    300000
+#define CHG_IDLE_BLACK_MS          300000   // plain black (display off)
 #define SLEEP_MODE_DEEP_OFF        0     // 1 = AXP power-off instead of ESP deep sleep (§8.4)
 // ---- buttons ----
 #define BUTTON_BACK_IS_BOOT        1     // 1: BOOT = back, PWR = home; 0: swapped
@@ -384,7 +457,9 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 
 ## 10. Error handling & logging
 
-- Every module logs with a `[module]` prefix (as in ClaudeObserver).
+- Every module logs through `ESP_LOGx(TAG, …)` with a per-module tag
+  (`board`, `display`, `power`, `ha`, …); the level comes from
+  `CORE_DEBUG_LEVEL` (release: errors only, debug: verbose).
 - Missing peripherals (touch, IMU, codec) → log and continue without that
   feature. Only a missing display is fatal.
 - App-specific failures are described in each app spec.
@@ -392,9 +467,11 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 ## 11. Testing
 
 - **CI:** both environments build.
-- **Host tests (native env + Unity):** pure logic is kept free of
-  Arduino/LVGL so it can be tested on the PC: power state machine, pomodoro
-  state machine, espresso shot classification, HA JSON parsing.
+- **Host tests (`[env:native]` + Unity, `test/`):** pure logic lives in
+  Arduino-free libraries under `lib/` (`PowerFsm`, `PomodoroCore`,
+  `ShotTimer`, `HaParse`), so it compiles and runs on the PC. Adapters in
+  `src/` connect them to hardware and LVGL. CI runs these tests next to the
+  firmware builds.
 - **On hardware:** each milestone's checklist in ROADMAP.md, run by the
   owner (agents can't flash). Measured currents and timings go into
   HARDWARE.md.
@@ -403,7 +480,9 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 
 Answered (2026-10-09, see DECISIONS.md): back + home buttons like a
 smartwatch; wake → always the menu; battery dim level 25 %; portrait
-orientation; board is V2; long press → animation → deep sleep.
+orientation; board is V2; long press → animation → deep sleep; charger:
+dim at 60 s to 40 %, then plain black (no screensaver animation); policies
+like pomodoro behave the same on the charger as on battery; speaker beeps OK.
 
 Still open:
 
@@ -412,6 +491,3 @@ Still open:
 2. **Can PWR wake from deep sleep?** Unknown until M6 (§8.4). If it can't,
    choose between: BOOT-only wake from ESP deep sleep, or "deep off"
    (PWR-only wake, lowest drain).
-3. Charger screensaver: bot face drifting (proposed), clock, or plain black?
-4. Charger idle dim: 60 s → 40 % (proposed)?
-5. Is a speaker beep OK for pomodoro phase ends? There's no vibration motor.

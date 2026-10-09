@@ -29,6 +29,8 @@ ESP32-AMOLED/
 │   ├── ARCHITECTURE.md      system design (launcher, power, Home Assistant)
 │   ├── ROADMAP.md           milestones and on-device checklists
 │   ├── apps/                one spec per app
+│   ├── LIBRARIES.md         dependencies, versions, licences
+│   ├── UI_DESIGN.md         design system + asset pipeline
 │   ├── DECISIONS.md         why things are the way they are
 │   └── LESSONS.md           gotchas learned along the way
 ├── AGENTS.md                instructions for AI coding agents (CLAUDE.md imports it)

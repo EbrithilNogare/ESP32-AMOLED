@@ -103,8 +103,9 @@ starts automatically (`POMO_AUTO_START_NEXT`) or waits for a tap.
 - Running in the background (user went back to the menu): the policy still
   applies. When the menu would go to sleep, the device shows the pomodoro
   minimal view instead.
-- On the charger: same minimal view after the charger dim timeout (it is
-  burn-in safe anyway).
+- **On the charger it behaves exactly as on battery**: minimal view after
+  the battery dim delay. Only the charger's 80 % brightness cap still
+  applies (policies beat profiles, ARCHITECTURE §3.1).
 
 Rough budget to verify on hardware: a minimal view with ~2 % of pixels lit at
 low brightness, plus light sleep, should draw a few mA versus ~100 mA fully

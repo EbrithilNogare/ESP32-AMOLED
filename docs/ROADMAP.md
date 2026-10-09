@@ -24,23 +24,35 @@ Status: ☐ not started · ◐ in progress · ☑ done
 
 ### M1 — Display bring-up ☐
 
-`core/board` (Wire, TCA9554 reset pulse, revision detect by touch address),
-`core/display` (GFX CO5300/SH8601, fill, brightness, panel on/off/sleep).
+`core/board` (Wire + `I2cBus` mutex, own TCA9554 driver with reset pulse,
+revision detect by touch address), `core/display` on **esp_lcd QSPI** with the
+vendored panel driver in `lib/esp_lcd_amoled/` (CO5300 init from the vendor
+BSP): fill, brightness, panel on/off/sleep. Event bus skeleton. `.clang-format`.
+If esp_lcd causes trouble, fall back to GFX Library for Arduino
+(LIBRARIES.md) and record why in LESSONS.md.
 
 **On device:** test colour fills the screen with no 16 px shift; brightness
-steps 255 → 64 → 0 are visible; the log shows the detected revision.
+steps 255 → 64 → 0 are visible; the log shows the detected revision; the real
+corner radius of the panel is noted in HARDWARE.md.
 
 ### M2 — LVGL + touch ☐
 
-`lv_conf.h`, LVGL 9 driver with the even-alignment rounder, PSRAM draw
-buffers, tick; touch as an LVGL pointer device.
+`lv_conf.h` per UI_DESIGN §8 (LVGL 9.6, `RGB565_SWAPPED`, 2 internal DMA
+buffers, async flush, even-alignment rounder, LVGL heap in PSRAM); touch via
+SensorLib as an LVGL pointer device; `ui/theme` with the colour, spacing and
+motion tokens (built-in Montserrat font as a stand-in until M3).
 
 **On device:** no artefacts on partial updates; taps land under the finger in
-all four corners; ≥ 30 fps while animating.
+all four corners; ≥ 30 fps while animating (log LVGL's FPS).
 
-### M3 — App framework + scrolling menu ☐
+### M3 — Asset pipeline, app framework + scrolling menu ☐
 
-`apps/app.h`, `core/app_manager`, `MenuApp` with round icons in pairs,
+1. **Assets** (UI_DESIGN §7): `assets/` with Inter, Roboto Mono, Material
+   Symbols Rounded + licences, `assets.toml`, `tools/assets.py` (+
+   `requirements.txt`, `package.json`), generated fonts in `src/ui/generated/`,
+   CI check that regenerating produces no diff.
+2. **Framework:** `apps/app.h`, `core/app_manager`, `MenuApp` with round
+   icon-font icons in pairs (UI_DESIGN §5),
 vertical scroll with row snapping, open/close transitions, remembered scroll
 position. **10 placeholder apps** to exercise scrolling. Temporary on-screen
 back button.
@@ -64,7 +76,9 @@ powers off.
 
 `core/power`: Battery/Charger profile from `isVbusIn()` with live switching
 on VBUS IRQs; per-profile brightness caps and dim/black timings; wake locks
-and `PowerPolicy`; the waking touch is swallowed. Status bar: battery % or ⚡.
+and `PowerPolicy` (policies beat profiles); the waking touch is swallowed.
+Status bar: battery % or ⚡. The state machine lives in `lib/PowerFsm`, which
+brings in `[env:native]` + the first Unity tests and a CI test job.
 
 **On device:** on battery 10 s full → 5 s dim → 5 s black (no sleep yet);
 plugging in the charger switches the profile live (max 80 %, dim after 60 s);
@@ -88,18 +102,17 @@ frame measured (target < 500 ms); deep-sleep current measured.
 ### M7 — Burn-in protection ☐
 
 Pixel shift in the display driver (Lissajous, ±4 px every 3 min), 4 px safe
-margins in the theme, screensaver hook in PowerManager (placeholder: a
-drifting dot) for the charger profile.
+margins in the theme, charger plain-black stage (display off after 5 min idle).
 
 **On device:** the shift is visible but not distracting; on the charger the
-screensaver appears after 5 min and touch restores the app.
+screen goes black after 5 min and a touch restores the app.
 
 ## Offline apps
 
 ### M8 — Bot face ☐ — [spec](apps/bot-face.md)
 
 Parametric face, blink/look/breathe, tap reactions, sleepy when dimmed;
-becomes the charger screensaver (replacing the M7 placeholder).
+uses LVGL drawing with tweened parameters (no sprites).
 
 **On device:** spec acceptance list.
 

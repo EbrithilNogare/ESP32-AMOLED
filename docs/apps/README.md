@@ -6,7 +6,7 @@ menu, burn-in rules) is in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 | App | id | Power policy | Network | Spec |
 | --- | --- | --- | --- | --- |
 | Home Assistant lights | `home_assistant` | Normal | Wi-Fi | [home-assistant.md](home-assistant.md) |
-| Bot face | `bot_face` | Normal (screensaver on charger) | — | [bot-face.md](bot-face.md) |
+| Bot face | `bot_face` | Normal | — | [bot-face.md](bot-face.md) |
 | Pomodoro | `pomodoro` | LowPowerDisplay while running | — | [pomodoro.md](pomodoro.md) |
 | Espresso shot timer | `espresso` | KeepAwake while running | — | [espresso-timer.md](espresso-timer.md) |
 

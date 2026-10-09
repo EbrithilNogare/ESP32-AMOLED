@@ -5,6 +5,41 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — Libraries, rendering and assets (plan)
+
+**Context:** Picking the software stack before implementation. Details:
+LIBRARIES.md, UI_DESIGN.md, ARCHITECTURE.md §5–6.
+**Decision:**
+- **LVGL 9.6** for all UI, rendering directly in `RGB565_SWAPPED`.
+- Display through **esp_lcd** QSPI (async DMA) + a vendored Apache-2.0
+  SH8601/CO5300 panel driver, instead of GFX Library for Arduino (whose
+  blocking flush stops LVGL from overlapping rendering and DMA). GFX stays the
+  fallback.
+- SensorLib (touch, IMU, RTC), XPowersLib (PMU), ArduinoJson 7; own
+  TCA9554 driver; vendored Espressif es8311 driver.
+- Assets: sources in `assets/` with a TOML manifest, converted by
+  `tools/assets.py` (lv_font_conv + LVGLImage.py) into committed C files
+  in `src/ui/generated/`; big/optional assets go to LittleFS. App icons are
+  icon-font glyphs on drawn circles; sprites are sliced sheets played by a
+  small helper; big animations are LVGL drawing, not bitmaps.
+- Fonts: Inter (text, incl. Czech diacritics), Roboto Mono (timer digits),
+  Material Symbols Rounded (icons).
+- Runtime: LVGL only in the UI task, an event queue between tasks, an I2C
+  mutex, LVGL heap in PSRAM, draw buffers in internal DMA RAM.
+- Pure logic in Arduino-free `lib/` modules with host Unity tests.
+**Consequences:** Developers need Node (fonts) and Python (images) only when
+changing assets; regular builds just compile the generated files.
+
+## 2026-10-09 — Charger behaviour and power-policy precedence
+
+**Context:** Owner's answers on the charger profile.
+**Decision:** On the charger, `Normal` apps dim to 40 % after 60 s and go
+plain black (display off) after 5 min. No animated screensaver. Non-`Normal`
+power policies behave the same on the charger as on battery (e.g. a running
+pomodoro uses its minimal view); only the 80 % brightness cap still applies.
+Speaker beeps are OK for timer alerts.
+**Consequences:** The bot face is no longer the screensaver.
+
 ## 2026-10-09 — UI & navigation basics (owner's answers)
 
 **Context:** Open questions from the launcher/apps plan (ARCHITECTURE.md §12).

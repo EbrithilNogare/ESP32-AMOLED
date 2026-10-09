@@ -15,6 +15,8 @@ Waveshare ESP32-S3-Touch-AMOLED-1.8 (ESP32-S3R8, 16 MB flash, 8 MB OPI PSRAM,
 | --- | --- |
 | `docs/HARDWARE.md` | board spec, V1/V2 revisions, full pinout, I2C map, IO expander, power, libraries, bring-up snippets |
 | `docs/ARCHITECTURE.md` | system design: app framework, power/sleep, Home Assistant integration |
+| `docs/LIBRARIES.md` | every dependency with version, licence, and rejected alternatives — check before adding one |
+| `docs/UI_DESIGN.md` | design tokens (colour, type, spacing, motion), icons, assets pipeline (images, fonts, sprites), LVGL setup |
 | `docs/apps/` | one spec per app + how to add an app — write/agree the spec before coding an app |
 | `docs/ROADMAP.md` | milestones with on-device acceptance checklists — find the current one before coding |
 | `docs/DECISIONS.md` | why things are the way they are — check before changing toolchain, layout, partitions |
