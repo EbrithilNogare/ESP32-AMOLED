@@ -28,6 +28,7 @@ ESP32-AMOLED/
 │   ├── HARDWARE.md          everything about the board
 │   ├── ARCHITECTURE.md      system design (launcher, power, Home Assistant)
 │   ├── ROADMAP.md           milestones and on-device checklists
+│   ├── apps/                one spec per app
 │   ├── DECISIONS.md         why things are the way they are
 │   └── LESSONS.md           gotchas learned along the way
 ├── AGENTS.md                instructions for AI coding agents (CLAUDE.md imports it)

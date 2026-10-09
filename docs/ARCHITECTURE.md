@@ -1,386 +1,417 @@
-# Architecture — app launcher + Home Assistant lights
+# Architecture
 
-> **Status: plan, not implemented yet.** This document is the design we build
-> against. Implementation follows [ROADMAP.md](ROADMAP.md) milestone by
-> milestone; update this file whenever the design changes. Open questions are
-> collected at the end.
+> **Status: plan, not implemented yet.** This is the design we build against.
+> Implementation follows [ROADMAP.md](ROADMAP.md) milestone by milestone;
+> update this file whenever the design changes. Per-app specs live in
+> [docs/apps/](apps/README.md). Open questions are collected at the end.
 
 ## 1. Goals
 
-1. A small **app launcher**: a home screen of app icons; tapping one opens the
-   app. More apps get added over time without touching the core.
-2. A **side button** brings up the launcher from anywhere (and wakes the device).
-3. First app — **Home Assistant lights**: a 2×2 grid of four preconfigured
-   lights on the local network; tap a tile to toggle that light.
-4. **Battery-friendly**: after a short idle period the screen dims, goes black,
-   then the device enters **deep sleep**; the side button wakes it.
+1. An **app menu** for 10+ apps: round icons in pairs, scrolling vertically.
+   Tap an icon to open the app. Two side buttons, like a modern smartwatch:
+   one goes **back** one step, the other goes **home** to the menu.
+2. Apps (first set, each specified in `docs/apps/`):
+   - [Home Assistant lights](apps/home-assistant.md): 2×2 grid toggling 4 lights on the LAN
+   - [Bot face](apps/bot-face.md): animated smiley face
+   - [Pomodoro](apps/pomodoro.md): focus/break timer that keeps the screen on at minimal power
+   - [Espresso shot timer](apps/espresso-timer.md): stopwatch for espresso shots
+3. **Two power profiles:**
+   - **On battery** (small ~400 mAh cell): aggressive dim → black → deep sleep.
+   - **On charger**: never sleep; protect the AMOLED from burn-in instead
+     (brightness ≤ 80 %, no static picture for long).
+4. **Side buttons wake the device** from deep sleep. A **long press** plays a
+   short power-off animation and puts the device into deep sleep on demand.
+5. Adding an app = one folder + one line of registration, no core changes.
 
 ### Non-goals (for now)
 
-- Brightness/colour control, scenes, more than 4 lights (later iterations).
-- Wi-Fi provisioning on the device (credentials come from `secrets.h`).
-- OTA updates, clock/watch face, sensors, audio.
+On-device Wi-Fi setup (credentials come from `secrets.h`), OTA updates,
+audio beyond short beeps, settings UI (later app).
 
 ## 2. User-facing behaviour
 
-### Screens
+### 2.1 App menu (launcher)
 
 ```
- Launcher (home)                 Home Assistant app
-┌──────────────────────┐        ┌──────────┬───────────┐
-│ 12:34      Wi-Fi ▂▄▆ │        │  💡      │  💡       │
-│                      │        │ Living   │ Kitchen   │
-│  ┌────┐    ┌────┐    │  tap   │  room    │           │
-│  │ 💡 │    │ ⚙  │    │ ─────► │   ON     │   OFF     │
-│  │    │    │    │    │        ├──────────┼───────────┤
-│  └────┘    └────┘    │        │  💡      │  💡       │
-│  Lights    Settings  │        │ Bedroom  │ Hallway   │
-│                      │        │          │           │
-│                      │        │   OFF    │  ??? (n/a)│
-└──────────────────────┘        └──────────┴───────────┘
-   368 × 448 portrait              four 184 × 224 tiles
+┌──────────────────────────┐   368 × 448 portrait, black background
+│ 12:34        ▂▄▆  🔋 82% │   status bar (time, Wi-Fi, battery / ⚡)
+│                          │
+│    ╭─────╮    ╭─────╮    │   round icons, ~130 px diameter,
+│    │ 💡  │    │ 🙂  │    │   2 per row, label under each
+│    ╰─────╯    ╰─────╯    │
+│    Lights     Bot face   │   vertical scroll with snapping to rows,
+│                          │   momentum, scrollbar fades out
+│    ╭─────╮    ╭─────╮    │
+│    │ 🍅  │    │ ☕  │    │   rows scale slightly toward the centre
+│    ╰─────╯    ╰─────╯    │   (watch-style fisheye) — optional polish
+│   Pomodoro    Espresso   │
+│    ╭─────╮    ╭─────╮    │
+│    ┆     ┆    ┆     ┆    │   ← next row peeks in, hinting more apps
+└──────────────────────────┘
 ```
 
-- **Launcher:** grid of app tiles (icon + name), 2 columns, scrolls when more
-  apps exist. Status bar: Wi-Fi state, later battery and time. *Settings* is
-  shown only to illustrate a second app; it is a later milestone.
-- **Home Assistant app:** the whole screen is a 2×2 grid. Each tile shows the
-  configured label, a bulb icon, and the state:
+- About 2½ rows are visible, so the partial row signals "scroll for more".
+- Tap an icon → it scales up briefly → the app opens (zoom/fade transition).
+- The order is the registration order in `main.cpp`. A "recently used first"
+  order can come later.
+- The menu remembers its scroll position.
 
-  | State | Tile look |
-  | --- | --- |
-  | on | warm yellow fill, dark text |
-  | off | dark grey fill, light text |
-  | pending (toggle sent, no confirmation yet) | current colour + spinner |
-  | unavailable / unknown / error | outlined, dimmed, "n/a" |
-  | stale (cached from before sleep, not refreshed yet) | normal colours + small "…" marker |
+### 2.2 Navigation — two side buttons
 
-  Tap → toggle. The tile changes to *pending* immediately, then to the state
-  Home Assistant confirms.
+Like Wear OS and similar watches: one button is **Back**, the other **Home**.
 
-### Side button
+| Button | Role | Signal path |
+| --- | --- | --- |
+| **BOOT** (GPIO0) | **Back** — one step back | GPIO, debounced in firmware |
+| **PWR** (AXP2101 PEK) | **Home** — straight to the menu | PMU short/long-press IRQ via EXIO5 |
 
-| Context | Short press |
+The mapping is a config swap (`BUTTON_BACK_IS_BOOT`) once we know which one
+is physically on top; see §12.
+
+| Input | Effect |
 | --- | --- |
-| Deep sleep | wake up → previous app (see §6.4) |
-| Screen dimmed / black | restore full brightness, nothing else |
-| Inside an app | close the app → launcher |
-| Launcher | nothing (already home) |
+| Tap icon in the menu | open the app |
+| **Back, short press** | the app handles it first (`onBack()`: close a dialog, leave a sub-screen, …); if the app has nothing to go back to → menu. In the menu: scroll to top. |
+| **Home, short press** | always → menu (scroll to top if already there) |
+| **Either button, long press (≥ `BUTTON_LONG_PRESS_MS`, 1 s)** | **power-off animation → deep sleep** (§8.3) |
+| PWR held ~6 s | hardware power-off by the AXP2101 (firmware can't block it; the sleep animation finishes long before that) |
+| Any button / touch while dimmed or black | wake the screen only; the touch is swallowed |
+| Any side button while in deep sleep | wake up → **always the menu** (§8.4) |
 
-Long press is reserved for later (e.g. power menu). Holding PWR ~6 s is a
-hardware power-off by the AXP2101 regardless of firmware.
+"Home" can never be overridden by an app, so no app can trap the user.
 
-### Idle → sleep timeline
+### 2.3 Visual rules (AMOLED)
 
-Any touch or button press resets the timer to 0.
+On AMOLED a black pixel is off: it costs no power and doesn't wear.
 
-```
- t = 0 s         10 s          15 s          20 s
- │── full ───────│── dimmed ───│── black ────│→ deep sleep
-   brightness       brightness    brightness
-   100 %            ~25 %         0 % (panel on)
-```
+- Black backgrounds everywhere. Colour goes on the content, never on full-screen fills.
+- Large bright areas only briefly (e.g. a light tile that is ON uses a warm
+  colour fill, but only while the HA app is open).
+- Static elements (status bar, labels) are subject to **pixel shift** (§7).
 
-- **Dimmed / black:** the UI keeps running, so a touch instantly restores full
-  brightness. The touch that wakes the screen is **swallowed**, so it can't
-  accidentally toggle a light.
-- **Deep sleep:** panel and touch are put to sleep, Wi-Fi off, ESP32-S3 in
-  deep sleep. Only the side button wakes it.
-- All durations and the dim level are in `config.h` (§8).
-- Apps can hold a wake lock (e.g. a future timer app), keeping the device
-  awake. The HA app doesn't need one.
+## 3. Power profiles
 
-## 3. Hardware used
+The **PowerManager** picks a profile from the AXP2101: `isVbusIn()` →
+**Charger**, otherwise **Battery**. VBUS insert/remove IRQs switch profiles
+live.
+
+| | Battery | Charger |
+| --- | --- | --- |
+| Max brightness | 100 % (`BRIGHTNESS_MAX_BATTERY`) | **80 %** (`BRIGHTNESS_MAX_CHARGER`) |
+| Idle → dim | 10 s → 25 % | 60 s → 40 % |
+| Idle → black | 15 s | — |
+| Idle → screensaver | — | 5 min → drifting bot face / clock, low brightness (§7) |
+| Idle → deep sleep | 20 s | never |
+| Wi-Fi | only while an app needs it | can stay connected |
+| Pixel shift | yes | yes |
+
+All numbers live in `config.h` (§9).
+
+### 3.1 Per-app power policy
+
+Each app declares how it interacts with the idle timeline:
+
+| Policy | Meaning | Used by |
+| --- | --- | --- |
+| `Normal` | follow the profile's dim → black → sleep timeline | menu, Home Assistant, bot face |
+| `KeepAwake` | full UI stays on while the app says it's busy | espresso timer *while running* |
+| `LowPowerDisplay` | never deep sleep; after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) | pomodoro *while a timer runs* |
+
+A policy can change at runtime (`setPowerPolicy()`), e.g. the espresso timer
+becomes `KeepAwake` only while the stopwatch runs.
+
+## 4. Hardware used
 
 | Part | Use | Notes |
 | --- | --- | --- |
-| CO5300 AMOLED (QSPI) | UI | brightness via cmd `0x51`; sleep-in `0x10` / sleep-out `0x11`; partial updates must be **even-aligned** (x1, y1 even; x2, y2 odd) |
-| CST820 touch (I2C `0x15`, INT GPIO21) | input | polled through LVGL input driver; INT optional |
-| TCA9554 expander (I2C `0x20`) | LCD/touch reset (EXIO0–2) | must pulse at every boot, including wake from deep sleep |
-| BOOT button (GPIO0) | side button candidate | RTC-capable GPIO → can wake from deep sleep (ext1, active low) |
-| PWR button (AXP2101) | side button candidate | readable only through the PMU IRQ (I2C / EXIO5) — wake from deep sleep not confirmed, see §11 |
-| AXP2101 PMU | battery level (later), rails | keep display rail on in deep sleep at first; optimise later |
-| ESP32-S3 Wi-Fi | Home Assistant | station mode |
+| CO5300 AMOLED (QSPI) | UI | brightness cmd `0x51`; display off `0x28` / on `0x29`; sleep-in `0x10` / out `0x11`; partial updates must be **even-aligned** (x1, y1 even; x2, y2 odd); the panel keeps its image in its own RAM, so the ESP can light-sleep while it stays on |
+| CST820 touch (I2C `0x15`, INT GPIO21) | input | LVGL pointer device; INT is an RTC GPIO → light-sleep wake source |
+| TCA9554 (I2C `0x20`) | LCD/touch reset EXIO0–2, PWR key EXIO4, PMU IRQ EXIO5 | reset pulse at every boot, including wake |
+| BOOT button (GPIO0) | side button **Back**, wake, long-press sleep | RTC GPIO → deep-sleep wake via ext1 (active low) |
+| PWR button (AXP2101 PEK) | side button **Home**, wake, long-press sleep; 6 s hold = hardware off | short/long-press IRQs via EXIO5; deep-sleep wake path: §8.4 |
+| AXP2101 PMU | VBUS detect, charging, battery %, power-off/on | XPowersLib: `isVbusIn()`, `isCharging()`, `getBatteryPercent()`, `shutdown()`, VBUS insert/remove + PEK IRQs |
+| ES8311 + speaker amp (PA GPIO46) | short beeps (pomodoro phase end) | amp off except while beeping |
+| QMI8658 IMU | later: shake/tilt for bot face, pump-vibration auto-start for espresso | optional |
+| PCF85063 RTC | wall clock in the status bar / screensaver | keeps time through deep sleep and AXP power-off |
+| ESP32-S3 Wi-Fi | Home Assistant | station mode, only when needed on battery |
 
-## 4. Software stack
+## 5. Software stack
 
 | Layer | Choice | Why |
 | --- | --- | --- |
-| Framework | Arduino core 3.x (pioarduino) | already set up; IDF APIs available for sleep/Wi-Fi tuning |
-| Display driver | GFX Library for Arduino — `Arduino_ESP32QSPI` + `Arduino_CO5300` | what Waveshare's own examples use for both revisions |
-| UI | **LVGL 9.x** | widgets, styles, animations, input handling; vendor BSP targets v9 |
-| Touch | SensorLib `TouchDrvCSTXXX` (V2) / FT3168 driver (V1) | registry library, pinned version |
+| Framework | Arduino core 3.x (pioarduino) | already set up; ESP-IDF APIs available for sleep/PM |
+| Display driver | GFX Library for Arduino — `Arduino_ESP32QSPI` + `Arduino_CO5300` (V1: `Arduino_SH8601`) | what Waveshare's examples use |
+| UI | **LVGL 9.x** | scrolling with snap, animations, styles, canvas for the bot face |
+| Touch | SensorLib touch drivers | CST820 (V2), FT3168 (V1) |
+| PMU | XPowersLib | profiles, battery, PEK, shutdown |
 | IO expander | Adafruit XCA9554 | vendor-proven |
-| PMU | XPowersLib | PWR key IRQ, battery voltage later |
-| HTTP / JSON | `HTTPClient` (core) + ArduinoJson 7 | Home Assistant REST API |
+| HTTP / JSON | `HTTPClient` + ArduinoJson 7 | Home Assistant REST |
+| Persistence | `Preferences` (NVS) + `RTC_DATA_ATTR` | settings, app state across sleep |
 
-LVGL draw buffers: two partial buffers of 368 × 45 lines × 2 B ≈ 33 KB each in
-PSRAM (DMA-capable internal RAM is the fallback if PSRAM flushes are too slow).
-Colour depth 16-bit RGB565, byte-swapped for the QSPI bus.
+LVGL draw buffers: two partial buffers of 368 × 45 lines × 2 B ≈ 33 KB each
+in PSRAM, RGB565 byte-swapped. All pinned versions go into `platformio.ini`.
 
-## 5. Module architecture
+## 6. Core services
 
 ```mermaid
 flowchart TB
-    main["main.cpp<br/>setup(): init in order<br/>loop(): service all"]
-    subgraph core [Core services]
+    main["main.cpp — wiring only"]
+    subgraph core [core/]
         board["Board<br/>I2C, expander reset,<br/>revision detect"]
-        display["Display<br/>GFX + LVGL glue,<br/>brightness, panel sleep"]
-        input["Input<br/>touch indev,<br/>side button events"]
-        power["Power<br/>idle timer, dim stages,<br/>wake locks, deep sleep"]
-        net["Net<br/>Wi-Fi connect,<br/>fast reconnect"]
-        apps["AppManager<br/>registry, launch/close,<br/>back to launcher"]
+        display["Display<br/>GFX + LVGL glue, brightness,<br/>panel on/off/sleep, pixel shift"]
+        input["Input<br/>touch indev, side-button events<br/>(BOOT GPIO + PWR via PMU IRQ)"]
+        pmu["Pmu<br/>AXP2101: VBUS, battery,<br/>IRQs, shutdown"]
+        power["PowerManager<br/>profile, idle timeline, policies,<br/>light/deep sleep, wake cause"]
+        net["Net<br/>Wi-Fi on demand,<br/>fast reconnect"]
+        sound["Sound<br/>ES8311 beeps"]
+        store["Store<br/>NVS + RTC memory"]
+        apps["AppManager<br/>registry, menu, open/close"]
     end
-    subgraph appsdir [Apps]
-        launcher["LauncherApp"]
-        ha["HomeAssistantApp"]
+    subgraph appdir [apps/]
+        menu["MenuApp (launcher)"]
+        ha["HomeAssistant"]
+        bot["BotFace"]
+        pomo["Pomodoro"]
+        esp["Espresso"]
     end
-    haclient["HaClient<br/>REST: get states, toggle"]
-    main --> board & display & input & power & net & apps
-    input -- "activity" --> power
-    input -- "button press" --> apps
-    power -- "brightness" --> display
-    apps --> launcher & ha
-    ha --> haclient --> net
+    main --> core
+    input -- activity --> power
+    pmu -- "VBUS / PEK events" --> power & input
+    power -- brightness, render mode --> display
+    input -- "back" --> apps
+    apps --> appdir
+    ha --> net
+    pomo --> sound
 ```
 
-Rule: services don't know about specific apps; apps talk to services through
-small interfaces. `main.cpp` only wires things together (AGENTS.md).
+Rules:
 
-### Planned file layout
+- Services don't know about specific apps; apps use services through small
+  interfaces.
+- Only the LVGL/UI task touches LVGL objects. Network and other slow work run
+  in their own FreeRTOS tasks and report back through queues.
 
-```
-src/
-├── main.cpp                  wiring only
-├── core/
-│   ├── board.{h,cpp}         Wire init, TCA9554 reset pulse, revision detect
-│   ├── display.{h,cpp}       Arduino_GFX + LVGL display driver, rounder, brightness, sleep
-│   ├── input.{h,cpp}         LVGL touch indev, button debounce → events
-│   ├── power.{h,cpp}         idle state machine, wake locks, deep sleep entry, wake cause
-│   ├── net.{h,cpp}           Wi-Fi state machine, cached channel/BSSID
-│   └── app_manager.{h,cpp}   app registry, current app, transitions
-├── apps/
-│   ├── app.h                 App interface
-│   ├── launcher_app.{h,cpp}
-│   └── home_assistant/
-│       ├── ha_app.{h,cpp}    2×2 tile UI
-│       └── ha_client.{h,cpp} REST calls, JSON parsing
-└── ui/
-    ├── theme.{h,cpp}         colours, fonts, shared styles
-    └── assets/               icons (C arrays generated by LVGL image converter)
-include/
-├── board.h  config.h  secrets.example.h  lv_conf.h
-```
-
-### App interface
+### 6.1 App interface
 
 ```cpp
 // src/apps/app.h — sketch, final signatures may change
+enum class PowerPolicy { Normal, KeepAwake, LowPowerDisplay };
+
+struct AppInfo {
+  const char *id;                 // stable key for NVS/RTC ("pomodoro")
+  const char *name;               // label in the menu
+  const lv_image_dsc_t *icon;     // round icon art (~130 px)
+  lv_color_t accent;              // icon ring / app accent colour
+};
+
 class App {
  public:
-  virtual const char *name() const = 0;          // shown in the launcher
-  virtual const lv_image_dsc_t *icon() const = 0;
-  virtual void onCreate(lv_obj_t *screen) = 0;   // build widgets on a fresh screen
-  virtual void onResume() {}                     // became visible (incl. after wake)
-  virtual void onPause() {}                      // leaving: stop timers, requests
-  virtual void onTick(uint32_t nowMs) {}         // called from loop() while visible
-  virtual bool wantsWakeLock() const { return false; }
+  virtual const AppInfo &info() const = 0;
+  virtual void onCreate(lv_obj_t *screen) = 0;  // build widgets once
+  virtual void onResume() {}                    // became visible (incl. after wake)
+  virtual void onPause() {}                     // leaving: stop timers/requests
+  virtual void onTick(uint32_t nowMs) {}        // from the UI loop while visible
+  virtual bool onBack() { return false; }       // Back button: true = handled in-app,
+                                                // false = AppManager returns to the menu
+  virtual PowerPolicy powerPolicy() const { return PowerPolicy::Normal; }
+  // LowPowerDisplay apps: switch to / leave the minimal render mode and say
+  // when the next refresh is due (the CPU light-sleeps until then).
+  virtual void enterMinimalMode() {}
+  virtual void exitMinimalMode() {}
+  virtual uint32_t nextMinimalRefreshMs() const { return 60000; }
+  // Persist across deep sleep / power-off (small, POD).
+  virtual size_t saveState(void *buf, size_t cap) { return 0; }
+  virtual void restoreState(const void *buf, size_t len) {}
   virtual ~App() = default;
 };
 ```
 
-`AppManager` owns a static list of apps (registered in `main.cpp`), creates
-each app's LVGL screen lazily on first open, and switches with
-`lv_screen_load_anim()`. Only one app is "resumed" at a time. The launcher is
-app #0 and is never destroyed.
+`AppManager` owns the registered apps (static instances in `main.cpp`). It
+creates each app's LVGL screen on first open, switches screens with an
+animation, and only keeps the menu plus the current app in memory (other
+screens are deleted on pause to save RAM, opt-out per app).
 
-## 6. Power management
+### 6.2 Planned file layout
 
-### 6.1 State machine
+```
+src/
+├── main.cpp
+├── core/      board, display, input, pmu, power, net, sound, store, app_manager
+├── apps/
+│   ├── app.h
+│   ├── menu/             launcher
+│   ├── home_assistant/   ha_app, ha_client
+│   ├── bot_face/
+│   ├── pomodoro/
+│   └── espresso/
+└── ui/
+    ├── theme.{h,cpp}     colours, fonts, shared styles
+    └── icons/            round app icons (LVGL image C arrays)
+include/   board.h  config.h  secrets.example.h  lv_conf.h
+docs/apps/ one spec per app
+```
+
+## 7. AMOLED burn-in protection
+
+These apply in both profiles. They matter most on the charger, where the
+screen is on for hours.
+
+1. **Brightness cap:** 80 % on the charger, configurable.
+2. **Pixel shift:** every `PIXEL_SHIFT_PERIOD_MS` (default 3 min) the whole UI
+   shifts by up to ±`PIXEL_SHIFT_MAX_PX` (default 4 px), along a slow
+   Lissajous path so it never returns to the same spot on a regular beat.
+   Implemented in the display driver: on each shift the whole screen is
+   invalidated and the flush draws at the new offset, so apps don't have to
+   care. Layouts keep a 4 px black safe margin on every edge.
+3. **Screensaver (charger, 5 min idle):** black screen with a small, dim
+   bot face or clock drifting slowly around the screen. Touch or a button
+   restores the previous app. The screensaver content is pluggable;
+   the bot face is the first one.
+4. **Minimal render modes** (pomodoro) use thin, dim elements, a ring rather
+   than filled shapes, and also drift.
+5. No app may show a full-screen bright fill for more than a few seconds.
+
+## 8. Sleep, wake and persistence
+
+### 8.1 Battery idle timeline (policy `Normal`)
 
 ```mermaid
 stateDiagram-v2
     [*] --> Active: boot / wake
-    Active --> Dimmed: idle ≥ IDLE_DIM_AFTER_MS (10 s)
-    Dimmed --> Black: idle ≥ IDLE_BLACK_AFTER_MS (15 s)
-    Black --> Sleeping: idle ≥ IDLE_SLEEP_AFTER_MS (20 s)
+    Active --> Dimmed: idle 10 s
+    Dimmed --> Black: idle 15 s
+    Black --> Sleep: idle 20 s
     Dimmed --> Active: touch / button
     Black --> Active: touch / button
-    Sleeping --> [*]: esp_deep_sleep_start()
-    note right of Active: wake lock held → stays Active
+    Sleep --> [*]: deep sleep (or AXP power-off, §8.4)
+    Active --> PowerOffAnim: long press (any state)
+    PowerOffAnim --> Sleep: animation done + buttons released
 ```
 
-Brightness changes fade over ~300 ms (LVGL anim on the brightness value) so
-the transitions don't look like flicker.
+Brightness changes fade over ~300 ms. "Black" is brightness 0 with the panel
+on, so a touch restores the picture instantly.
 
-### 6.2 Entering deep sleep
+### 8.2 `LowPowerDisplay` (pomodoro)
 
-1. Current app `onPause()`; save `RtcState` (§6.4).
-2. Wi-Fi disconnect + `WiFi.mode(WIFI_OFF)`.
-3. Panel: brightness 0 → display off (`0x28`) → sleep-in (`0x10`).
-4. Touch controller → sleep mode (I2C command), so INT stays quiet.
-5. Configure wake source: `esp_sleep_enable_ext1_wakeup(1ULL << PIN_BOOT_BUTTON, ESP_EXT1_WAKEUP_ANY_LOW)`
-   (exact API depends on side-button choice, §11).
-6. Wait for the button to be released (avoid instant wake), then
+Active → (dim timeout) → **Minimal**: the app redraws a sparse, dim view;
+Wi-Fi off; LVGL refreshes only when `nextMinimalRefreshMs()` is due; between
+refreshes the ESP32-S3 enters **light sleep**. The panel keeps showing its
+last frame from its own RAM. Wake sources during light sleep: timer
+(next refresh), touch INT (GPIO21), BOOT (GPIO0), PMU IRQ path.
+A touch/button returns to the full view.
+
+### 8.3 Deep sleep entry
+
+There are two triggers: the battery idle timeline (§8.1), or a **long press on
+either side button** (any profile, even on the charger, and even while an
+app holds `KeepAwake`/`LowPowerDisplay`, because the user asked for it).
+
+**Power-off animation (long press only), ~1 s:** the current screen shrinks
+into a horizontal line, which collapses to a dot and fades out (CRT
+switch-off style), while the brightness ramps down. It confirms the action
+and gives the user time to let go, so the still-held button doesn't wake
+the device straight away. The sequence doesn't continue until all buttons
+read released (with a 3 s safety timeout; if one is still held, show
+"release button" and keep waiting).
+
+Sequence:
+
+1. Current app `onPause()` + `saveState()` (e.g. pomodoro saves as paused);
+   save `RtcState`.
+2. Wi-Fi off. Speaker amp off.
+3. Panel: brightness 0 → display off (`0x28`) → sleep-in (`0x10`); touch IC to sleep.
+4. Arm the wake sources (§8.4), confirm the buttons are released,
    `esp_deep_sleep_start()`.
 
-### 6.3 Waking up
+Wake = reboot: `setup()` checks `esp_sleep_get_wakeup_cause()`, re-runs the
+expander reset + panel init and **opens the menu**. Apps restore their saved
+state when they're next opened. Target: menu visible < 500 ms after the
+press, with a short power-on animation (the dot expands into the screen).
 
-Deep-sleep wake is a reboot: `setup()` runs again. `esp_sleep_get_wakeup_cause()`
-tells a wake from a cold boot.
+### 8.4 Waking with the side buttons
 
-Target: **first frame < 500 ms, fresh light states < 1.5 s** after the press.
+| Button | Path | Confidence |
+| --- | --- | --- |
+| BOOT (GPIO0) | ESP32-S3 deep sleep, `esp_sleep_enable_ext1_wakeup(1ULL << 0, ESP_EXT1_WAKEUP_ANY_LOW)` | high — GPIO0 is an RTC GPIO. Verify that holding it through the wake doesn't enter download mode (strapping pin). |
+| PWR (AXP2101) | Option A: PEK IRQ → TCA9554 EXIO5 → TCA9554 INT → an ESP RTC GPIO → ext1 wake. Works only if the expander INT line reaches an RTC-capable GPIO — **unknown, no schematic**. Test in M6 by watching all free RTC GPIOs while pressing PWR. | unknown |
+| PWR (AXP2101) | Option B: **"deep off"** — instead of ESP deep sleep, call `pmu.shutdown()`. The AXP2101 cuts all rails (lowest drain); pressing PWR powers the board on again (cold boot, `setPowerKeyPressOnTime()` sets the press length). RTC memory is lost, so the state goes to NVS before shutdown; the PCF85063 keeps the time. BOOT can't wake from this. | high (standard AXP behaviour) |
 
-1. Board init + expander reset pulse (the panel needs re-init after sleep).
-2. Display + LVGL init, restore last app from `RtcState`, render cached states
-   marked *stale* — the user sees the tiles immediately.
-3. Wi-Fi fast reconnect using cached channel + BSSID (+ optional static IP),
-   in the background.
-4. Once connected: HA app refreshes all four states; tiles drop the *stale*
-   marker.
+**Plan:** implement BOOT ext1 wake first (M6). Then test Option A; if it
+works, both buttons wake from deep sleep. If it doesn't, offer Option B as a
+config switch (`SLEEP_MODE_DEEP_OFF`): PWR wakes, BOOT doesn't, best
+standby time. Record the outcome in HARDWARE.md and LESSONS.md.
 
-### 6.4 RTC memory (survives deep sleep, lost on power-off)
+### 8.5 Persistence
 
-```cpp
-struct RtcState {            // RTC_DATA_ATTR
-  uint32_t magic;            // validity check
-  uint8_t  lastAppIndex;     // reopen the same app after wake
-  uint8_t  wifiChannel;
-  uint8_t  wifiBssid[6];
-  int8_t   lightState[4];    // -1 unknown, 0 off, 1 on (rendered as stale)
-};
-```
+| What | Where | Survives |
+| --- | --- | --- |
+| Wi-Fi channel/BSSID, cached HA states, app `saveState()` blobs | `RTC_DATA_ATTR RtcState` | deep sleep |
+| same, written on "deep off" / power-off | NVS (`Store`) | power-off |
+| espresso shot history, pomodoro counters/settings | NVS | power-off |
 
-### 6.5 Open power topics (later milestones)
+NVS writes happen only on sleep/shutdown or on user actions, never
+periodically (flash wear).
 
-- Measure deep-sleep current; if the AMOLED rail draws too much, switch it off
-  through the AXP2101 and accept a longer wake.
-- Battery percentage in the status bar (AXP2101 fuel gauge).
-- Wake-on-touch (GPIO21 is RTC-capable) — needs the touch IC to stay in a
-  gesture-wake mode.
+## 9. Configuration
 
-## 7. Home Assistant integration
-
-### 7.1 API
-
-Home Assistant REST API over plain HTTP on the LAN
-(`http://<host>:8123`), authenticated with a **long-lived access token**
-(HA → Profile → Security → Long-lived access tokens).
-
-| Action | Request |
-| --- | --- |
-| Read one light | `GET /api/states/light.living_room` → `{"state":"on", ...}` |
-| Toggle | `POST /api/services/light/toggle` body `{"entity_id":"light.living_room"}` |
-| (later) Set brightness | `POST /api/services/light/turn_on` body `{"entity_id":..., "brightness_pct": 40}` |
-
-Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`.
-
-### 7.2 Behaviour
-
-- On resume / after Wi-Fi connects: fetch the 4 states (sequential, one
-  keep-alive connection, 1.5 s timeout each).
-- While the app is visible: poll every `HA_POLL_MS` (default 3 s) so changes
-  made elsewhere show up. Device is awake only ~20 s at a time, so polling is
-  cheap and simple.
-- Toggle: optimistic *pending* state → POST → read the returned state list; if
-  the entity isn't in it, follow up with a GET. On failure the tile reverts and
-  shows an error flash.
-- Network calls must not block LVGL: `HaClient` runs in its own FreeRTOS task
-  and talks to the UI through a queue (requests in, results out). The UI
-  thread only applies results.
-
-### 7.3 Later: WebSocket API
-
-`ws://<host>:8123/api/websocket` with `subscribe_entities` pushes state
-changes instantly instead of polling. Worth it once the device stays awake
-longer (e.g. on USB power). Not in the first version.
-
-### 7.4 Security notes
-
-- The token has full admin rights in HA. It lives only in `secrets.h`
-  (gitignored) and in flash; anyone with the device can extract it. A
-  dedicated HA user for the device keeps the token revocable on its own.
-- Plain HTTP is fine on a trusted LAN; HTTPS (with the HA cert pinned) is a
-  later option.
-
-## 8. Configuration
-
-`include/config.h` (committed):
+`include/config.h` (committed) — sketch:
 
 ```cpp
-// --- power / idle ---
-#define IDLE_DIM_AFTER_MS     10000
-#define IDLE_BLACK_AFTER_MS   15000
-#define IDLE_SLEEP_AFTER_MS   20000
-#define BRIGHTNESS_FULL       255
-#define BRIGHTNESS_DIM        64     // ~25 %
-#define BRIGHTNESS_FADE_MS    300
-
-// --- Home Assistant lights (exactly 4, in screen order: TL, TR, BL, BR) ---
-#define HA_LIGHTS { \
-    {"light.living_room", "Living room"}, \
-    {"light.kitchen",     "Kitchen"},     \
-    {"light.bedroom",     "Bedroom"},     \
-    {"light.hallway",     "Hallway"},     \
-}
-#define HA_POLL_MS            3000
-#define HA_HTTP_TIMEOUT_MS    1500
+// ---- power profiles ----
+#define BRIGHTNESS_MAX_BATTERY     255
+#define BRIGHTNESS_MAX_CHARGER     204   // 80 %
+#define BRIGHTNESS_DIM_BATTERY     64    // 25 %
+#define BRIGHTNESS_DIM_CHARGER     102   // 40 %
+#define BRIGHTNESS_FADE_MS         300
+#define BAT_IDLE_DIM_MS            10000
+#define BAT_IDLE_BLACK_MS          15000
+#define BAT_IDLE_SLEEP_MS          20000
+#define CHG_IDLE_DIM_MS            60000
+#define CHG_IDLE_SCREENSAVER_MS    300000
+#define SLEEP_MODE_DEEP_OFF        0     // 1 = AXP power-off instead of ESP deep sleep (§8.4)
+// ---- buttons ----
+#define BUTTON_BACK_IS_BOOT        1     // 1: BOOT = back, PWR = home; 0: swapped
+#define BUTTON_LONG_PRESS_MS       1000  // long press → power-off animation → deep sleep
+#define POWER_OFF_ANIM_MS          1000
+// ---- burn-in ----
+#define PIXEL_SHIFT_PERIOD_MS      180000
+#define PIXEL_SHIFT_MAX_PX         4
+// ---- apps ----  (each app's own block, see docs/apps/*.md)
 ```
 
-`include/secrets.h` (gitignored), new keys added to `secrets.example.h`:
+`include/secrets.h` (gitignored) gains `HA_BASE_URL`, `HA_TOKEN` and
+optional static-IP fields. Placeholders go in `secrets.example.h`.
 
-```cpp
-#define WIFI_SSID        "..."
-#define WIFI_PASSWORD    "..."
-#define HA_BASE_URL      "http://192.168.1.10:8123"
-#define HA_TOKEN         "eyJ..."           // long-lived access token
-// optional, speeds up wake: leave empty for DHCP
-#define WIFI_STATIC_IP   ""
-#define WIFI_GATEWAY     ""
-#define WIFI_SUBNET      ""
-#define WIFI_DNS         ""
-```
+## 10. Error handling & logging
 
-The HA URL counts as a secret because it's specific to one home.
+- Every module logs with a `[module]` prefix (as in ClaudeObserver).
+- Missing peripherals (touch, IMU, codec) → log and continue without that
+  feature. Only a missing display is fatal.
+- App-specific failures are described in each app spec.
 
-## 9. Error handling
+## 11. Testing
 
-| Situation | What the user sees |
-| --- | --- |
-| Wi-Fi can't connect in 8 s | status bar icon crossed out; HA tiles show "no Wi-Fi"; retries in background |
-| HA unreachable / timeout | tiles show stale cached state with "…" marker, retry on next poll |
-| HTTP 401 | full-width banner "HA token rejected — check secrets.h" |
-| Entity not found (404) / `unavailable` | that tile shows "n/a" |
-| Touch controller missing at boot | serial log + continue (button still works) |
+- **CI:** both environments build.
+- **Host tests (native env + Unity):** pure logic is kept free of
+  Arduino/LVGL so it can be tested on the PC: power state machine, pomodoro
+  state machine, espresso shot classification, HA JSON parsing.
+- **On hardware:** each milestone's checklist in ROADMAP.md, run by the
+  owner (agents can't flash). Measured currents and timings go into
+  HARDWARE.md.
 
-All failures are logged on serial with a `[module]` prefix (as in
-ClaudeObserver).
+## 12. Open questions
 
-## 10. Testing approach
+Answered (2026-10-09, see DECISIONS.md): back + home buttons like a
+smartwatch; wake → always the menu; battery dim level 25 %; portrait
+orientation; board is V2; long press → animation → deep sleep.
 
-- **CI:** both environments must build (unchanged).
-- **Host-side unit tests (later):** HA JSON parsing and the power state
-  machine are plain logic → testable with PlatformIO `native` env + Unity
-  without hardware.
-- **On hardware, per milestone:** acceptance checklist in ROADMAP.md.
-  Agents can't flash the board; the owner runs the checklist and reports
-  results, which go into LESSONS.md when surprising.
+Still open:
 
-## 11. Open questions
-
-1. **Which physical button is "the side button"?** BOOT (GPIO0) or PWR
-   (AXP2101)? BOOT can wake from deep sleep directly via ext1. PWR only
-   reaches the ESP through the PMU IRQ → TCA9554 EXIO5; whether the expander's
-   INT line is wired to an RTC GPIO is unknown (no schematic), so PWR wake
-   from deep sleep may be impossible. **Proposal:** BOOT is the
-   menu/wake button; PWR stays the hardware power switch. Confirm on the
-   device.
-2. **Wake target:** reopen the last app (proposed) or always the launcher?
-3. **Deep sleep vs. light sleep:** deep sleep (requested) costs a ~1 s
-   reconnect on every wake. Light sleep keeps Wi-Fi state and wakes in
-   milliseconds but draws more. Plan: deep sleep as specified; revisit
-   after measuring.
-4. **Dim level:** 25 % proposed for the "reduced brightness" stage.
-5. **Orientation:** portrait 368 × 448 proposed (matches the 2×2 grid).
-6. **Board revision:** V2 assumed (CO5300/CST820). Confirm the label.
-7. **Long press on the side button:** reserve for a future power/settings menu?
+1. **Which physical button is on top?** The plan assumes BOOT = Back, PWR =
+   Home (`BUTTON_BACK_IS_BOOT`). Tell me if the top one should be Home.
+2. **Can PWR wake from deep sleep?** Unknown until M6 (§8.4). If it can't,
+   choose between: BOOT-only wake from ESP deep sleep, or "deep off"
+   (PWR-only wake, lowest drain).
+3. Charger screensaver: bot face drifting (proposed), clock, or plain black?
+4. Charger idle dim: 60 s → 40 % (proposed)?
+5. Is a speaker beep OK for pomodoro phase ends? There's no vibration motor.

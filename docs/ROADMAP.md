@@ -1,129 +1,159 @@
-# Roadmap — app launcher + Home Assistant lights
+# Roadmap
 
-Design: [ARCHITECTURE.md](ARCHITECTURE.md). Work happens on branch
-`feature/launcher-home-assistant`, which merges into `main` via a PR.
+Design: [ARCHITECTURE.md](ARCHITECTURE.md) · app specs: [apps/](apps/README.md).
+Work happens on branch `feature/launcher-home-assistant`, which merges into
+`main` via a PR.
 
-Each milestone is small enough to flash and check on the board. Agents can't
-flash, so every milestone ends with the owner running its **On device**
-checklist. Tick items here as they pass, and record surprises in
-[LESSONS.md](LESSONS.md).
+Every milestone is small enough to flash and check on the board. Agents can't
+flash, so each one ends with the owner running its **On device** checklist.
+Tick items as they pass and record surprises in [LESSONS.md](LESSONS.md).
 
-Status legend: ☐ not started · ◐ in progress · ☑ done
+Order: platform first, then the offline apps (fast feedback, no network),
+then Wi-Fi + Home Assistant.
+
+Status: ☐ not started · ◐ in progress · ☑ done
 
 ## Phase 0 — Plan ◐
 
-- [x] Architecture and roadmap written
-- [ ] Open questions in ARCHITECTURE.md §11 answered by the owner
-- [ ] Design reviewed and adjusted → then start M1
+- [x] Architecture, app specs, roadmap written
+- [x] Most open questions answered (DECISIONS.md, 2026-10-09)
+- [ ] Remaining questions (ARCHITECTURE §12) answered
+- [ ] Plan reviewed → start M1
 
-## M1 — Display bring-up ☐
+## Platform
 
-Board + display services, no LVGL yet.
+### M1 — Display bring-up ☐
 
-- `core/board`: `Wire` init, TCA9554 reset pulse, touch-address probe → log the
-  detected revision.
-- `core/display`: `Arduino_GFX` CO5300/SH8601 by `BOARD_REVISION`, fill colour,
-  `setBrightness()`, panel sleep-in/out helpers.
-- Libraries added to `lib_deps` with pinned versions.
+`core/board` (Wire, TCA9554 reset pulse, revision detect by touch address),
+`core/display` (GFX CO5300/SH8601, fill, brightness, panel on/off/sleep).
 
-**On device:** screen fills with a test colour, no 16 px shift; brightness
-steps 255 → 64 → 0 visibly; serial log shows the detected revision.
+**On device:** test colour fills the screen with no 16 px shift; brightness
+steps 255 → 64 → 0 are visible; the log shows the detected revision.
 
-## M2 — LVGL + touch ☐
+### M2 — LVGL + touch ☐
 
-- `lv_conf.h`, LVGL 9 display driver with the even-alignment rounder, draw
-  buffers in PSRAM, tick source.
-- `core/input`: CST820 (V2) / FT3168 (V1) as an LVGL pointer device.
-- Demo screen: one button that counts taps.
+`lv_conf.h`, LVGL 9 driver with the even-alignment rounder, PSRAM draw
+buffers, tick; touch as an LVGL pointer device.
 
-**On device:** UI renders without tearing or artefacts on partial updates;
-taps land where the finger is (all four corners); serial shows FPS ≥ 30
-while animating.
+**On device:** no artefacts on partial updates; taps land under the finger in
+all four corners; ≥ 30 fps while animating.
 
-## M3 — App framework + launcher ☐
+### M3 — App framework + scrolling menu ☐
 
-- `apps/app.h` interface, `core/app_manager`, `LauncherApp` with tiles.
-- Placeholder "Hello" app to test open/close.
-- `ui/theme`: colours, fonts, tile style.
+`apps/app.h`, `core/app_manager`, `MenuApp` with round icons in pairs,
+vertical scroll with row snapping, open/close transitions, remembered scroll
+position. **10 placeholder apps** to exercise scrolling. Temporary on-screen
+back button.
 
-**On device:** tapping a launcher tile opens the app with an animation;
-there's a way back (temporary on-screen back button until M4).
+**On device:** smooth scrolling (no stutter with 10+ icons), snapping to rows,
+tap opens the right app, back returns to the same scroll position.
 
-## M4 — Side button ☐
+### M4 — Side buttons ☐
 
-- `core/input`: debounced side-button events (short press; long press logged
-  only).
-- Short press inside an app → back to the launcher.
-- Answer to open question §11.1 implemented (BOOT vs. PWR).
+`core/pmu` (AXP2101 init, PEK short-press IRQ via EXIO5),
+`core/input` button events for BOOT (GPIO0, debounced) and PWR, mapped to
+**Back** (one step, app `onBack()` first) and **Home** (menu), plus
+long-press detection (≥ 1 s) as an event (the sleep action itself comes in M6).
+Remove the temporary back button.
 
-**On device:** a press from any app returns to the launcher, every time;
-holding the button doesn't repeat; the PWR 6 s hardware power-off still works.
+**On device:** Back steps back one level, Home always reaches the menu, from
+every app; no repeats when held; long press is logged; PWR held 6 s still
+powers off.
 
-## M5 — Idle dimming ☐
+### M5 — Power profiles + idle timeline ☐
 
-- `core/power`: Active → Dimmed → Black stages with fades, timer reset on
-  touch/button, wake locks, the waking touch is swallowed.
-- Timings from `config.h`.
+`core/power`: Battery/Charger profile from `isVbusIn()` with live switching
+on VBUS IRQs; per-profile brightness caps and dim/black timings; wake locks
+and `PowerPolicy`; the waking touch is swallowed. Status bar: battery % or ⚡.
 
-**On device:** with no input, 10 s full → 5 s dim → 5 s black (sleep not yet
-enabled, stays black); a touch while black restores brightness **without**
-clicking anything; a button press restores brightness.
+**On device:** on battery 10 s full → 5 s dim → 5 s black (no sleep yet);
+plugging in the charger switches the profile live (max 80 %, dim after 60 s);
+the battery % looks plausible.
 
-## M6 — Deep sleep + wake ☐
+### M6 — Deep sleep + button wake ☐
 
-- Sleep entry sequence (ARCHITECTURE §6.2), ext1 wake on the side button,
-  `RtcState` in RTC memory, wake cause handled in `setup()`.
-- Restore the last app after wake.
+Sleep entry sequence, `RtcState`, wake cause handling, wake → menu with a
+power-on animation. Long press on either button → power-off animation
+(CRT collapse, ~1 s) → wait for release → deep sleep.
+1. BOOT wake via ext1.
+2. **Experiment:** does PWR reach any RTC GPIO (Option A, ARCHITECTURE §8.4)?
+3. If not: `SLEEP_MODE_DEEP_OFF` (AXP2101 shutdown, PWR powers on, state in NVS).
 
-**On device:** after 20 s idle the device sleeps (serial stops, panel dark);
-a button press wakes it into the same app; a press during the sleep sequence
-doesn't immediately re-wake it; holding the button through wake doesn't put the
-chip in download mode (GPIO0 is a strapping pin — verify!).
-Measure: time from press to first frame (target < 500 ms).
+**On device:** sleeps after 20 s idle on battery, never on the charger by
+idle; long press sleeps in any profile and the held button doesn't
+immediately wake it; BOOT wakes into the menu; holding BOOT through the wake doesn't enter download
+mode; PWR result recorded in HARDWARE.md and LESSONS.md; time to first
+frame measured (target < 500 ms); deep-sleep current measured.
 
-## M7 — Wi-Fi ☐
+### M7 — Burn-in protection ☐
 
-- `core/net`: connect with `secrets.h` credentials, non-blocking state
-  machine, fast reconnect using cached channel/BSSID (and optional static IP),
-  status icon in the launcher status bar.
+Pixel shift in the display driver (Lissajous, ±4 px every 3 min), 4 px safe
+margins in the theme, screensaver hook in PowerManager (placeholder: a
+drifting dot) for the charger profile.
 
-**On device:** cold boot connects < 5 s; wake from deep sleep connects
-< 1.5 s; wrong password → crossed-out icon, no hang, UI still responsive.
+**On device:** the shift is visible but not distracting; on the charger the
+screensaver appears after 5 min and touch restores the app.
 
-## M8 — Home Assistant client ☐
+## Offline apps
 
-- `apps/home_assistant/ha_client`: FreeRTOS task + queues, `GET` state,
-  `POST` toggle, ArduinoJson parsing, error mapping (401, 404, timeout).
-- Serial-only test hook: log the 4 configured states on connect.
+### M8 — Bot face ☐ — [spec](apps/bot-face.md)
 
-**On device:** the log shows correct on/off for all 4 lights; toggling from
-the HA web UI shows up in the log within one poll; a wrong token logs "401".
+Parametric face, blink/look/breathe, tap reactions, sleepy when dimmed;
+becomes the charger screensaver (replacing the M7 placeholder).
 
-## M9 — Home Assistant app UI ☐
+**On device:** spec acceptance list.
 
-- 2×2 tile grid, labels from `HA_LIGHTS`, states (on / off / pending /
-  n/a / stale), tap to toggle, polling while visible, cached states rendered
-  after wake.
+### M9 — Espresso shot timer ☐ — [spec](apps/espresso-timer.md)
 
-**On device:** every tile toggles the right light; the tile shows *pending*
-then the real state; the HA web UI agrees; unplugging the HA server → tiles go
-stale/n/a without freezing the UI; after deep sleep the tiles appear
-instantly (stale) and refresh within ~1.5 s.
+State machine (host-tested), big digits, colour thresholds, history in NVS,
+`KeepAwake` while running, longer dim delay in this app.
 
-## M10 — Polish & merge ☐
+**On device:** spec acceptance list.
 
-- Icons, fonts, transitions; README section on usage and configuration;
-  DECISIONS.md entries for the choices made; LESSONS.md updated.
-- Measure deep-sleep current and awake current; record them in HARDWARE.md.
-- PR `feature/launcher-home-assistant` → `main`.
+### M10 — Light sleep + sound, then Pomodoro ☐ — [spec](apps/pomodoro.md)
 
-## Later ideas (not scheduled)
+1. `LowPowerDisplay` support in PowerManager: minimal-mode switch,
+   timer-driven refresh, ESP light sleep between refreshes with touch and
+   button wake.
+2. `core/sound`: ES8311 beep patterns, amp gated by GPIO46.
+3. Pomodoro app: state machine (host-tested), full and minimal views,
+   background running.
 
-- Brightness slider on long-press of a light tile
-- HA WebSocket subscription for instant updates
-- Battery % in the status bar (AXP2101)
-- Settings app (brightness, sleep timeouts, Wi-Fi info)
-- Clock / watch face with the PCF85063 RTC
-- Wake on touch
-- More than 4 lights / pages, scenes, other entity types
-- OTA firmware updates
+**On device:** spec acceptance list, plus the measured current in minimal mode.
+
+## Networked apps
+
+### M11 — Wi-Fi ☐
+
+`core/net`: connect on demand, non-blocking, fast reconnect (cached
+channel/BSSID, optional static IP), released when no app needs it on
+battery; Wi-Fi icon in the status bar.
+
+**On device:** cold connect < 5 s; reconnect after wake < 1.5 s; a wrong
+password doesn't hang the UI.
+
+### M12 — Home Assistant client ☐
+
+`HaClient` task + queues, GET state / POST toggle, JSON parsing
+(host-tested), error mapping.
+
+**On device:** the log shows correct states for the 4 lights; a wrong token
+logs 401.
+
+### M13 — Home Assistant app ☐ — [spec](apps/home-assistant.md)
+
+2×2 tiles, toggle, polling, stale cache after wake.
+
+**On device:** spec acceptance list.
+
+## M14 — Polish & merge ☐
+
+Icons and fonts, menu fisheye effect (optional), README usage section,
+DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
+`main`.
+
+## Later
+
+Settings app (brightness, timeouts), clock/watch face (RTC), battery/system
+info app, HA WebSocket push, IMU features (bot reactions, espresso
+auto-start), OTA updates, more apps from [apps/README.md](apps/README.md).

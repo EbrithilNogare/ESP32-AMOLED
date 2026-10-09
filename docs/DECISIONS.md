@@ -5,6 +5,25 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — UI & navigation basics (owner's answers)
+
+**Context:** Open questions from the launcher/apps plan (ARCHITECTURE.md §12).
+**Decision:**
+- Two side buttons like a modern smartwatch: **Back** (one step, apps can
+  handle it) and **Home** (always the menu). BOOT = Back and PWR = Home until
+  the physical layout says otherwise (`BUTTON_BACK_IS_BOOT`).
+- **Long press** on either button → ~1 s power-off animation → deep sleep;
+  the animation gives the user time to release the button so it doesn't
+  wake the device again at once.
+- Waking from deep sleep always opens the **menu**, not the last app.
+- Battery dim stage at **25 %** brightness. Portrait orientation (368 × 448).
+- Board confirmed **V2** (CO5300 + CST820).
+- App menu: round icons in pairs, vertical scrolling, built for 10+ apps.
+- Two power profiles: battery (dim → black → deep sleep) and charger (no
+  sleep, max 80 % brightness, burn-in protection).
+**Consequences:** Apps get `onBack()`; no last-app restore on wake (apps
+still restore their own saved state when opened).
+
 ## 2026-10-09 — Default board revision is V2
 
 **Context:** Waveshare ships two revisions (V1: SH8601 + FT3168, V2: CO5300 +
