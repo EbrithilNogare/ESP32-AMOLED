@@ -19,8 +19,7 @@ uint32_t Pomodoro::durationOf(Phase p) const {
 Phase Pomodoro::nextPhase() const {
   switch (phase_) {
     case Phase::Idle: return Phase::Focus;
-    case Phase::Focus:
-      return completed_ + 1 >= cfg_.setSize ? Phase::LongBreak : Phase::ShortBreak;
+    case Phase::Focus: return completed_ + 1 >= cfg_.setSize ? Phase::LongBreak : Phase::ShortBreak;
     case Phase::ShortBreak: return Phase::Focus;
     case Phase::LongBreak: break;
   }

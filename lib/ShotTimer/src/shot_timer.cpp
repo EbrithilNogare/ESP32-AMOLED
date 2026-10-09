@@ -29,9 +29,7 @@ void ShotTimer::tap(uint32_t nowMs) {
       mode_ = Mode::Done;
       break;
     }
-    case Mode::Done:
-      mode_ = Mode::Ready;
-      break;
+    case Mode::Done: mode_ = Mode::Ready; break;
   }
 }
 

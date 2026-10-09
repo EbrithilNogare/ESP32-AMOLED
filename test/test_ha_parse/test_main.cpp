@@ -10,9 +10,7 @@ void tearDown() {}
 
 static LightState parse(const char *s) { return parseState(s, strlen(s)); }
 
-static bool find(const char *s, const char *id, LightState &out) {
-  return findInStateArray(s, strlen(s), id, out);
-}
+static bool find(const char *s, const char *id, LightState &out) { return findInStateArray(s, strlen(s), id, out); }
 
 // ---- parseState ----
 
@@ -38,8 +36,7 @@ static void test_parse_real_ha_response() {
 
 static void test_parse_ignores_nested_state_keys() {
   // Only the top-level "state" counts, wherever it is in the object.
-  TEST_ASSERT_EQUAL(LightState::Off,
-                    parse(R"({"attributes":{"state":"on","x":{"state":"on"}},"state":"off"})"));
+  TEST_ASSERT_EQUAL(LightState::Off, parse(R"({"attributes":{"state":"on","x":{"state":"on"}},"state":"off"})"));
   TEST_ASSERT_EQUAL(LightState::Unknown, parse(R"({"attributes":{"state":"on"}})"));
 }
 
@@ -121,7 +118,7 @@ static void test_find_entity_without_state() {
 
 static void test_find_bad_input() {
   LightState s = LightState::On;
-  TEST_ASSERT_FALSE(find(R"({"entity_id":"light.kitchen","state":"on"})", "light.kitchen", s));  // not an array
+  TEST_ASSERT_FALSE(find(R"({"entity_id":"light.kitchen","state":"on"})", "light.kitchen", s));   // not an array
   TEST_ASSERT_FALSE(find(R"([{"entity_id":"light.kitchen","state":"on"})", "light.kitchen", s));  // truncated
   TEST_ASSERT_FALSE(find("garbage", "light.kitchen", s));
   TEST_ASSERT_FALSE(find(R"([1,"x",null,{"state":"on"}])", "light.kitchen", s));

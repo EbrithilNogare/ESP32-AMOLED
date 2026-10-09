@@ -1,0 +1,298 @@
+// UI simulator and flow test: runs the real apps, UI and LVGL on the PC with
+// the hardware modules stubbed (sim_core.cpp). It taps through every app,
+// checks the resulting state, and writes a frame of each screen to
+// $SIM_OUT (default .pio/sim) as PPM; tools/sim/shots.py turns them into PNGs.
+//
+//   pio run -e sim -t exec        (or: pio run -e sim && .pio/build/sim/program)
+#include <lvgl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+
+#include <string>
+
+#include "Arduino.h"
+#include "apps/app_manager.h"
+#include "apps/bot_face/bot_face_app.h"
+#include "apps/espresso/espresso_app.h"
+#include "apps/home_assistant/ha_app.h"
+#include "apps/menu/menu_app.h"
+#include "apps/pomodoro/pomodoro_app.h"
+#include "apps/system/system_app.h"
+#include "board.h"
+#include "sim.h"
+#include "ui/power_anim.h"
+#include "ui/theme.h"
+
+static apps::MenuApp menuApp;
+static apps::HomeAssistantApp haApp;
+static apps::BotFaceApp botApp([]() { return sim::stage == power::Stage::Dimmed; });
+static apps::PomodoroApp pomodoroApp;
+static apps::EspressoApp espressoApp;
+static apps::SystemApp systemApp;
+
+static uint16_t fb[LCD_WIDTH * LCD_HEIGHT];
+static int32_t touchX, touchY;
+static bool touchDown;
+static std::string outDir = ".pio/sim";
+static int failures;
+
+#define CHECK(cond)                                          \
+  do {                                                       \
+    if (!(cond)) {                                           \
+      printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); \
+      failures++;                                            \
+    }                                                        \
+  } while (0)
+
+static void flushCb(lv_display_t *d, const lv_area_t *a, uint8_t *px) {
+  const int32_t w = lv_area_get_width(a);
+  const uint16_t *src = reinterpret_cast<const uint16_t *>(px);
+  for (int32_t y = a->y1; y <= a->y2; y++) memcpy(&fb[y * LCD_WIDTH + a->x1], src + (y - a->y1) * w, w * 2);
+  lv_display_flush_ready(d);
+}
+
+static void readCb(lv_indev_t *, lv_indev_data_t *data) {
+  data->point.x = touchX;
+  data->point.y = touchY;
+  data->state = touchDown ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+
+static void advance(uint32_t ms) {
+  for (uint32_t t = 0; t < ms; t += 5) {
+    sim::nowMs += 5;
+    apps::manager::tick(sim::nowMs);
+    lv_timer_handler();
+  }
+}
+
+static void tap(int32_t x, int32_t y) {
+  touchX = x;
+  touchY = y;
+  touchDown = true;
+  advance(80);
+  touchDown = false;
+  advance(400);  // let screen transitions finish
+}
+
+static void longPress(int32_t x, int32_t y) {
+  touchX = x;
+  touchY = y;
+  touchDown = true;
+  advance(900);
+  touchDown = false;
+  advance(300);
+}
+
+static void drag(int32_t x, int32_t y0, int32_t y1) {
+  touchX = x;
+  touchY = y0;
+  touchDown = true;
+  advance(40);
+  const int steps = 20;
+  for (int i = 1; i <= steps; i++) {
+    touchY = y0 + (y1 - y0) * i / steps;
+    advance(15);
+  }
+  advance(300);  // hold still before lifting: no momentum, so it snaps to the nearest row
+  touchDown = false;
+  advance(800);
+}
+
+static void capture(const char *name) {
+  lv_obj_invalidate(lv_screen_active());
+  lv_refr_now(nullptr);
+  const std::string path = outDir + "/" + name + ".ppm";
+  FILE *f = fopen(path.c_str(), "wb");
+  if (!f) {
+    printf("cannot write %s\n", path.c_str());
+    failures++;
+    return;
+  }
+  fprintf(f, "P6\n%d %d\n255\n", LCD_WIDTH, LCD_HEIGHT);
+  for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++) {
+    const uint16_t p = fb[i];
+    const uint8_t rgb[3] = {uint8_t((p >> 11) << 3 | (p >> 13)), uint8_t(((p >> 5) & 0x3F) << 2 | ((p >> 9) & 3)),
+                            uint8_t((p & 0x1F) << 3 | ((p >> 2) & 7))};
+    fwrite(rgb, 1, 3, f);
+  }
+  fclose(f);
+  printf("frame %s\n", name);
+}
+
+// Menu icon centres: two 128 px discs per 176 px row, 40 px apart, list at y 36.
+static int32_t iconX(int i) { return (LCD_WIDTH - 296) / 2 + 64 + (i % 2) * 168; }
+static int32_t iconY(int i) { return 36 + 8 + 64 + (i / 2) * 176; }
+
+// Finds the menu icon whose click handler opens `app` (its event user data).
+static lv_obj_t *findIcon(lv_obj_t *obj, const apps::App *app) {
+  for (uint32_t i = 0; i < lv_obj_get_event_count(obj); i++) {
+    if (lv_event_dsc_get_user_data(lv_obj_get_event_dsc(obj, i)) == app) return obj;
+  }
+  for (uint32_t i = 0; i < lv_obj_get_child_count(obj); i++) {
+    if (lv_obj_t *found = findIcon(lv_obj_get_child(obj, i), app)) return found;
+  }
+  return nullptr;
+}
+
+static void tapIcon(const apps::App *app) {
+  lv_obj_t *icon = findIcon(lv_screen_active(), app);
+  if (!icon) {
+    printf("FAIL: no menu icon for %s\n", app->info().id);
+    failures++;
+    return;
+  }
+  lv_area_t a;
+  lv_obj_get_coords(icon, &a);
+  tap((a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+}
+
+int main() {
+  if (const char *o = getenv("SIM_OUT")) outDir = o;
+  mkdir(outDir.c_str(), 0755);
+
+  lv_init();
+  lv_tick_set_cb([]() -> uint32_t { return millis(); });
+  lv_display_t *disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
+  lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);  // plain RGB565 for the frame dump
+  static uint8_t buf[LCD_WIDTH * 40 * 2];
+  lv_display_set_buffers(disp, buf, nullptr, sizeof buf, LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_set_flush_cb(disp, flushCb);
+  lv_indev_t *indev = lv_indev_create();
+  lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_read_cb(indev, readCb);
+
+  ui::begin();
+  apps::manager::setMenu(&menuApp);
+  apps::manager::add(&haApp);
+  apps::manager::add(&botApp);
+  apps::manager::add(&pomodoroApp);
+  apps::manager::add(&espressoApp);
+  apps::manager::add(&systemApp);
+  apps::manager::begin();
+  advance(100);
+
+  // ---- menu
+  CHECK(apps::manager::inMenu());
+  capture("01-menu");
+
+  // ---- lights: open, receive states, toggle one
+  tap(iconX(0), iconY(0));
+  CHECK(apps::manager::current() == &haApp);
+  capture("02-lights-loading");
+  advance(100);
+  CHECK(sim::haRefreshes >= 1);
+  haApp.onResult(0, ha::LightState::On, ha::Result::Ok);
+  haApp.onResult(1, ha::LightState::Off, ha::Result::Ok);
+  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok);
+  haApp.onResult(3, ha::LightState::Unknown, ha::Result::NotFound);
+  advance(50);
+  tap(4 + 176 + 8 + 88, 4 + 216 + 8 + 108);  // bottom-left is index 2; this is bottom-right (n/a): no request
+  CHECK(sim::haToggles.empty());
+  tap(4 + 88, 4 + 216 + 8 + 108);  // bottom-left: Bedroom
+  CHECK(sim::haToggles.size() == 1 && sim::haToggles[0] == 2);
+  capture("03-lights-toggling");
+  haApp.onResult(2, ha::LightState::On, ha::Result::Ok);
+  advance(300);
+  capture("04-lights");
+  haApp.onResult(0, ha::LightState::On, ha::Result::Unauthorized);
+  advance(50);
+  capture("05-lights-unauthorized");
+  haApp.onResult(0, ha::LightState::On, ha::Result::Ok);
+  apps::manager::back();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+
+  // ---- bot face: idle, tap, double tap, dimmed
+  tap(iconX(1), iconY(1));
+  CHECK(apps::manager::current() == &botApp);
+  advance(1000);
+  capture("06-bot-face");
+  touchX = 184;
+  touchY = 224;
+  touchDown = true;
+  advance(40);
+  touchDown = false;
+  advance(250);
+  capture("07-bot-face-happy");
+  advance(1500);
+  sim::stage = power::Stage::Dimmed;
+  advance(1500);
+  capture("08-bot-face-sleepy");
+  sim::stage = power::Stage::Active;
+  apps::manager::home();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+
+  // ---- pomodoro: start, run, minimal view, back to menu while running
+  tap(iconX(2), iconY(2));
+  CHECK(apps::manager::current() == &pomodoroApp);
+  capture("09-pomodoro-ready");
+  tap(184, 216);  // the ring area toggles
+  CHECK(pomodoroApp.powerPolicy() == power::Policy::LowPowerDisplay);
+  advance(5000);
+  capture("10-pomodoro-running");
+  CHECK(apps::manager::enterMinimal());
+  apps::manager::minimalTick(sim::nowMs);
+  advance(50);
+  capture("11-pomodoro-minimal");
+  apps::manager::exitMinimal();
+  apps::manager::back();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+  CHECK(apps::manager::effectivePolicy() == power::Policy::LowPowerDisplay);  // keeps running in the background
+
+  // ---- espresso: scroll the menu one row (176 px), run a 27.4 s shot
+  drag(184, 380, 204);
+  capture("12-menu-scrolled");
+  tap(iconX(3), iconY(3) - 176);  // after snapping one row up
+  CHECK(apps::manager::current() == &espressoApp);
+  capture("13-espresso-ready");
+  tap(184, 200);
+  CHECK(espressoApp.powerPolicy() == power::Policy::KeepAwake);
+  advance(22300);
+  capture("14-espresso-running");
+  advance(5100 - 480);  // tap() itself takes 80 ms before release
+  tap(184, 200);
+  capture("15-espresso-done");
+  CHECK(espressoApp.powerPolicy() == power::Policy::Normal);
+  apps::manager::back();  // Done → Ready
+  advance(100);
+  CHECK(apps::manager::current() == &espressoApp);
+  apps::manager::back();  // Ready → menu
+  advance(400);
+  CHECK(apps::manager::inMenu());
+
+  // ---- system + wireless update
+  drag(184, 380, 204);  // scroll to the end of the list
+  tapIcon(&systemApp);
+  CHECK(apps::manager::current() == &systemApp);
+  capture("16-system");
+  tap(184, LCD_HEIGHT - 22 - 28);  // "Wireless update"
+  CHECK(systemApp.powerPolicy() == power::Policy::KeepAwake);
+  sim::otaState = core::ota::State::Receiving;
+  sim::otaProgress = 42;
+  advance(100);
+  capture("17-wireless-update");
+  CHECK(systemApp.blocksNavigation());
+  apps::manager::home();  // ignored mid-transfer
+  advance(100);
+  CHECK(apps::manager::current() == &systemApp);
+  sim::otaState = core::ota::State::Waiting;
+  apps::manager::back();  // leaves the update view
+  advance(100);
+  CHECK(systemApp.powerPolicy() == power::Policy::Normal);
+  apps::manager::home();
+  advance(400);
+
+  // ---- power-off animation
+  static bool animDone;
+  ui::power_anim::off([]() { animDone = true; });
+  advance(450);
+  capture("18-power-off");
+  advance(700);
+  CHECK(animDone);
+
+  printf("%s: %d failure(s)\n", failures ? "FAILED" : "OK", failures);
+  return failures ? 1 : 0;
+}

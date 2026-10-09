@@ -31,7 +31,7 @@ class ShotTimer {
   uint32_t elapsedMs(uint32_t nowMs) const;  // live while Running, frozen in Done, 0 in Ready
   uint16_t lastShotDs() const;               // rounded to 0.1 s at stop; 0 before the first
   uint8_t historyCount() const;
-  uint16_t historyAt(uint8_t i) const;       // 0 = newest, deciseconds; 0 if out of range
+  uint16_t historyAt(uint8_t i) const;                  // 0 = newest, deciseconds; 0 if out of range
   void loadHistory(const uint16_t *ds, uint8_t count);  // newest first, extra entries ignored
   const Config &config() const;
 

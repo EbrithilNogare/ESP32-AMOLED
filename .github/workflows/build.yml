@@ -10,13 +10,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  firmware:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         env: [amoled, amoled-debug]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags for the git-describe firmware version
 
       - uses: actions/setup-python@v5
         with:
@@ -32,6 +34,7 @@ jobs:
         run: pip install platformio
 
       # No secrets.h in CI: the code falls back to include/secrets.example.h.
+      # tools/size_check.py fails the build above the 3.5 MB OTA budget.
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
 
@@ -44,3 +47,65 @@ jobs:
             .pio/build/amoled/firmware.bin
             .pio/build/amoled/firmware.factory.bin
           retention-days: 14
+
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-host-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO and Pillow
+        run: pip install platformio pillow
+
+      - name: Unit tests (lib/)
+        run: pio test -e native
+
+      - name: UI flow test (simulator)
+        run: |
+          pio run -e sim
+          .pio/build/sim/program
+          python tools/sim/shots.py --out sim-screens
+
+      - name: Upload simulator screens
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-screens
+          path: sim-screens
+          retention-days: 14
+
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Cache downloaded fonts
+        uses: actions/cache@v4
+        with:
+          path: tools/.cache
+          key: assets-${{ hashFiles('assets/assets.toml') }}
+
+      - name: Install asset tools
+        run: |
+          pip install -r tools/requirements.txt
+          npm ci --prefix tools
+
+      # Fails if src/ui/generated/ doesn't match what assets/ would produce.
+      - name: Check generated assets are up to date
+        run: python tools/assets.py --check

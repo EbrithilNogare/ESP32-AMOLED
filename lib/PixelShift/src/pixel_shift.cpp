@@ -11,9 +11,7 @@ namespace {
 constexpr double kSpeedX = 1.2;
 constexpr double kSpeedY = 1.2 / 1.6180339887;  // golden ratio: never in step with x
 
-int8_t axis(double phase, int8_t maxPx) {
-  return static_cast<int8_t>(lround(maxPx * sin(phase)));
-}
+int8_t axis(double phase, int8_t maxPx) { return static_cast<int8_t>(lround(maxPx * sin(phase))); }
 
 }  // namespace
 

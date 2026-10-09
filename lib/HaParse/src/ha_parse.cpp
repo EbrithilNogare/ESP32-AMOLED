@@ -28,9 +28,8 @@ LightState parseState(const char *json, size_t len) {
   JsonDocument filter;
   filter["state"] = true;
   JsonDocument doc;
-  const DeserializationError err =
-      deserializeJson(doc, json, len, DeserializationOption::Filter(filter),
-                      DeserializationOption::NestingLimit(kNesting));
+  const DeserializationError err = deserializeJson(doc, json, len, DeserializationOption::Filter(filter),
+                                                   DeserializationOption::NestingLimit(kNesting));
   if (err) return LightState::Unknown;
   return fromString(doc["state"].as<const char *>());
 }
@@ -42,9 +41,8 @@ bool findInStateArray(const char *json, size_t len, const char *entityId, LightS
   filter[0]["entity_id"] = true;
   filter[0]["state"] = true;
   JsonDocument doc;
-  const DeserializationError err =
-      deserializeJson(doc, json, len, DeserializationOption::Filter(filter),
-                      DeserializationOption::NestingLimit(kNesting));
+  const DeserializationError err = deserializeJson(doc, json, len, DeserializationOption::Filter(filter),
+                                                   DeserializationOption::NestingLimit(kNesting));
   if (err) return false;
   for (JsonObjectConst item : doc.as<JsonArrayConst>()) {
     const char *id = item["entity_id"];

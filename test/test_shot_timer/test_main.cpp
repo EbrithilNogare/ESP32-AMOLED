@@ -115,7 +115,7 @@ static void test_history_ring_wraparound() {
   ShotTimer s(C);
   for (uint32_t i = 1; i <= 25; i++) pull(s, i * 100000, i * 1000);
   TEST_ASSERT_EQUAL_UINT8(kHistory, s.historyCount());
-  TEST_ASSERT_EQUAL_UINT16(250, s.historyAt(0));  // newest: shot 25
+  TEST_ASSERT_EQUAL_UINT16(250, s.historyAt(0));            // newest: shot 25
   TEST_ASSERT_EQUAL_UINT16(60, s.historyAt(kHistory - 1));  // oldest kept: shot 6
   for (uint8_t i = 0; i < kHistory; i++) TEST_ASSERT_EQUAL_UINT16((25 - i) * 10, s.historyAt(i));
   TEST_ASSERT_EQUAL_UINT16(0, s.historyAt(kHistory));  // out of range

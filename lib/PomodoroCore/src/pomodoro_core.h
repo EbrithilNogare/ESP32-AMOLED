@@ -30,7 +30,7 @@ class Pomodoro {
 
   void toggle(uint64_t nowMs);  // Idle → Focus running; running → paused; paused → running
   void pause(uint64_t nowMs);
-  void reset(uint64_t nowMs);   // current phase back to full duration, paused (Idle stays Idle)
+  void reset(uint64_t nowMs);  // current phase back to full duration, paused (Idle stays Idle)
   // End the current phase now; it counts like a normal end. A running phase
   // hands over as update() would; a paused one leaves the next phase paused
   // (the user had stopped the clock). No-op in Idle.
@@ -47,7 +47,7 @@ class Pomodoro {
   bool running() const;
   uint32_t remainingMs(uint64_t nowMs) const;  // Idle reports the focus duration
   uint32_t phaseDurationMs() const;            // Idle reports the focus duration
-  uint8_t completed() const;  // focus sessions completed in the current set (0..setSize)
+  uint8_t completed() const;                   // focus sessions completed in the current set (0..setSize)
 
   Saved save(uint64_t nowMs) const;
   void restore(const Saved &s, uint64_t nowMs);

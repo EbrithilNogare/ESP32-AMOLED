@@ -31,8 +31,8 @@ static void test_start_pause_resume() {
   p.toggle(6000);  // pause
   TEST_ASSERT_FALSE(p.running());
   TEST_ASSERT_EQUAL_UINT32(25 * MIN - 5000, p.remainingMs(999999));  // frozen
-  TEST_ASSERT_FALSE(p.update(100 * MIN));  // paused: never ends
-  p.toggle(100 * MIN);  // resume
+  TEST_ASSERT_FALSE(p.update(100 * MIN));                            // paused: never ends
+  p.toggle(100 * MIN);                                               // resume
   TEST_ASSERT_TRUE(p.running());
   TEST_ASSERT_EQUAL_UINT32(25 * MIN - 5000, p.remainingMs(100 * MIN));
   p.pause(100 * MIN + 1000);
@@ -240,7 +240,7 @@ static void test_restore_clamps_garbage() {
   TEST_ASSERT_EQUAL_UINT8(0, p.completed());
   p.restore({uint8_t(Phase::Focus), 0, 200, 99 * MIN}, 0);
   TEST_ASSERT_EQUAL(Phase::Focus, p.phase());
-  TEST_ASSERT_EQUAL_UINT8(4, p.completed());  // clamped to setSize
+  TEST_ASSERT_EQUAL_UINT8(4, p.completed());             // clamped to setSize
   TEST_ASSERT_EQUAL_UINT32(25 * MIN, p.remainingMs(0));  // clamped to the phase
 }
 

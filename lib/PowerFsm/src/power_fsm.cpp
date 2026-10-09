@@ -14,14 +14,12 @@ struct Step {
 // KeepAwake has no steps (Active forever).
 uint8_t timeline(Profile profile, Policy policy, const Timings &t, Step out[3]) {
   switch (policy) {
-    case Policy::KeepAwake:
-      return 0;
+    case Policy::KeepAwake: return 0;
     case Policy::LowPowerDisplay:
       // Battery dim delay in both profiles: policies beat profiles (§3.1).
       out[0] = {t.batDimMs, Stage::Minimal};
       return 1;
-    case Policy::Normal:
-      break;
+    case Policy::Normal: break;
   }
   if (profile == Profile::Charger) {
     out[0] = {t.chgDimMs, Stage::Dimmed};
@@ -53,15 +51,11 @@ uint8_t brightnessFor(Stage stage, Profile profile, const Levels &l) {
   const bool chg = profile == Profile::Charger;
   const uint8_t max = chg ? l.maxCharger : l.maxBattery;
   switch (stage) {
-    case Stage::Active:
-      return max;
-    case Stage::Dimmed:
-      return minU8(chg ? l.dimCharger : l.dimBattery, max);
-    case Stage::Minimal:
-      return minU8(l.minimal, max);
+    case Stage::Active: return max;
+    case Stage::Dimmed: return minU8(chg ? l.dimCharger : l.dimBattery, max);
+    case Stage::Minimal: return minU8(l.minimal, max);
     case Stage::Black:
-    case Stage::Sleep:
-      break;
+    case Stage::Sleep: break;
   }
   return 0;
 }

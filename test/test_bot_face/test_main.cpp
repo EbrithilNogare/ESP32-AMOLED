@@ -116,7 +116,7 @@ static void test_first_blink_after_1500_ms() {
   Face f(3, 1000);
   f.update(2500, false);  // exactly start + 1500: not yet (strict, as in the mockup)
   TEST_ASSERT_FLOAT_WITHIN(EPS, 118, f.geometry(2575).eyeL.h);
-  f.update(2501, false);  // blink starts here
+  f.update(2501, false);                                        // blink starts here
   TEST_ASSERT_FLOAT_WITHIN(EPS, 118, f.geometry(2501).eyeL.h);  // phase 0
   // Mid-blink: 1 - 0.93 = 7 % of 118 = 8.26 px.
   TEST_ASSERT_FLOAT_WITHIN(EPS, 118 * 0.07f, f.geometry(2576).eyeL.h);
@@ -242,7 +242,7 @@ static void test_happy_tap_and_hop() {
   f.update(280, false);  // 180 ms after the tap: hop comes down
   TEST_ASSERT_EQUAL_FLOAT(0.0f, f.targets().bounce);
   TEST_ASSERT_EQUAL_FLOAT(0.3f, f.targets().open);  // still happy
-  f.update(1000, false);  // tap + 900: held (strict)
+  f.update(1000, false);                            // tap + 900: held (strict)
   TEST_ASSERT_EQUAL_FLOAT(0.3f, f.targets().open);
   f.update(1001, false);  // back to resting
   TEST_ASSERT_EQUAL_FLOAT(1.0f, f.targets().open);

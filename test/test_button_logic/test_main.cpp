@@ -59,8 +59,8 @@ static void test_long_press_exact_threshold_no_short() {
   b.update(true, 100);
   TEST_ASSERT_EQUAL(Event::Pressed, b.update(true, 130));
   TEST_ASSERT_EQUAL(Event::None, b.update(true, 1129));
-  TEST_ASSERT_EQUAL(Event::Long, b.update(true, 1130));  // 1000 ms after the debounced press
-  TEST_ASSERT_EQUAL(Event::None, feed(b, true, 1135, 5000).ev);  // once
+  TEST_ASSERT_EQUAL(Event::Long, b.update(true, 1130));           // 1000 ms after the debounced press
+  TEST_ASSERT_EQUAL(Event::None, feed(b, true, 1135, 5000).ev);   // once
   TEST_ASSERT_EQUAL(Event::None, feed(b, false, 5005, 5200).ev);  // no Short after Long
   TEST_ASSERT_FALSE(b.held());
 }
