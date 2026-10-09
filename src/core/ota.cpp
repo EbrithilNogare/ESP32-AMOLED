@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <WiFi.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
 
@@ -28,6 +29,8 @@ static const char *err = "";
 static bool pendingVerify;
 static bool listening;
 static bool netHeld;
+static void (*progressHook)();
+static uint32_t lastHookMs;
 
 void begin() {
   esp_ota_img_states_t s;
@@ -54,6 +57,10 @@ static void startListener() {
   });
   ArduinoOTA.onProgress([](unsigned int done, unsigned int total) {
     if (total) pct = uint8_t(done * 100ULL / total);
+    if (progressHook && millis() - lastHookMs >= 100) {
+      lastHookMs = millis();
+      progressHook();
+    }
   });
   ArduinoOTA.onEnd([]() {
     st = State::Done;
@@ -69,6 +76,7 @@ static void startListener() {
     ESP_LOGE(TAG, "%s", err);
   });
   ArduinoOTA.begin();
+  WiFi.setSleep(false);  // modem sleep makes the transfer crawl
   listening = true;
   st = State::Waiting;
   ESP_LOGI(TAG, "listening as %s.local", OTA_HOSTNAME);
@@ -111,6 +119,8 @@ void loop() {
   if (st == State::WaitingForWifi && net::connected()) startListener();
   if (listening) ArduinoOTA.handle();
 }
+
+void setProgressHook(void (*hook)()) { progressHook = hook; }
 
 State state() { return st; }
 uint8_t progress() { return pct; }

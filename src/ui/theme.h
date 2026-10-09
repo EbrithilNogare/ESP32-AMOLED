@@ -44,4 +44,9 @@ lv_obj_t *roundButton(lv_obj_t *parent, const char *icon, uint32_t color);      
 void setPillContent(lv_obj_t *pill, const char *icon, const char *text);
 void pressable(lv_obj_t *obj);  // shrink + brighten while pressed
 
+// lv_label_set_text() always invalidates; these skip unchanged text so
+// once-a-second refreshes don't redraw (and flush) an identical label.
+void setText(lv_obj_t *label, const char *text);
+void setTextFmt(lv_obj_t *label, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+
 }  // namespace ui

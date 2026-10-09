@@ -115,20 +115,20 @@ void MenuApp::updateStatus() {
     time_t now = time(nullptr);
     struct tm t;
     localtime_r(&now, &t);
-    lv_label_set_text_fmt(time_, "%02d:%02d", t.tm_hour, t.tm_min);
+    ui::setTextFmt(time_, "%02d:%02d", t.tm_hour, t.tm_min);
   } else {
-    lv_label_set_text(time_, "--:--");
+    ui::setText(time_, "--:--");
   }
   if (core::net::connected())
     lv_obj_set_hidden(wifi_, false);
   else
     lv_obj_set_hidden(wifi_, true);
   const int pct = core::pmu::batteryPercent();
-  lv_label_set_text(batIcon_, batteryIcon(pct, core::pmu::onCharger()));
+  ui::setText(batIcon_, batteryIcon(pct, core::pmu::onCharger()));
   if (pct >= 0)
-    lv_label_set_text_fmt(batText_, "%d %%", pct);
+    ui::setTextFmt(batText_, "%d %%", pct);
   else
-    lv_label_set_text(batText_, "");
+    ui::setText(batText_, "");
 }
 
 void MenuApp::onTick(uint32_t nowMs) {

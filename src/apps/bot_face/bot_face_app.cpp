@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <esp_random.h>
+#include <math.h>
 
 #include "board.h"
 #include "config.h"
@@ -36,7 +37,6 @@ void BotFaceApp::onCreate(lv_obj_t *root) {
   lv_obj_set_style_line_color(mouth_, ui::c(BOT_FACE_COLOR), 0);
   lv_obj_set_style_line_width(mouth_, kMouthStroke, 0);
   lv_obj_set_style_line_rounded(mouth_, true, 0);
-  lv_obj_set_size(mouth_, LCD_WIDTH, LCD_HEIGHT);  // points are in screen coordinates
 
   lv_obj_set_clickable(root, true);
   lv_obj_add_event_cb(root, onPressed, LV_EVENT_PRESSED, this);
@@ -59,7 +59,9 @@ void BotFaceApp::onTick(uint32_t nowMs) {
 static void placeRect(lv_obj_t *o, const bot::Rect &r) {
   lv_obj_set_pos(o, lroundf(r.x), lroundf(r.y));
   lv_obj_set_size(o, lroundf(r.w), lroundf(r.h));
-  lv_obj_set_style_radius(o, lroundf(r.r), 0);
+  // Setting a style always invalidates the object, so only touch it on change.
+  const int32_t radius = lroundf(r.r);
+  if (lv_obj_get_style_radius(o, LV_PART_MAIN) != radius) lv_obj_set_style_radius(o, radius, 0);
 }
 
 void BotFaceApp::draw(uint32_t nowMs) {
@@ -78,10 +80,16 @@ void BotFaceApp::draw(uint32_t nowMs) {
   lv_obj_set_hidden(mouth_, false);
   // Quadratic Bézier from (mx-44, my) via (mx, my+56·curve) to (mx+44, my).
   const float x0 = g.mx - 44, x2 = g.mx + 44, y0 = g.my, y1 = g.my + 56 * g.curve;
+  // The line object is kept to the curve's bounding box (points relative to
+  // it), so a frame redraws only the mouth, not the whole screen.
+  const int32_t left = lroundf(x0) - kMouthStroke, top = lroundf(fminf(y0, y1)) - kMouthStroke;
+  const int32_t height = lroundf(fabsf(y1 - y0)) + 2 * kMouthStroke;
+  lv_obj_set_pos(mouth_, left, top);
+  lv_obj_set_size(mouth_, lroundf(x2 - x0) + 2 * kMouthStroke, height);
   for (int i = 0; i < kMouthPts; i++) {
     const float t = float(i) / (kMouthPts - 1), u = 1 - t;
-    mouthPts_[i].x = u * u * x0 + 2 * u * t * g.mx + t * t * x2;
-    mouthPts_[i].y = u * u * y0 + 2 * u * t * y1 + t * t * y0;
+    mouthPts_[i].x = u * u * x0 + 2 * u * t * g.mx + t * t * x2 - left;
+    mouthPts_[i].y = u * u * y0 + 2 * u * t * y1 + t * t * y0 - top;
   }
   lv_line_set_points(mouth_, mouthPts_, kMouthPts);
 }

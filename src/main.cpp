@@ -91,6 +91,11 @@ void setup() {
   // shows whatever its RAM held.
   lv_refr_now(core::display::lv());
 
+  core::ota::setProgressHook([]() {
+    apps::manager::tick(millis());
+    lv_timer_handler();
+  });
+
   core::power::begin({
       apps::manager::effectivePolicy,
       apps::manager::idleDimMs,

@@ -1,5 +1,9 @@
 #include "theme.h"
 
+#include <stdarg.h>
+#include <stdio.h>
+#include <string.h>
+
 namespace ui {
 
 static lv_style_t stScreen, stBox, stButton, stPressed;
@@ -104,6 +108,20 @@ lv_obj_t *roundButton(lv_obj_t *parent, const char *icon, uint32_t color) {
   lv_obj_set_style_text_font(i, &font_icon_28, 0);
   lv_label_set_text(i, icon);
   return b;
+}
+
+void setText(lv_obj_t *label, const char *text) {
+  const char *cur = lv_label_get_text(label);
+  if (!cur || strcmp(cur, text) != 0) lv_label_set_text(label, text);
+}
+
+void setTextFmt(lv_obj_t *label, const char *fmt, ...) {
+  char buf[64];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(buf, sizeof buf, fmt, args);
+  va_end(args);
+  setText(label, buf);
 }
 
 }  // namespace ui

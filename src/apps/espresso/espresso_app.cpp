@@ -64,7 +64,7 @@ void EspressoApp::onCreate(lv_obj_t *root) {
   lv_obj_t *title = label(root, &font_caption, col::textDim, "ESPRESSO");
   lv_obj_set_pos(title, 24, 24);
   lv_obj_t *target = label(root, &font_caption, col::textDim, "");
-  lv_label_set_text_fmt(target, "TARGET %d–%d S", ESPRESSO_TARGET_MIN_S, ESPRESSO_TARGET_MAX_S);
+  ui::setTextFmt(target, "TARGET %d–%d S", ESPRESSO_TARGET_MIN_S, ESPRESSO_TARGET_MAX_S);
   lv_obj_align(target, LV_ALIGN_TOP_RIGHT, -24, 24);
 
   digits_ = label(root, &font_digits_120, col::text, "0.0");
@@ -84,7 +84,7 @@ void EspressoApp::onCreate(lv_obj_t *root) {
   const int ticks[] = {0, ESPRESSO_TARGET_MIN_S, ESPRESSO_TARGET_MAX_S, int(kScaleS)};
   for (int t : ticks) {
     lv_obj_t *l = label(root, &font_caption, col::textOff, "");
-    lv_label_set_text_fmt(l, t == int(kScaleS) ? "%d s" : "%d", t);
+    ui::setTextFmt(l, t == int(kScaleS) ? "%d s" : "%d", t);
     lv_obj_update_layout(l);
     lv_obj_set_pos(l, kBarX + kBarW * t / int32_t(kScaleS) - lv_obj_get_width(l) / 2, kBarY + 22);
   }
@@ -130,22 +130,20 @@ void EspressoApp::render(uint32_t nowMs) {
   const Zone zone = shot::classify(mode == Mode::Done ? ds * 100 : ms, timer_.config());
   const uint32_t color = mode == Mode::Ready ? ui::col::text : zoneColor(zone);
 
-  lv_label_set_text_fmt(digits_, "%lu.%lu", (unsigned long)(ds / 10), (unsigned long)(ds % 10));
+  ui::setTextFmt(digits_, "%lu.%lu", (unsigned long)(ds / 10), (unsigned long)(ds % 10));
   lv_obj_set_style_text_color(digits_, ui::c(color), 0);
   const uint32_t w = mode == Mode::Ready ? 0 : min<uint32_t>(kBarW, uint64_t(ds) * kBarW / (kScaleS * 10));
   lv_obj_set_width(fill_, w);
   lv_obj_set_style_bg_color(fill_, ui::c(color), 0);
 
   if (mode == Mode::Ready) {
-    lv_label_set_text(msg_, "Tap anywhere to start");
+    ui::setText(msg_, "Tap anywhere to start");
     lv_obj_set_style_text_color(msg_, ui::c(ui::col::textDim), 0);
   } else if (mode == Mode::Running) {
-    lv_label_set_text(msg_, "Tap to stop");
+    ui::setText(msg_, "Tap to stop");
     lv_obj_set_style_text_color(msg_, ui::c(ui::col::textDim), 0);
   } else {
-    lv_label_set_text(msg_, zone == Zone::InTarget ? "\u2713 In target"
-                            : zone == Zone::Over   ? "Too long"
-                                                   : "Too short");
+    ui::setText(msg_, zone == Zone::InTarget ? "\u2713 In target" : zone == Zone::Over ? "Too long" : "Too short");
     lv_obj_set_style_text_color(msg_, ui::c(zone == Zone::InTarget ? ui::col::success : zoneColor(zone)), 0);
   }
 }
@@ -158,7 +156,7 @@ void EspressoApp::renderHistory() {
     const uint16_t v = timer_.historyAt(i);
     const bool ok = shot::classify(uint32_t(v) * 100, timer_.config()) == Zone::InTarget;
     lv_obj_t *chip = ui::label(hist_, &font_caption, ok ? ui::col::success : ui::col::textDim, "");
-    lv_label_set_text_fmt(chip, ok ? "%u.%u ✓" : "%u.%u", v / 10, v % 10);
+    ui::setTextFmt(chip, ok ? "%u.%u ✓" : "%u.%u", v / 10, v % 10);
     lv_obj_set_style_bg_color(chip, ui::c(ui::col::surface), 0);
     lv_obj_set_style_bg_opa(chip, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(chip, 10, 0);

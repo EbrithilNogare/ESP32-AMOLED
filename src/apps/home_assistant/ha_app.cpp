@@ -28,10 +28,11 @@ void HomeAssistantApp::onCreate(lv_obj_t *root) {
     clientStarted_ = true;
   }
   // Last known states from before deep sleep, shown as stale until refreshed.
-  if (core::store::rtcValid()) {
-    for (int i = 0; i < ha_client::kLights; i++) {
-      if (tiles_[i].value == LightState::Unknown) tiles_[i].value = LightState(core::store::rtc().haStates[i]);
-    }
+  // States kept from the last visit are shown the same way until refreshed.
+  for (int i = 0; i < ha_client::kLights; i++) {
+    Tile &t = tiles_[i];
+    if (t.value == LightState::Unknown && core::store::rtcValid()) t.value = LightState(core::store::rtc().haStates[i]);
+    t.stale = true;
   }
 
   for (int i = 0; i < ha_client::kLights; i++) {
@@ -133,11 +134,11 @@ void HomeAssistantApp::renderTile(int i) {
 
   const char *s = t.value == LightState::On ? "ON" : t.value == LightState::Off ? "OFF" : "N/A";
   if (t.value == LightState::Unknown && t.stale)
-    lv_label_set_text(t.state, "…");  // not fetched yet
+    ui::setText(t.state, "…");  // not fetched yet
   else if (t.stale && !unavailable)
-    lv_label_set_text_fmt(t.state, "%s …", s);
+    ui::setTextFmt(t.state, "%s …", s);
   else
-    lv_label_set_text(t.state, s);
+    ui::setText(t.state, s);
   if (t.pending)
     lv_obj_set_hidden(t.spinner, false);
   else
@@ -169,7 +170,7 @@ void HomeAssistantApp::setBanner(const char *text, uint32_t color) {
     lv_obj_set_hidden(banner_, true);
     return;
   }
-  lv_label_set_text(banner_, text);
+  ui::setText(banner_, text);
   lv_obj_set_style_text_color(banner_, ui::c(color), 0);
   lv_obj_set_hidden(banner_, false);
 }

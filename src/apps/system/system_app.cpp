@@ -93,24 +93,24 @@ void SystemApp::showInfo() {
 void SystemApp::updateInfo() {
   const int pct = core::pmu::batteryPercent();
   const uint32_t up = millis() / 1000;
-  lv_label_set_text(values_[0], APP_VERSION);
-  lv_label_set_text_fmt(values_[1], "%s · ESP32-S3R8", core::board::revisionName());
+  ui::setText(values_[0], APP_VERSION);
+  ui::setTextFmt(values_[1], "%s · ESP32-S3R8", core::board::revisionName());
   if (pct >= 0)
-    lv_label_set_text_fmt(values_[2], "%d %% · %u.%02u V", pct, core::pmu::batteryMillivolts() / 1000,
-                          (core::pmu::batteryMillivolts() % 1000) / 10);
+    ui::setTextFmt(values_[2], "%d %% · %u.%02u V", pct, core::pmu::batteryMillivolts() / 1000,
+                   (core::pmu::batteryMillivolts() % 1000) / 10);
   else
-    lv_label_set_text(values_[2], "no battery");
-  lv_label_set_text(values_[3], core::pmu::onCharger() ? (core::pmu::charging() ? "yes (USB)" : "full (USB)") : "no");
+    ui::setText(values_[2], "no battery");
+  ui::setText(values_[3], core::pmu::onCharger() ? (core::pmu::charging() ? "yes (USB)" : "full (USB)") : "no");
   if (core::net::connected())
-    lv_label_set_text_fmt(values_[4], "−%d dBm", -core::net::rssi());
+    ui::setTextFmt(values_[4], "−%d dBm", -core::net::rssi());
   else
-    lv_label_set_text(values_[4], "off");
-  lv_label_set_text(values_[5], core::net::connected() ? core::net::ip() : "–");
-  lv_label_set_text_fmt(values_[6], "%u KB · %u.%u MB", unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
-                        unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1048576),
-                        unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) % 1048576 * 10 / 1048576));
-  lv_label_set_text_fmt(values_[7], "%lu:%02lu:%02lu", (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60),
-                        (unsigned long)(up % 60));
+    ui::setText(values_[4], "off");
+  ui::setText(values_[5], core::net::connected() ? core::net::ip() : "–");
+  ui::setTextFmt(values_[6], "%u KB · %u.%u MB", unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+                 unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1048576),
+                 unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) % 1048576 * 10 / 1048576));
+  ui::setTextFmt(values_[7], "%lu:%02lu:%02lu", (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60),
+                 (unsigned long)(up % 60));
 }
 
 void SystemApp::showUpdate() {
@@ -150,7 +150,7 @@ void SystemApp::showUpdate() {
   lv_obj_set_style_text_align(line1_, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(line1_, LV_ALIGN_TOP_MID, 0, 352);
   lv_obj_t *line2 = label(root_, &font_caption, col::textDim, "");
-  lv_label_set_text_fmt(line2, "%s.local · %s", OTA_HOSTNAME, APP_VERSION);
+  ui::setTextFmt(line2, "%s.local · %s", OTA_HOSTNAME, APP_VERSION);
   lv_obj_set_width(line2, LCD_WIDTH - 48);
   lv_obj_set_style_text_align(line2, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(line2, LV_ALIGN_TOP_MID, 0, 384);
@@ -184,18 +184,18 @@ void SystemApp::updateOta(uint32_t nowMs) {
   }
   lv_obj_set_style_arc_color(arc_, ui::c(color), LV_PART_INDICATOR);
   lv_arc_set_value(arc_, s == State::Done ? 100 : s == State::Receiving ? core::ota::progress() : 0);
-  lv_label_set_text(icon_, s == State::Done ? ICON_CHECK_CIRCLE : s == State::Error ? ICON_ERROR : ICON_WIFI_TETHERING);
+  ui::setText(icon_, s == State::Done ? ICON_CHECK_CIRCLE : s == State::Error ? ICON_ERROR : ICON_WIFI_TETHERING);
   lv_obj_set_style_text_color(icon_, ui::c(color), 0);
   if (showPct) {
     lv_obj_set_hidden(icon_, true);
     lv_obj_set_hidden(pct_, false);
-    lv_label_set_text_fmt(pct_, "%u %%", core::ota::progress());
+    ui::setTextFmt(pct_, "%u %%", core::ota::progress());
   } else {
     lv_obj_set_hidden(icon_, false);
     lv_obj_set_hidden(pct_, true);
   }
-  lv_label_set_text(status_, status);
-  lv_label_set_text(line1_, s == State::Receiving ? "Don’t power off" : core::net::connected() ? core::net::ip() : "");
+  ui::setText(status_, status);
+  ui::setText(line1_, s == State::Receiving ? "Don’t power off" : core::net::connected() ? core::net::ip() : "");
 
   // After a successful update: show "Done" briefly, then restart with the
   // power-off animation; the new image confirms itself after its health check.

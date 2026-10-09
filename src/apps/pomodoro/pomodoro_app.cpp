@@ -156,7 +156,7 @@ void PomodoroApp::render(uint32_t nowMs) {
 
   const Phase ph = timer_.phase();
   const uint32_t color = phaseColor(ph);
-  lv_label_set_text(phase_, phaseName(ph));
+  ui::setText(phase_, phaseName(ph));
   lv_obj_set_style_text_color(phase_, ui::c(color), 0);
   const int filled = timer_.completed() < 4 ? timer_.completed() : 4;  // focus sessions done in this set
   for (int i = 0; i < 4; i++) {
@@ -168,19 +168,19 @@ void PomodoroApp::render(uint32_t nowMs) {
   const uint32_t dur = timer_.phaseDurationMs();
   lv_obj_set_style_arc_color(arc_, ui::c(color), LV_PART_INDICATOR);
   lv_arc_set_value(arc_, dur ? int32_t(1000 - uint64_t(rem) * 1000 / dur) : 0);
-  lv_label_set_text_fmt(digits_, "%02lu:%02lu", (unsigned long)(sec / 60), (unsigned long)(sec % 60));
+  ui::setTextFmt(digits_, "%02lu:%02lu", (unsigned long)(sec / 60), (unsigned long)(sec % 60));
 
   if (timer_.running()) {
     const Phase next = timer_.nextPhase();
-    lv_label_set_text_fmt(sub_, "until %s",
-                          next == Phase::Focus       ? "focus"
-                          : next == Phase::LongBreak ? "long break"
-                          : next == Phase::Idle      ? "the end of the set"
-                                                     : "short break");
+    ui::setTextFmt(sub_, "until %s",
+                   next == Phase::Focus       ? "focus"
+                   : next == Phase::LongBreak ? "long break"
+                   : next == Phase::Idle      ? "the end of the set"
+                                              : "short break");
     ui::setPillContent(toggle_, ICON_PAUSE, "Pause");
   } else {
     const bool fresh = ph == Phase::Idle || rem == dur;
-    lv_label_set_text(sub_, ph == Phase::Idle ? "ready" : "paused");
+    ui::setText(sub_, ph == Phase::Idle ? "ready" : "paused");
     ui::setPillContent(toggle_, ICON_PLAY_ARROW, fresh ? "Start" : "Resume");
   }
   lv_obj_set_style_text_color(toggle_, ui::c(color), 0);
@@ -286,7 +286,7 @@ void PomodoroApp::renderMinimal(uint32_t nowMs) {
     else
       lv_obj_set_hidden(minDots_[i], true);
   }
-  lv_label_set_text_fmt(minDigits_, "%lu", (unsigned long)minutes);
+  ui::setTextFmt(minDigits_, "%lu", (unsigned long)minutes);
   lv_obj_set_style_text_color(minDigits_, ui::c(color), 0);
   lv_obj_set_pos(minDigits_, cx - 70, cy - 24);
 }

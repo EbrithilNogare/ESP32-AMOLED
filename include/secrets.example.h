@@ -17,7 +17,9 @@
 
 // Home Assistant: base URL and a long-lived access token
 // (HA → Profile → Security → Long-lived access tokens). Use a dedicated HA user.
-#define HA_BASE_URL     "http://homeassistant.local:8123"
+// Plain http on the LAN (no TLS client is built in); an IP address avoids
+// relying on mDNS for "homeassistant.local".
+#define HA_BASE_URL     "http://192.168.1.10:8123"
 #define HA_TOKEN        ""
 
 // Password for over-the-air updates (ArduinoOTA). Leave empty to disable OTA.

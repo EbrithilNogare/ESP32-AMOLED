@@ -32,13 +32,19 @@ struct InitCmd {
 
 // Vendor BSP sequence, except brightness (0x51) starts at 0 so the panel
 // doesn't light up showing whatever its RAM held before the first frame.
+// clang-format off
 static const InitCmd kInit[] = {
-    {0xFE, {0x00}, 1, 0}, {0xC4, {0x80}, 1, 0}, {0x3A, {0x55}, 1, 0},  // RGB565
-    {0x35, {0x00}, 1, 0},                                              // tearing effect line on
-    {0x53, {0x20}, 1, 0},                                              // brightness control on
-    {0x51, {0x00}, 1, 0}, {0x63, {0xFF}, 1, 0}, {0x11, {0}, 0, 120},   // sleep out
-    {0x29, {0}, 0, 0},                                                 // display on
+    {0xFE, {0x00}, 1, 0},
+    {0xC4, {0x80}, 1, 0},
+    {0x3A, {0x55}, 1, 0},    // RGB565
+    {0x35, {0x00}, 1, 0},    // tearing effect line on
+    {0x53, {0x20}, 1, 0},    // brightness control on
+    {0x51, {0x00}, 1, 0},    // brightness 0
+    {0x63, {0xFF}, 1, 0},    // HBM brightness ceiling
+    {0x11, {0x00}, 0, 120},  // sleep out
+    {0x29, {0x00}, 0, 0},    // display on
 };
+// clang-format on
 
 static esp_lcd_panel_io_handle_t io;
 static lv_display_t *disp;
@@ -116,9 +122,8 @@ bool begin(uint16_t columnOffset) {
     return false;
   }
 
-  const uint8_t madctl = 0x00, colmod = 0x55;
+  const uint8_t madctl = 0x00;  // portrait, RGB order
   txParam(0x36, &madctl, 1);
-  txParam(0x3A, &colmod, 1);
   for (const InitCmd &c : kInit) {
     txParam(c.cmd, c.len ? c.data : nullptr, c.len);
     if (c.delayMs) delay(c.delayMs);
