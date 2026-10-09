@@ -258,7 +258,7 @@ src/
     └── icons/            round app icons (LVGL image C arrays)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
 lib/       Arduino-free logic (host-testable) + vendored drivers:
-           PowerFsm/  PomodoroCore/  ShotTimer/  HaParse/  esp_lcd_amoled/  es8311/
+           PowerFsm/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  esp_lcd_amoled/  es8311/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
 tools/     assets.py, converters
@@ -472,7 +472,7 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 
 - **CI:** both environments build.
 - **Host tests (`[env:native]` + Unity, `test/`):** pure logic lives in
-  Arduino-free libraries under `lib/` (`PowerFsm`, `PomodoroCore`,
+  Arduino-free libraries under `lib/` (`PowerFsm`, `PomodoroCore`, `BotFace`,
   `ShotTimer`, `HaParse`), so it compiles and runs on the PC. Adapters in
   `src/` connect them to hardware and LVGL. CI runs these tests next to the
   firmware builds.

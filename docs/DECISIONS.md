@@ -5,6 +5,16 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — Bot face design approved
+
+**Context:** The owner liked the bot face in the UI mockup.
+**Decision:** The mockup's face is the reference design: cyan `#00E5FF`
+rounded-rectangle eyes and a curved mouth on black, with blink, glance,
+breathe, happy/surprised/sleepy expressions. Its exact geometry, timings and
+presets are written into `docs/apps/bot-face.md`.
+**Consequences:** M8 is a port of the mockup, not a new design; changes to
+the face go into the mockup and the spec together.
+
 ## 2026-10-09 — Last open questions closed
 
 **Decision:** Keep BOOT = Back, PWR = Home. BOOT alone as the deep-sleep wake

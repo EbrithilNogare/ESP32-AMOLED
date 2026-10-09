@@ -111,10 +111,12 @@ screen goes black after 5 min and a touch restores the app.
 
 ### M8 — Bot face ☐ — [spec](apps/bot-face.md)
 
-Parametric face, blink/look/breathe, tap reactions, sleepy when dimmed;
-uses LVGL drawing with tweened parameters (no sprites).
+Port of the approved mockup face (spec has the exact geometry, timings and
+expression presets): `lib/BotFace` logic with host tests, LVGL drawing in
+`src/apps/bot_face/`, partial redraw of the face area only.
 
-**On device:** spec acceptance list.
+**On device:** spec acceptance list, including a side-by-side check with the
+mockup.
 
 ### M9 — Espresso shot timer ☐ — [spec](apps/espresso-timer.md)
 
