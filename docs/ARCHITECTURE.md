@@ -1,8 +1,9 @@
 # Architecture
 
-> **Status: plan, not implemented yet.** This is the design we build against.
-> Implementation follows [ROADMAP.md](ROADMAP.md) milestone by milestone;
-> update this file whenever the design changes. Per-app specs live in
+> **Status: implemented, not yet verified on hardware** (see
+> [ROADMAP.md](ROADMAP.md)). Where the code differs from the original plan,
+> the section says so ("*Implemented:*"); update this file whenever the
+> design changes. Per-app specs live in
 > [docs/apps/](apps/README.md). Open questions are collected at the end.
 
 ## 1. Goals
@@ -56,6 +57,9 @@ audio beyond short beeps, settings UI (later app).
 - The order is the registration order in `main.cpp`. A "recently used first"
   order can come later.
 - The menu remembers its scroll position.
+- *Implemented:* the fisheye fades rows away from the centre (colour opacity
+  down to ~60 %) instead of scaling them, which would need a layer per row;
+  a tap shrinks the disc while pressed, then the app fades in.
 
 ### 2.2 Navigation — two side buttons
 
@@ -240,32 +244,38 @@ creates each app's LVGL screen on first open, switches screens with an
 animation, and only keeps the menu plus the current app in memory (other
 screens are deleted on pause to save RAM, opt-out per app).
 
-### 6.2 Planned file layout
+### 6.2 File layout
 
 ```
 src/
-├── main.cpp
-├── core/      board, display, input, pmu, power, net, sound, store, app_manager
+├── main.cpp           wiring: bring-up order in setup(), servicing in loop()
+├── core/              board_init (I2C, TCA9554, revision), i2c_bus, display,
+│                      touch, buttons, pmu, power, net, ota, sound, rtc_clock,
+│                      store, events
 ├── apps/
-│   ├── app.h
+│   ├── app.h, app_manager.{h,cpp}
 │   ├── menu/             launcher
-│   ├── home_assistant/   ha_app, ha_client
+│   ├── home_assistant/   ha_app, ha_client (FreeRTOS task)
 │   ├── bot_face/
 │   ├── pomodoro/
-│   └── espresso/
+│   ├── espresso/
+│   └── system/           info + wireless update
 └── ui/
-    ├── theme.{h,cpp}     colours, fonts, shared styles
-    └── icons/            round app icons (LVGL image C arrays)
+    ├── theme.{h,cpp}     design tokens and shared widgets
+    ├── power_anim.{h,cpp} power-off / power-on animation
+    └── generated/        fonts + icon codepoints from tools/assets.py (committed)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
-lib/       Arduino-free logic (host-testable) + vendored drivers:
-           PowerFsm/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  esp_lcd_amoled/  es8311/
+lib/       Arduino-free logic (host-testable):
+           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
-tools/     assets.py, converters
-src/ui/generated/   generated fonts/images/sprites (committed)
-data/      LittleFS content (big/optional assets)
+tools/     assets.py, version.py, size_check.py, sim/ (PC simulator + screenshots)
 docs/apps/ one spec per app
 ```
+
+*Implemented:* the panel commands and the ES8311 setup are small ports inside
+`src/core/` rather than vendored libraries; there is no `data/` (LittleFS)
+content yet.
 
 ### 6.3 Runtime model
 
@@ -319,11 +329,12 @@ string in `config.h` (`TIMEZONE`, e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`).
 
 **Settings.** Compile-time defaults in `config.h`. A `Settings` service reads
 NVS overrides on top of them (written by a future Settings app), so apps read
-settings through `Settings`, never directly from macros.
+settings through `Settings`, never directly from macros. *Not implemented
+yet:* with no Settings app there is nothing to override, so apps read
+`config.h` directly for now; add the service together with the app.
 
 **Conventions.** C++17, one namespace per area (`core::`, `apps::`, `ui::`),
-`.clang-format` (2-space indent, 100 columns, matching the current code) added
-in M1, no exceptions in firmware code, `ESP_LOGx` with a per-module tag.
+`.clang-format` (Google style: 2-space indent, 120 columns), no exceptions in firmware code, `ESP_LOGx` with a per-module tag.
 
 
 ## 7. AMOLED burn-in protection
@@ -470,12 +481,18 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 
 ## 11. Testing
 
-- **CI:** both environments build.
+- **CI:** both firmware environments build (size budget enforced by
+  `tools/size_check.py`), host tests and the simulator flow test run, and the
+  generated assets are checked against their sources.
 - **Host tests (`[env:native]` + Unity, `test/`):** pure logic lives in
   Arduino-free libraries under `lib/` (`PowerFsm`, `PomodoroCore`, `BotFace`,
   `ShotTimer`, `HaParse`), so it compiles and runs on the PC. Adapters in
   `src/` connect them to hardware and LVGL. CI runs these tests next to the
   firmware builds.
+- **Simulator (`[env:sim]`, `tools/sim/`):** the real apps, UI and LVGL run
+  on the PC against stubbed hardware modules; `sim_main.cpp` taps through
+  every app, checks the results and writes frames that `tools/sim/shots.py`
+  turns into `docs/design/screens/` + `firmware-screens.png`.
 - **On hardware:** each milestone's checklist in ROADMAP.md, run by the
   owner (agents can't flash). Measured currents and timings go into
   HARDWARE.md.
@@ -531,7 +548,7 @@ exists. Needs the repo releases to be reachable without auth.
 | Power loss mid-transfer | the old slot stays active until the new image is complete and verified (SHA-256 check by the OTA library) |
 | Flat battery during update | listener refuses to start below **30 %** unless on the charger |
 | Someone else on the LAN flashes it | listener runs only while the update screen is open; password required; never enabled when `OTA_PASSWORD` is empty |
-| Wrong board / wrong project image | image `project_name` must match (`esp_app_desc_t`), checked in `onStart` |
+| Wrong board / wrong project image | image `project_name` must match (`esp_app_desc_t`), checked in `onStart`. *Not implemented yet:* ArduinoOTA's `onStart` sees no image header; needs a check on the first chunk (or HTTP update) — rollback still covers an image that doesn't boot. |
 
 ### 12.4 Versioning
 
@@ -551,3 +568,8 @@ the same on the charger as on battery; speaker beeps OK; OTA only from the
 update screen.
 
 New questions found during implementation go here.
+
+- Does the CST820 keep INT low while a finger rests (it would keep waking
+  light sleep in the pomodoro minimal view)? Check in M10.
+- Is plain-http Home Assistant on the LAN acceptable long term, or should the
+  client get TLS (`WiFiClientSecure`, ~+40 KB)?

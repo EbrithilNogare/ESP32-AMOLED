@@ -1,8 +1,7 @@
 # Libraries & tools
 
-> **Status: plan.** Versions are pinned when each one is first used (see
-> ROADMAP). Check this table before adding a dependency, and add a row when
-> you do.
+> **Status: in use** (branch `feature/launcher-home-assistant`). Check this
+> table before adding a dependency, and add a row when you do.
 
 Rules:
 
@@ -19,18 +18,24 @@ Rules:
 
 | Purpose | Library | Version | Licence | How | Notes |
 | --- | --- | --- | --- | --- | --- |
-| UI toolkit | **LVGL** | 9.6.0 | MIT | `lib_deps` | widgets, scrolling with snap, animations, `lv_animimg` for sprites, canvas, image decoders, LittleFS driver; renders straight into `RGB565_SWAPPED` |
+| UI toolkit | **LVGL** | 9.6.0 | MIT | `lib_deps` (git tag) | widgets, scrolling with snap, animations; renders straight into `RGB565_SWAPPED`; its heap lives in PSRAM |
 | Display transport | **esp_lcd** (ESP-IDF, in the Arduino core) | core | Apache-2.0 | built in | SPI panel IO in `quad_mode`, **asynchronous DMA**: LVGL renders the next chunk while the previous one is sent |
-| AMOLED panel driver | **esp_lcd_sh8601** (Waveshare/Espressif) | 1.x (from Waveshare-ESP32-components) | Apache-2.0 | vendored → `lib/esp_lcd_amoled/` | SH8601 and CO5300 share the QSPI protocol (opcodes `0x02` cmd, `0x32` pixels); the CO5300 init sequence comes from the vendor BSP. One driver for V1 and V2. |
-| Touch, IMU, RTC | **SensorLib** (lewisxhe) | 0.5.0 | MIT | `lib_deps` | `TouchDrvCSTXXX` (CST816 family incl. CST820) / FT3168, `SensorQMI8658`, `SensorPCF85063`. If CST820 support misbehaves: own ~50-line driver (regs `0x02`–`0x06`). |
-| PMU | **XPowersLib** (lewisxhe) | 0.3.3 | MIT | `lib_deps` | AXP2101: VBUS, charging, battery %, PEK IRQs, `shutdown()` |
-| IO expander | own driver in `core/board` | — | — | code | TCA9554 is 4 registers; avoids pulling in Adafruit XCA9554 + BusIO |
-| Audio codec | **es8311** (Espressif) | from vendor example `15_ES8311` | Apache-2.0 | vendored → `lib/es8311/` | register setup; audio data via the core's `ESP_I2S` |
-| JSON | **ArduinoJson** | 7.4.3 | MIT | `lib_deps` | Home Assistant responses |
-| HTTP | `HTTPClient` | core | LGPL-2.1 (core) | built in | HA REST |
-| Wi-Fi, NVS, FS, I2S, time | `WiFi`, `Preferences`, `LittleFS`, `ESP_I2S`, SNTP | core | core | built in | |
-| OTA | `ArduinoOTA` + `ESPmDNS` + `Update` (later `HTTPUpdate`) | core | core | built in | push updates via espota; rollback through the core's `verifyRollbackLater()` / `verifyOta()` hooks |
-| Unit tests | Unity (PlatformIO test runner) | bundled | MIT | `[env:native]` | pure-logic modules only |
+| AMOLED panel commands | derived from **esp_lcd_sh8601** (Waveshare/Espressif) | — | Apache-2.0 | ported → `src/core/display.cpp` | only the QSPI framing (opcodes `0x02` cmd, `0x32` pixels) and the vendor BSP init sequence were needed (~60 lines), so no separate library. One sequence for V1 and V2. |
+| Touch | own driver | — | — | `src/core/touch.cpp` | CST820 (V2) and FT3168 (V1) share the register layout we need: 7 bytes from `0x00` |
+| RTC | own driver | — | — | `src/core/rtc_clock.cpp` | PCF85063: one 7-byte BCD read at boot, one write after SNTP |
+| PMU | **XPowersLib** (lewisxhe) | 0.3.3 | MIT | `lib_deps` (git tag) | AXP2101: VBUS, charging, battery %, PEK IRQs; I2C through our locked bus via its callback API |
+| IO expander | own driver | — | — | `src/core/board_init.cpp` | TCA9554 is 4 registers; avoids pulling in Adafruit XCA9554 + BusIO |
+| Audio codec | register setup from **es8311** (Espressif) | from vendor example `15_ES8311` | Apache-2.0 | ported → `src/core/sound.cpp` | the original uses the legacy I2C driver, which can't coexist with `Wire`; audio data via the core's `ESP_I2S` |
+| JSON | **ArduinoJson** | 7.4.3 | MIT | `lib_deps` (git tag) | Home Assistant responses (`lib/HaParse`) |
+| HTTP | `HTTPClient` | core | LGPL-2.1 (core) | built in | HA REST, plain http with keep-alive |
+| Wi-Fi, NVS, I2S, time | `WiFi`, `Preferences`, `ESP_I2S`, SNTP | core | core | built in | |
+| OTA | `ArduinoOTA` + `ESPmDNS` + `Update` | core | core | built in | push updates via espota; rollback through the core's `verifyRollbackLater()` hook |
+| Unit tests | Unity (PlatformIO test runner) | 2.6.x | MIT | `[env:native]` | pure-logic modules in `lib/` |
+| UI simulator | LVGL on the host + `tools/sim/` | — | — | `[env:sim]` | runs the real apps against stubbed hardware, scripted flow test + screenshots |
+
+Not used (yet): **SensorLib** (planned for touch/RTC/IMU; replaced by the
+small own drivers above, revisit when the QMI8658 IMU is needed), LittleFS
+and `lv_animimg` sprites (no app needs files or sprite sheets so far).
 
 ### Considered and not used
 
@@ -49,16 +54,18 @@ Rules:
 | --- | --- | --- | --- | --- |
 | **lv_font_conv** | 1.5.3 | MIT | Node ≥ 18 (`tools/package.json`, run with `npx`) | TTF/OTF → LVGL C font, subset of glyphs |
 | **LVGLImage.py** (from LVGL `scripts/`, same tag as the firmware LVGL) | 9.6.0 | MIT | Python 3 + `pypng`, `lz4` (`tools/requirements.txt`) | PNG → LVGL C array or `.bin` |
-| `tools/assets.py` (ours) | — | — | Python 3.11+ (stdlib `tomllib`) | reads `assets/assets.toml`, runs both converters, slices sprite sheets, writes `src/ui/generated/` and `data/` |
+| `tools/assets.py` (ours) | — | — | Python 3.11+ (stdlib `tomllib`), `fonttools` | reads `assets/assets.toml`, instances the icon font, runs both converters, writes `src/ui/generated/` (`--check` in CI) |
+| `tools/sim/shots.py` (ours) | — | — | Python 3 + Pillow | simulator frames → `docs/design/screens/` and a contact sheet |
+| clang-format | any recent | Apache-2.0 | `.clang-format` (Google style, 120 columns) | formatting; generated files are excluded |
 
 ## Fonts & art
 
 | Asset | Licence | Use |
 | --- | --- | --- |
 | **Inter** | SIL OFL 1.1 | UI text |
-| **Roboto Mono** | Apache-2.0 | big timer digits (monospaced, so they don't jitter while counting) |
+| **Roboto Mono** | SIL OFL 1.1 | big timer digits (monospaced, so they don't jitter while counting) |
 | **Material Symbols Rounded** | Apache-2.0 | icon font: app icons, status bar, buttons |
 
-The variable Material Symbols font is instanced to a static one (fill 1,
-weight 500) with fontTools `varLib.instancer` in `tools/assets.py` if
-lv_font_conv can't use the variable file directly; checked in M3.
+The variable Material Symbols font is instanced to static ones (fill 1,
+weight 500, optical size per pixel size) with fontTools `varLib.instancer`
+in `tools/assets.py`; lv_font_conv can't use the variable file directly.

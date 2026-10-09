@@ -5,6 +5,43 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — Own small drivers instead of SensorLib and vendored libs
+
+**Context:** The plan used SensorLib for touch/RTC and vendored
+`esp_lcd_sh8601` + `es8311` into `lib/`. During implementation each turned
+out to need only a few dozen lines: touch is one 7-byte read (same layout on
+CST820 and FT3168), the RTC one BCD read/write, the panel only the QSPI
+framing plus an init table, and the vendor ES8311 driver uses the legacy I2C
+driver, which conflicts with `Wire`.
+**Decision:** Own drivers in `src/core/` (`touch`, `rtc_clock`, `display`,
+`sound`), with the origin and licence noted in the file header where code
+was ported. XPowersLib stays (the AXP2101 has many registers).
+**Consequences:** Two fewer dependencies and all I2C goes through one locked
+bus. The QMI8658 IMU has no driver yet; SensorLib is the first candidate
+when an app needs it.
+
+## 2026-10-09 — PC simulator as the UI test
+
+**Context:** Agents can't flash the board, and LVGL layout bugs are cheap to
+find on the PC but slow to find on hardware.
+**Decision:** `[env:sim]` compiles the real `src/apps` + `src/ui` + LVGL for
+the host, with the hardware modules stubbed in `tools/sim/`. A scripted flow
+test taps through every app, asserts state, and saves frames; CI runs it and
+uploads the screenshots. `docs/design/firmware-screens.png` is the
+committed result.
+**Consequences:** Apps must reach hardware only through `src/core` headers
+(so the stubs can stand in). Timing, DMA, touch accuracy and power still
+need the on-device checklists.
+
+## 2026-10-09 — Settings service deferred
+
+**Context:** ARCHITECTURE §6.3 plans a `Settings` service (NVS overrides of
+`config.h`).
+**Decision:** Not built until there's a Settings app that writes overrides;
+apps read `config.h` directly meanwhile.
+**Consequences:** Adding Settings later means routing the tunables it
+exposes through the service — a mechanical change.
+
 ## 2026-10-09 — Bot face design approved
 
 **Context:** The owner liked the bot face in the UI mockup.
