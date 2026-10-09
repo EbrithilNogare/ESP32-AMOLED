@@ -23,7 +23,11 @@ ESP32-AMOLED/
 ├── src/main.cpp             entry point (setup/loop)
 ├── lib/                     project-private libraries, one folder each
 ├── data/                    files packed into the LittleFS partition
-├── docs/HARDWARE.md         everything about the board
+├── docs/
+│   ├── HARDWARE.md          everything about the board
+│   ├── DECISIONS.md         why things are the way they are
+│   └── LESSONS.md           gotchas learned along the way
+├── AGENTS.md                instructions for AI coding agents (CLAUDE.md imports it)
 ├── partitions.csv           16 MB: 2 × 4 MB OTA apps, ~8 MB LittleFS, core dump
 ├── platformio.ini           build environments
 ├── .vscode/tasks.json       build / flash / monitor tasks
@@ -91,3 +95,10 @@ release BOOT, then flash.
 `.github/workflows/build.yml` builds `amoled` and `amoled-debug` on every push
 and PR (with PlatformIO cached) and attaches `firmware.bin` /
 `firmware.factory.bin` as an artifact.
+
+## Contributing
+
+Small changes go straight to `main`; large independent features get a
+`feature/<name>` branch and a PR. Record decisions in
+[docs/DECISIONS.md](docs/DECISIONS.md) and gotchas in
+[docs/LESSONS.md](docs/LESSONS.md). Agent instructions: [AGENTS.md](AGENTS.md).
