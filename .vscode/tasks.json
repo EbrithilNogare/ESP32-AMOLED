@@ -1,0 +1,60 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "env",
+      "type": "pickString",
+      "description": "PlatformIO environment",
+      "default": "amoled",
+      "options": ["amoled", "amoled-debug"]
+    }
+  ],
+  "tasks": [
+    {
+      "label": "ESP: build",
+      "type": "shell",
+      "command": "pio run -e ${input:env}",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "ESP: build & upload & monitor",
+      "type": "shell",
+      "command": "pio run -e ${input:env} -t upload -t monitor",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "ESP: upload",
+      "type": "shell",
+      "command": "pio run -e ${input:env} -t upload",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "ESP: monitor",
+      "type": "shell",
+      "command": "pio device monitor -e ${input:env}",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP: upload filesystem (data/)",
+      "type": "shell",
+      "command": "pio run -e ${input:env} -t uploadfs",
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP: clean",
+      "type": "shell",
+      "command": "pio run -e ${input:env} -t clean",
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP: erase flash",
+      "type": "shell",
+      "command": "pio run -e ${input:env} -t erase",
+      "problemMatcher": []
+    }
+  ]
+}
