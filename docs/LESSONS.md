@@ -5,6 +5,13 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## GitHub can't render partitions.csv
+
+GitHub previews `.csv` files as tables and treats the first line as the header.
+A leading `#` comment containing commas gave it the wrong column count. Keep
+the `# Name, Type, SubType, Offset, Size, Flags` header as the first line and
+put explanations in docs, not in comment lines with commas.
+
 ## Display/touch stay dead after a soft reset
 
 An ESP32 restart does not reset the AMOLED or touch controller — their reset
