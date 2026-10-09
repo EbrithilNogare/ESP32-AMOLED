@@ -31,6 +31,7 @@ ESP32-AMOLED/
 │   ├── apps/                one spec per app
 │   ├── LIBRARIES.md         dependencies, versions, licences
 │   ├── UI_DESIGN.md         design system + asset pipeline
+│   ├── design/              clickable UI mockup (ui-mockup.html) + screenshot
 │   ├── DECISIONS.md         why things are the way they are
 │   └── LESSONS.md           gotchas learned along the way
 ├── AGENTS.md                instructions for AI coding agents (CLAUDE.md imports it)

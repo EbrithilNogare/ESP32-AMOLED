@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Clickable design draft of the planned UI. Open this file in a browser.
+     Tokens, fonts and sizes follow docs/UI_DESIGN.md; it is a draft, not firmware. -->
+<title>ESP32-AMOLED Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
+<style>
+/* Layout: lab bench — live device on the left, readout panel on the right, screen gallery below. */
+:root {
+  --bg: #E9ECEF;
+  --panel: #F7F8F9;
+  --ink: #14181D;
+  --muted: #5A6470;
+  --line: #CDD3DA;
+  --accent: #0A7584;
+  --accent-ink: #FFFFFF;
+  --chip: #DDE3E8;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+    --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+  --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 36px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 600; text-wrap: balance; }
+h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 64ch; margin: 0; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+.bench { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 820px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- device ---------- */
+.dev-host { width: 100%; max-width: 470px; justify-self: center; }
+.dev-scale { position: relative; }
+.device {
+  position: absolute; top: 0; left: 0; width: 470px; height: 500px; transform-origin: top left;
+}
+.body {
+  position: absolute; left: 0; top: 0; width: 404px; height: 500px; border-radius: 44px;
+  background: linear-gradient(145deg, #2B2F35, #15181C 60%, #0D0F12);
+  box-shadow: inset 0 0 0 1px #3A4048, 0 18px 40px rgba(0,0,0,.28);
+}
+.glass {
+  position: absolute; left: 18px; top: 26px; width: 368px; height: 448px; border-radius: 22px;
+  background: #000; overflow: hidden; box-shadow: 0 0 0 2px #050607;
+}
+.crt { position: absolute; inset: 0; }
+.crt.off { animation: crtOff 1s ease-in forwards; }
+.crt.dead { transform: scale(0, 0); opacity: 0; }
+.crt.on { animation: crtOn .6s ease-out; }
+@keyframes crtOff {
+  0% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+  45% { transform: scale(1, .006); filter: brightness(2.2); opacity: 1; }
+  75% { transform: scale(.02, .006); filter: brightness(3); opacity: 1; }
+  100% { transform: scale(0, 0); opacity: 0; }
+}
+@keyframes crtOn {
+  0% { transform: scale(.02, .006); filter: brightness(3); opacity: 1; }
+  40% { transform: scale(1, .006); filter: brightness(2); }
+  100% { transform: scale(1, 1); filter: brightness(1); }
+}
+.content { position: absolute; inset: 0; }
+.dimmer { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .3s linear; }
+.swallow { position: absolute; inset: 0; cursor: pointer; }
+.hint {
+  position: absolute; inset: auto 0 40px; text-align: center; color: #9A9A9A;
+  font: 500 16px Inter, system-ui, sans-serif;
+}
+
+.sidebtn {
+  position: absolute; left: 402px; width: 12px; height: 64px; border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, #1B1E22, #3A4048); border: 0; padding: 0; cursor: pointer;
+  box-shadow: inset 0 0 0 1px #4A515A; overflow: hidden;
+}
+.sidebtn::after { content: ""; position: absolute; inset: auto 0 0 0; height: 0; background: var(--accent); }
+.sidebtn.holding::after { animation: hold 1s linear forwards; }
+@keyframes hold { to { height: 100%; } }
+.sidebtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sidebtn.back { top: 132px; }
+.sidebtn.home { top: 236px; }
+.btnlabel { position: absolute; left: 424px; font: 500 12px/1.25 var(--mono); color: var(--muted); }
+.btnlabel b { display: block; color: var(--ink); font-weight: 500; font-family: var(--body); font-size: 14px; }
+.btnlabel.back { top: 144px; }
+.btnlabel.home { top: 248px; }
+
+/* ---------- side panel ---------- */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 20px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink); font: 500 14px var(--body); padding: 7px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:focus-visible, .ctl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ctl { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.readout { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
+.readout dt { color: var(--muted); }
+.readout dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.stage-pill { display: inline-block; padding: 1px 9px; border-radius: 99px; background: var(--chip); font-family: var(--body); font-weight: 500; }
+.timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.timeline span { font: 500 11px/1.2 var(--mono); color: var(--muted); padding: 6px 6px 0; border-top: 4px solid var(--line); }
+.timeline span.now { color: var(--ink); border-top-color: var(--accent); }
+.howto { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: 14px; }
+.howto b { color: var(--ink); font-weight: 500; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* ---------- gallery ---------- */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 24px 20px; }
+.thumb { display: grid; gap: 8px; justify-items: start; }
+.thumb .frame { width: 184px; height: 224px; border-radius: 12px; overflow: hidden; position: relative; background: #000; box-shadow: 0 0 0 1px var(--line); }
+.thumb .frame > .inner { position: absolute; left: 0; top: 0; width: 368px; height: 448px; transform: scale(.5); transform-origin: top left; }
+.thumb figcaption { font-size: 13px; line-height: 1.35; }
+.thumb figcaption span { display: block; color: var(--muted); }
+
+/* ---------- device screen (AMOLED, always dark) ---------- */
+.scr { position: absolute; inset: 0; width: 368px; height: 448px; background: #000; color: #EDEDED; overflow: hidden;
+  font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; user-select: none; transition: transform .22s ease-out, opacity .22s ease-out; }
+.scr.enter { transform: scale(.92); opacity: 0; }
+.scr.leave { transform: scale(1.06); opacity: 0; pointer-events: none; }
+.scr button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ms { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal;
+  text-transform: none; display: inline-block; white-space: nowrap; direction: ltr; font-feature-settings: "liga"; -webkit-font-smoothing: antialiased; }
+
+.statusbar { position: absolute; top: 4px; left: 4px; right: 4px; height: 32px; display: flex; justify-content: space-between; align-items: center;
+  padding: 0 16px; font: 500 16px Inter, sans-serif; color: #9A9A9A; z-index: 2; font-variant-numeric: tabular-nums; }
+.statusbar .r { display: flex; align-items: center; gap: 8px; }
+.menu-list { position: absolute; top: 36px; left: 0; right: 0; bottom: 0; overflow-y: auto; scroll-snap-type: y mandatory;
+  scrollbar-width: none; padding: 8px 0 140px; scroll-padding-top: 8px; }
+.menu-list::-webkit-scrollbar { display: none; }
+.menu-row { display: flex; justify-content: center; gap: 40px; height: 176px; scroll-snap-align: start; transform-origin: center; }
+.scr .app { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 128px; }
+.app-disc { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; background: var(--accdim);
+  box-shadow: inset 0 0 0 2px var(--acc); color: var(--acc); transition: transform .12s ease-out, background .12s; }
+.scr .app:active .app-disc { transform: scale(.94); background: var(--accmid); }
+.app-name { font: 400 20px/1.2 Inter, sans-serif; color: #9A9A9A; white-space: nowrap; }
+
+.tiles { position: absolute; inset: 4px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; }
+.scr .tile { border-radius: 24px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 20px 18px 18px;
+  text-align: left; transition: background .22s, color .22s, transform .12s; }
+.scr .tile:active { transform: scale(.96); }
+.scr .tile.on { background: #FFB300; color: #1E1500; }
+.scr .tile.off { background: #141414; color: #EDEDED; }
+.scr .tile.off .tile-ic { color: #5A5A5A; }
+.scr .tile.na { background: #000; box-shadow: inset 0 0 0 2px #3A3A3A; color: #5A5A5A; }
+.tile-lab { font: 600 26px/1.15 Inter, sans-serif; text-wrap: balance; }
+.tile-st { font: 500 16px Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; opacity: .8; height: 20px; display: flex; align-items: center; gap: 8px; }
+.scr .tile.shake { animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; display: inline-block; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pomo-top { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; justify-content: space-between; align-items: center;
+  font: 500 16px Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.dots { display: flex; gap: 8px; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 2px currentColor; }
+.dots i.f { background: currentColor; }
+.pomo-ring { position: absolute; left: 34px; top: 66px; width: 300px; height: 300px; }
+.pomo-center { position: absolute; left: 34px; top: 66px; width: 300px; height: 300px; display: grid; place-content: center; text-align: center; gap: 4px; }
+.digits { font: 500 80px/1 "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.sub { font: 400 16px Inter, sans-serif; color: #9A9A9A; }
+.pomo-btns { position: absolute; left: 0; right: 0; bottom: 22px; display: flex; justify-content: center; gap: 16px; }
+.scr .pill { height: 56px; padding: 0 22px; border-radius: 28px; background: #141414; display: inline-flex; align-items: center; gap: 8px; font: 500 20px Inter, sans-serif; }
+.scr .round { width: 56px; height: 56px; border-radius: 50%; background: #141414; display: inline-grid; place-items: center; color: #9A9A9A; }
+.scr .pill:active, .scr .round:active { background: #242424; }
+.toast { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); background: #242424; padding: 8px 14px; border-radius: 12px; font: 500 16px Inter, sans-serif; white-space: nowrap; }
+.flash { position: absolute; inset: 0; pointer-events: none; animation: flash .8s; }
+@keyframes flash { 0%, 100% { opacity: 0; } 30% { opacity: .35; } }
+
+.esp-top { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; justify-content: space-between; font: 500 16px Inter, sans-serif; color: #9A9A9A; letter-spacing: .08em; text-transform: uppercase; }
+.esp-digits { position: absolute; left: 0; right: 0; top: 112px; text-align: center; font: 500 120px/1 "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.03em; transition: color .2s; }
+.esp-bar { position: absolute; left: 34px; right: 34px; top: 268px; height: 12px; border-radius: 6px; background: #141414; }
+.esp-band { position: absolute; top: -6px; bottom: -6px; border-radius: 4px; background: rgba(76, 208, 125, .18); box-shadow: inset 0 0 0 1px rgba(76, 208, 125, .5); }
+.esp-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.esp-ticks { position: absolute; left: 34px; right: 34px; top: 290px; height: 20px; font: 500 14px Inter, sans-serif; color: #5A5A5A; }
+.esp-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.esp-msg { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font: 500 20px Inter, sans-serif; }
+.esp-hist { position: absolute; left: 24px; right: 24px; bottom: 22px; display: flex; justify-content: center; gap: 8px; }
+.esp-hist span { padding: 6px 10px; border-radius: 10px; background: #141414; font: 500 16px "Roboto Mono", monospace; font-variant-numeric: tabular-nums; }
+
+.sys-title { position: absolute; top: 22px; left: 24px; font: 600 28px Inter, sans-serif; }
+.sys-list { position: absolute; top: 74px; left: 20px; right: 20px; display: grid; gap: 2px; }
+.sys-list div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; border-bottom: 1px solid #1C1C1C; font: 400 17px/1.3 Inter, sans-serif; }
+.sys-list div span:first-child { color: #9A9A9A; }
+.sys-list div span:last-child { font-variant-numeric: tabular-nums; text-align: right; }
+.scr .sys-btn { position: absolute; left: 24px; right: 24px; bottom: 22px; height: 56px; border-radius: 28px; display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #18202A; box-shadow: inset 0 0 0 2px #8FA3BF; color: #C9D6E8; font: 500 20px Inter, sans-serif; }
+.ota-center { position: absolute; left: 54px; top: 70px; width: 260px; height: 260px; display: grid; place-content: center; text-align: center; gap: 6px; }
+.ota-pct { font: 500 56px/1 "Roboto Mono", monospace; font-variant-numeric: tabular-nums; }
+.ota-info { position: absolute; left: 24px; right: 24px; top: 344px; text-align: center; display: grid; gap: 4px; font: 400 18px Inter, sans-serif; color: #9A9A9A; }
+.ota-info b { color: #EDEDED; font-weight: 500; }
+
+.later { display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
+.later p { margin: 0; font: 400 20px Inter, sans-serif; color: #9A9A9A; }
+
+.minimal .m-dig { position: absolute; font: 500 44px/1 "Roboto Mono", monospace; text-align: center; width: 140px; }
+.minimal svg { position: absolute; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scr, .tile, .dimmer { transition: none; }
+  .crt.off, .crt.on { animation-duration: .01s; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Waveshare ESP32-S3-Touch-AMOLED-1.8 · 368 × 448 · design draft</span>
+    <h1>ESP32-AMOLED screens</h1>
+    <p class="lede">A clickable draft of the planned firmware UI, drawn at the panel's real pixel size with the planned tokens, fonts and icons. The side buttons work as planned: Back steps back, Home returns to the menu, and holding either for 1 s powers off. The battery idle timeline runs for real.</p>
+  </header>
+
+  <section class="bench" aria-label="Interactive device">
+    <div class="dev-host" id="devHost">
+      <div class="dev-scale" id="devScale">
+        <div class="device" id="device">
+          <div class="body"></div>
+          <div class="glass" id="glass">
+            <div class="crt" id="crt">
+              <div class="content" id="content"></div>
+              <div class="dimmer" id="dimmer"></div>
+              <div class="swallow" id="swallow" hidden></div>
+            </div>
+            <div class="hint" id="hint" hidden>Release the button</div>
+          </div>
+          <button class="sidebtn back" id="btnBack" aria-label="Back button (BOOT). Hold 1 second to power off."></button>
+          <button class="sidebtn home" id="btnHome" aria-label="Home button (PWR). Hold 1 second to power off."></button>
+          <div class="btnlabel back"><b>Back</b>BOOT</div>
+          <div class="btnlabel home"><b>Home</b>PWR</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <span class="eyebrow">Power</span>
+        <div class="seg" role="group" aria-label="Power source">
+          <button id="pBat" aria-pressed="true">Battery</button>
+          <button id="pChg" aria-pressed="false">Charger</button>
+        </div>
+        <label class="ctl"><input type="checkbox" id="pause"> Pause idle timer</label>
+      </div>
+
+      <dl class="readout">
+        <dt>Screen</dt><dd><span class="stage-pill" id="rStage">Active</span></dd>
+        <dt>Idle</dt><dd id="rIdle">0.0 s</dd>
+        <dt>App policy</dt><dd id="rPolicy">Normal</dd>
+        <dt>Brightness</dt><dd id="rBright">100 %</dd>
+        <dt>Next</dt><dd id="rNext">dims at 10 s</dd>
+      </dl>
+
+      <div>
+        <div class="timeline" id="tl"></div>
+      </div>
+
+      <ul class="howto">
+        <li><b>Tap</b> an icon to open an app. Scroll the menu with the wheel or trackpad.</li>
+        <li><b>Back</b> (upper side button, or Esc): one step back. <b>Home</b> (lower, or H): menu.</li>
+        <li><b>Hold</b> either button for 1 s: power-off animation, then deep sleep. Press again to wake.</li>
+        <li>While dimmed or black, the first tap only wakes the screen.</li>
+        <li>Start the Pomodoro and leave it alone: after 10 s it switches to its minimal view instead of sleeping.</li>
+      </ul>
+      <p class="note">Draft only. Colours, sizes and fonts follow docs/UI_DESIGN.md; the real panel is far brighter and sharper than a monitor. Values like IP, battery and firmware version are examples.</p>
+    </div>
+  </section>
+
+  <section style="display:grid; gap:16px" aria-label="All screens">
+    <h2>All screens</h2>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const now = () => performance.now();
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function ic(name, size, fill) {
+  return `<span class="ms" style="font-size:${size}px;font-variation-settings:'FILL' ${fill ? 1 : 0},'wght' 500,'GRAD' 0,'opsz' ${Math.min(48, Math.max(20, size))}">${name}</span>`;
+}
+function mix(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${Math.round((n >> 16 & 255) * a)},${Math.round((n >> 8 & 255) * a)},${Math.round((n & 255) * a)})`;
+}
+const mmss = ms => { const s = Math.ceil(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+
+const APPS = [
+  { id: 'lights', name: 'Lights', icon: 'lightbulb', accent: '#FFB300' },
+  { id: 'bot', name: 'Bot face', icon: 'sentiment_satisfied', accent: '#00E5FF' },
+  { id: 'pomodoro', name: 'Pomodoro', icon: 'timer', accent: '#FF5A4E' },
+  { id: 'espresso', name: 'Espresso', icon: 'coffee', accent: '#C8915A' },
+  { id: 'system', name: 'System', icon: 'memory', accent: '#8FA3BF' },
+  { id: 'clock', name: 'Clock', icon: 'schedule', accent: '#B388FF', later: true },
+  { id: 'stopwatch', name: 'Stopwatch', icon: 'hourglass_empty', accent: '#64DD9B', later: true },
+  { id: 'level', name: 'Level', icon: 'straighten', accent: '#FFD54F', later: true },
+  { id: 'weather', name: 'Weather', icon: 'partly_cloudy_day', accent: '#4DA3FF', later: true },
+  { id: 'scenes', name: 'Scenes', icon: 'home', accent: '#FF8A65', later: true },
+  { id: 'dice', name: 'Dice', icon: 'casino', accent: '#F06292', later: true },
+  { id: 'settings', name: 'Settings', icon: 'settings', accent: '#A0A0A0', later: true },
+];
+const appById = id => APPS.find(a => a.id === id);
+
+/* ---------------- shared app state ---------------- */
+const PH = {
+  focus: { label: 'Focus', dur: 25 * 60e3, color: '#FF5A4E' },
+  short: { label: 'Short break', dur: 5 * 60e3, color: '#4CD07D' },
+  long: { label: 'Long break', dur: 15 * 60e3, color: '#4DA3FF' },
+};
+const pomo = { phase: 'focus', running: false, rem: (18 * 60 + 42) * 1000, endAt: 0, count: 2 };
+const pomoRem = p => p.running ? Math.max(0, p.endAt - Date.now()) : p.rem;
+const esp = { mode: 'ready', start: 0, elapsed: 0, hist: [26.1, 31.8, 24.0] };
+const sys = { view: 'info', phase: 'waiting', pct: 0, t0: 0 };
+const lights = [
+  { label: 'Living room', s: 'on' }, { label: 'Kitchen', s: 'off' },
+  { label: 'Bedroom', s: 'off' }, { label: 'Hallway', s: 'na' },
+];
+const env = { charger: false, battery: 82 };
+const bootT = Date.now();
+
+function espColor(t) { return t < 20 ? '#4DA3FF' : t < 25 ? '#FFB020' : t <= 30 ? '#4CD07D' : '#FF5A5F'; }
+
+/* ---------------- screen builders ---------------- */
+function statusBar() {
+  const sb = el('div', 'statusbar');
+  const upd = () => {
+    const d = new Date();
+    const bat = env.charger ? `${ic('bolt', 18, 1)}${env.battery} %` : `${ic('battery_5_bar', 18, 1)}${env.battery} %`;
+    sb.innerHTML = `<span>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</span><span class="r">${ic('wifi', 18, 1)}<span class="r" style="gap:2px">${bat}</span></span>`;
+  };
+  upd();
+  return { el: sb, upd };
+}
+
+function fisheye(list) {
+  const c = list.scrollTop + list.clientHeight / 2 - 30;
+  for (const row of list.children) {
+    const d = Math.abs(row.offsetTop + row.offsetHeight / 2 - c);
+    const k = Math.min(1, d / 240);
+    row.style.transform = `scale(${1 - 0.1 * k})`;
+    row.style.opacity = 1 - 0.4 * k;
+  }
+}
+
+function buildMenu(live, onOpen) {
+  const s = el('div', 'scr');
+  const sb = statusBar();
+  const list = el('div', 'menu-list');
+  for (let i = 0; i < APPS.length; i += 2) {
+    const row = el('div', 'menu-row');
+    for (const a of APPS.slice(i, i + 2)) {
+      const b = el('button', 'app');
+      b.style.setProperty('--acc', a.accent);
+      b.style.setProperty('--accdim', mix(a.accent, 0.15));
+      b.style.setProperty('--accmid', mix(a.accent, 0.3));
+      b.innerHTML = `<span class="app-disc">${ic(a.icon, 64, 1)}</span><span class="app-name">${a.name}</span>`;
+      b.setAttribute('aria-label', `Open ${a.name}`);
+      if (live) b.addEventListener('click', () => onOpen(a.id));
+      else b.tabIndex = -1;
+      row.append(b);
+    }
+    list.append(row);
+  }
+  list.addEventListener('scroll', () => fisheye(list), { passive: true });
+  s.append(sb.el, list);
+  requestAnimationFrame(() => fisheye(list));
+  return {
+    el: s, list,
+    tick() { sb.upd(); },
+    home() { list.scrollTo({ top: 0, behavior: 'smooth' }); },
+    onBack() { if (list.scrollTop > 0) { list.scrollTo({ top: 0, behavior: 'smooth' }); } return true; },
+  };
+}
+
+function buildLights(state, live) {
+  const s = el('div', 'scr');
+  const g = el('div', 'tiles');
+  s.append(g);
+  const render = () => {
+    g.innerHTML = '';
+    state.forEach(t => {
+      const lit = t.s === 'on' || (t.s === 'pending' && t.prev === 'on');
+      const cls = t.s === 'na' ? 'na' : lit ? 'on' : 'off';
+      const b = el('button', 'tile ' + cls);
+      const st = t.s === 'na' ? 'n/a' : t.s === 'pending' ? '<i class="spin"></i>' : lit ? 'On' : 'Off';
+      b.innerHTML = `<span class="tile-ic">${ic('lightbulb', 56, lit)}</span><span class="tile-lab">${t.label}</span><span class="tile-st">${st}</span>`;
+      b.setAttribute('aria-label', `${t.label}: ${t.s}`);
+      if (live) b.addEventListener('click', () => {
+        if (t.s === 'on' || t.s === 'off') {
+          t.prev = t.s; t.s = 'pending'; render();
+          setTimeout(() => { t.s = t.prev === 'on' ? 'off' : 'on'; render(); }, 650);
+        } else if (t.s === 'na') { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+      });
+      else b.tabIndex = -1;
+      g.append(b);
+    });
+  };
+  render();
+  return { el: s };
+}
+
+/* bot face: parametric, tweened */
+const faces = new Set();
+function buildBot(live, isDim) {
+  const s = el('div', 'scr');
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 368 448'); svg.setAttribute('width', 368); svg.setAttribute('height', 448);
+  const C = '#00E5FF';
+  const eL = document.createElementNS(NS, 'rect'), eR = document.createElementNS(NS, 'rect');
+  const mouth = document.createElementNS(NS, 'path'), mo = document.createElementNS(NS, 'ellipse');
+  [eL, eR, mo].forEach(e => e.setAttribute('fill', C));
+  mouth.setAttribute('fill', 'none'); mouth.setAttribute('stroke', C); mouth.setAttribute('stroke-width', 12); mouth.setAttribute('stroke-linecap', 'round');
+  svg.append(eL, eR, mouth, mo);
+  s.append(svg);
+  const t0 = now();
+  const f = {
+    p: { open: 1, lx: 0, ly: 0, curve: 0.55, mo: 0, bounce: 0, w: 1 },
+    tg: { open: 1, lx: 0, ly: 0, curve: 0.55, mo: 0, bounce: 0, w: 1 },
+    nextBlink: t0 + 1500, blinkAt: -1e9, nextLook: t0 + 1200, reactUntil: 0, lastTap: 0, isDim,
+    draw(t) {
+      const p = this.p, tg = this.tg;
+      if (t > this.reactUntil) {
+        const sleepy = this.isDim && this.isDim();
+        tg.open = sleepy ? 0.45 : 1; tg.curve = sleepy ? 0.25 : 0.55; tg.mo = 0; tg.bounce = 0; tg.w = 1;
+      }
+      if (t > this.nextLook) {
+        const center = Math.random() < 0.3;
+        tg.lx = center ? 0 : Math.random() * 2 - 1; tg.ly = center ? 0 : Math.random() * 1.2 - 0.6;
+        this.nextLook = t + 1400 + Math.random() * 2200;
+      }
+      if (t > this.nextBlink) {
+        this.blinkAt = t;
+        const dbl = Math.random() < 0.2;
+        this.nextBlink = t + (dbl ? 260 : 2000 + Math.random() * 4000) * ((this.isDim && this.isDim()) ? 1.8 : 1);
+      }
+      for (const k in p) p[k] += (tg[k] - p[k]) * 0.16;
+      const ph = (t - this.blinkAt) / 150;
+      const blink = ph < 1 ? 1 - Math.sin(ph * Math.PI) * 0.93 : 1;
+      const breathe = Math.sin((t - t0) / 900) * 3;
+      const h = Math.max(8, 118 * p.open * blink), w = 86 * p.w;
+      const cy = 196 + p.ly * 14 + breathe + p.bounce;
+      [[124, eL], [244, eR]].forEach(([cx, e]) => {
+        const x = cx + p.lx * 18 - w / 2;
+        e.setAttribute('x', x); e.setAttribute('y', cy - h / 2); e.setAttribute('width', w); e.setAttribute('height', h);
+        e.setAttribute('rx', Math.min(28, h / 2)); e.setAttribute('ry', Math.min(28, h / 2));
+      });
+      const my = 318 + breathe + p.bounce * 0.6, mx = 184 + p.lx * 8;
+      if (p.mo > 0.15) {
+        mouth.setAttribute('d', ''); mo.setAttribute('cx', mx); mo.setAttribute('cy', my + 6);
+        mo.setAttribute('rx', 16 + 6 * p.mo); mo.setAttribute('ry', 24 * p.mo);
+      } else {
+        mo.setAttribute('rx', 0); mo.setAttribute('ry', 0);
+        mouth.setAttribute('d', `M ${mx - 44} ${my} Q ${mx} ${my + 56 * p.curve} ${mx + 44} ${my}`);
+      }
+    },
+    tap(t) {
+      if (t - this.lastTap < 320) {
+        Object.assign(this.tg, { open: 1.25, w: 1.15, mo: 1, curve: 0, bounce: -6 });
+        this.reactUntil = t + 1300;
+      } else {
+        Object.assign(this.tg, { open: 0.3, w: 1.08, curve: 1, mo: 0, bounce: -14 });
+        this.reactUntil = t + 900;
+        setTimeout(() => { this.tg.bounce = 0; }, 180);
+      }
+      this.lastTap = t;
+    },
+    svg,
+  };
+  faces.add(f);
+  if (live) s.addEventListener('pointerdown', () => f.tap(now()));
+  f.draw(now());
+  return { el: s, face: f };
+}
+(function faceLoop() {
+  const t = now();
+  for (const f of faces) { if (!f.svg.isConnected) { faces.delete(f); continue; } f.draw(t); }
+  requestAnimationFrame(faceLoop);
+})();
+
+function ringSvg(r, w, color, frac, track, dash) {
+  const C = 2 * Math.PI * r, sz = (r + w) * 2;
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true">
+    ${track ? `<circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="${track}" stroke-width="${w}"/>` : ''}
+    <circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"
+      ${dash ? `stroke-dasharray="${dash}"` : `stroke-dasharray="${C * frac} ${C}"`} transform="rotate(-90 ${sz / 2} ${sz / 2})"/>
+  </svg>`;
+}
+
+function buildPomodoro(p, live) {
+  const s = el('div', 'scr');
+  const top = el('div', 'pomo-top'), ring = el('div', 'pomo-ring'), center = el('div', 'pomo-center'), btns = el('div', 'pomo-btns');
+  const toggle = el('button', 'pill'), reset = el('button', 'round', ic('restart_alt', 28, 0));
+  reset.setAttribute('aria-label', 'Reset phase');
+  btns.append(toggle, reset);
+  s.append(top, ring, center, btns);
+  let confirmUntil = 0, pressT = null, skipped = false;
+  const render = () => {
+    const ph = PH[p.phase], rem = pomoRem(p);
+    top.style.color = ph.color;
+    const filled = p.phase === 'focus' ? p.count % 4 : p.phase === 'long' ? 4 : p.count % 4 || 4;
+    top.innerHTML = `<span>${ph.label}</span><span class="dots">${[0, 1, 2, 3].map(i => `<i class="${i < filled ? 'f' : ''}"></i>`).join('')}</span>`;
+    ring.innerHTML = ringSvg(144, 6, ph.color, 1 - rem / ph.dur, '#1E1E1E');
+    const nxt = p.phase === 'focus' ? ((p.count + 1) % 4 === 0 ? 'long break' : 'short break') : 'focus';
+    center.innerHTML = `<div class="digits">${mmss(rem)}</div><div class="sub">${p.running ? 'until ' + nxt : 'paused'}</div>`;
+    toggle.innerHTML = p.running ? `${ic('pause', 28, 1)}Pause` : `${ic('play_arrow', 28, 1)}${rem === ph.dur ? 'Start' : 'Resume'}`;
+    toggle.style.color = ph.color;
+    const old = s.querySelector('.toast');
+    if (Date.now() < confirmUntil) { if (!old) s.append(el('div', 'toast', 'Tap again to reset')); } else if (old) old.remove();
+  };
+  if (live) {
+    const flip = () => {
+      if (p.running) { p.rem = pomoRem(p); p.running = false; } else { p.endAt = Date.now() + p.rem; p.running = true; }
+      render();
+    };
+    toggle.addEventListener('click', flip);
+    center.style.cursor = 'pointer';
+    center.addEventListener('pointerdown', () => { skipped = false; pressT = setTimeout(() => { skipped = true; pomoAdvance(true); render(); }, 700); });
+    center.addEventListener('pointerup', () => { clearTimeout(pressT); if (!skipped) flip(); });
+    center.addEventListener('pointerleave', () => clearTimeout(pressT));
+    reset.addEventListener('click', () => {
+      if (Date.now() < confirmUntil) {
+        confirmUntil = 0; p.running = false; p.rem = PH[p.phase].dur;
+      } else confirmUntil = Date.now() + 2000;
+      render();
+    });
+  } else [toggle, reset].forEach(b => b.tabIndex = -1);
+  render();
+  return { el: s, tick: render };
+}
+function pomoAdvance(manual) {
+  const p = pomo;
+  if (p.phase === 'focus') { p.count++; p.phase = p.count % 4 === 0 ? 'long' : 'short'; }
+  else if (p.phase === 'long') { p.phase = 'focus'; p.count = 0; }
+  else p.phase = 'focus';
+  p.rem = PH[p.phase].dur;
+  if (p.running) p.endAt = Date.now() + p.rem;
+  if (!manual) phaseFlash();
+}
+
+function buildPomoMinimal(p, drift) {
+  const s = el('div', 'scr minimal');
+  const render = () => {
+    const ph = PH[p.phase], rem = pomoRem(p);
+    const k = drift ? Math.floor(Date.now() / 5000) : 0;
+    const dx = Math.round(Math.sin(k * 1.7) * 22), dy = Math.round(Math.cos(k * 1.1) * 26);
+    const cx = 184 + dx, cy = 224 + dy;
+    const frac = rem / ph.dur, r = 62, N = 40, lit = Math.ceil(frac * N);
+    let dots = '';
+    for (let i = 0; i < lit; i++) {
+      const a = -Math.PI / 2 + i * 2 * Math.PI / N;
+      dots += `<circle cx="${(cx + r * Math.cos(a)).toFixed(1)}" cy="${(cy + r * Math.sin(a)).toFixed(1)}" r="2.2" fill="${ph.color}"/>`;
+    }
+    s.innerHTML = `<svg width="368" height="448" viewBox="0 0 368 448" aria-hidden="true">${dots}</svg>
+      <div class="m-dig" style="left:${cx - 70}px;top:${cy - 22}px;color:${ph.color}">${Math.ceil(rem / 60000)}</div>`;
+  };
+  render();
+  return { el: s, tick: render };
+}
+
+function buildEspresso(e, live) {
+  const s = el('div', 'scr');
+  s.innerHTML = `<div class="esp-top"><span>Espresso</span><span>target 25–30 s</span></div>
+    <div class="esp-digits"></div>
+    <div class="esp-bar"><div class="esp-band" style="left:${25 / 40 * 100}%;width:${5 / 40 * 100}%"></div><div class="esp-fill"></div></div>
+    <div class="esp-ticks"><span style="left:0">0</span><span style="left:${25 / 40 * 100}%">25</span><span style="left:${30 / 40 * 100}%">30</span><span style="left:100%">40 s</span></div>
+    <div class="esp-msg"></div><div class="esp-hist"></div>`;
+  const dg = s.querySelector('.esp-digits'), fill = s.querySelector('.esp-fill'), msg = s.querySelector('.esp-msg'), hist = s.querySelector('.esp-hist');
+  const render = () => {
+    const t = e.mode === 'running' ? (now() - e.start) / 1000 : e.elapsed;
+    const col = e.mode === 'ready' ? '#EDEDED' : espColor(t);
+    dg.textContent = t.toFixed(1); dg.style.color = col;
+    fill.style.width = Math.min(100, t / 40 * 100) + '%'; fill.style.background = e.mode === 'ready' ? 'transparent' : col;
+    if (e.mode === 'ready') { msg.textContent = 'Tap anywhere to start'; msg.style.color = '#9A9A9A'; }
+    else if (e.mode === 'running') { msg.textContent = 'Tap to stop'; msg.style.color = '#9A9A9A'; }
+    else {
+      const ok = t >= 25 && t <= 30;
+      msg.innerHTML = ok ? `${ic('check_circle', 22, 1)} In target` : t < 25 ? 'Too short' : 'Too long';
+      msg.style.color = ok ? '#4CD07D' : t < 25 ? '#4DA3FF' : '#FF5A5F';
+    }
+    hist.innerHTML = e.hist.slice(0, 4).map(v => `<span style="color:${v >= 25 && v <= 30 ? '#4CD07D' : '#9A9A9A'}">${v.toFixed(1)}${v >= 25 && v <= 30 ? ' ✓' : ''}</span>`).join('');
+  };
+  let pressT = null, longDone = false;
+  if (live) {
+    s.style.cursor = 'pointer';
+    s.addEventListener('pointerdown', () => {
+      longDone = false;
+      if (e.mode === 'done') pressT = setTimeout(() => { longDone = true; e.hist.shift(); e.mode = 'ready'; e.elapsed = 0; render(); }, 700);
+    });
+    s.addEventListener('pointerup', () => {
+      clearTimeout(pressT);
+      if (longDone) return;
+      if (e.mode === 'ready') { e.mode = 'running'; e.start = now(); }
+      else if (e.mode === 'running') { e.elapsed = Math.round((now() - e.start) / 100) / 10; e.mode = 'done'; e.hist.unshift(e.elapsed); }
+      else { e.mode = 'ready'; e.elapsed = 0; }
+      render();
+    });
+  }
+  render();
+  return {
+    el: s, tick: render,
+    onBack() { if (e.mode === 'done') { e.mode = 'ready'; e.elapsed = 0; render(); return true; } return false; },
+  };
+}
+
+function buildSystem(st, live, restart) {
+  const s = el('div', 'scr');
+  let infoVals = null;
+  const upd = () => {
+    if (!infoVals) return;
+    const up = Math.floor((Date.now() - bootT) / 1000);
+    infoVals.bat.textContent = `${env.battery} % · 3.95 V`;
+    infoVals.chg.textContent = env.charger ? 'yes (USB)' : 'no';
+    infoVals.up.textContent = `${Math.floor(up / 3600)}:${String(Math.floor(up / 60) % 60).padStart(2, '0')}:${String(up % 60).padStart(2, '0')}`;
+  };
+  const render = () => {
+    infoVals = null;
+    if (st.view === 'info') {
+      const up = Math.floor((Date.now() - bootT) / 1000);
+      s.innerHTML = `<div class="sys-title">System</div><div class="sys-list">
+        <div><span>Firmware</span><span>v0.3.0-5-gabc123</span></div>
+        <div><span>Board</span><span>V2 · ESP32-S3R8</span></div>
+        <div><span>Battery</span><span>${env.battery} % · 3.95 V</span></div>
+        <div><span>Charging</span><span>${env.charger ? 'yes (USB)' : 'no'}</span></div>
+        <div><span>Wi-Fi</span><span>−61 dBm</span></div>
+        <div><span>IP</span><span>192.168.1.57</span></div>
+        <div><span>Free RAM</span><span>212 KB · 7.6 MB</span></div>
+        <div><span>Uptime</span><span>${Math.floor(up / 3600)}:${String(Math.floor(up / 60) % 60).padStart(2, '0')}:${String(up % 60).padStart(2, '0')}</span></div>
+      </div><button class="sys-btn">${ic('system_update', 26, 1)}Wireless update</button>`;
+      const vals = s.querySelectorAll('.sys-list span:last-child');
+      infoVals = { bat: vals[2], chg: vals[3], up: vals[7] };
+      const b = s.querySelector('.sys-btn');
+      if (live) b.addEventListener('click', () => { st.view = 'ota'; st.phase = 'waiting'; st.pct = 0; st.t0 = now(); render(); });
+      else b.tabIndex = -1;
+    } else {
+      const c = { waiting: '#8FA3BF', receiving: '#8FA3BF', done: '#4CD07D' }[st.phase];
+      const centerHtml = st.phase === 'waiting'
+        ? `${ic('wifi_tethering', 56, 1)}<div class="sub">Waiting for upload</div>`
+        : st.phase === 'receiving' ? `<div class="ota-pct">${Math.floor(st.pct)} %</div><div class="sub">Receiving</div>`
+        : `${ic('check_circle', 64, 1)}<div class="sub">Updated · restarting</div>`;
+      s.innerHTML = `<div class="sys-title">Wireless update</div>
+        <div style="position:absolute;left:54px;top:70px">${ringSvg(124, 6, c, st.phase === 'waiting' ? 0.001 : st.phase === 'done' ? 1 : st.pct / 100, '#1E1E1E')}</div>
+        <div class="ota-center" style="color:${c}">${centerHtml}</div>
+        <div class="ota-info">${st.phase === 'receiving' ? '<b>Don’t power off</b>' : '<b>esp32-amoled.local</b>'}<span>192.168.1.57 · v0.3.0-5-gabc123</span></div>`;
+    }
+  };
+  render();
+  return {
+    el: s,
+    tick() {
+      if (st.view === 'info') { upd(); return; }
+      if (!live) return;
+      const t = now() - st.t0;
+      if (st.phase === 'waiting' && t > 2600) { st.phase = 'receiving'; st.t0 = now(); }
+      else if (st.phase === 'receiving') { st.pct = Math.min(100, t / 60); if (st.pct >= 100) { st.phase = 'done'; st.t0 = now(); } }
+      else if (st.phase === 'done' && t > 1400) { st.view = 'info'; restart(); return; }
+      render();
+    },
+    onBack() { if (st.view === 'ota') { if (st.phase === 'waiting') { st.view = 'info'; render(); } return true; } return false; },
+    blocksHome() { return st.view === 'ota' && st.phase !== 'waiting'; },
+    policy() { return st.view === 'ota' ? 'keep' : null; },
+  };
+}
+
+function buildLater(a) {
+  const s = el('div', 'scr later');
+  s.innerHTML = `<span class="app-disc" style="--acc:${a.accent};--accdim:${mix(a.accent, 0.15)};width:128px;height:128px;border-radius:50%;display:grid;place-items:center;background:${mix(a.accent, 0.15)};box-shadow:inset 0 0 0 2px ${a.accent};color:${a.accent}">${ic(a.icon, 64, 1)}</span>
+    <div style="font:600 28px Inter,sans-serif">${a.name}</div><p>Planned for later</p>`;
+  return { el: s };
+}
+
+/* ---------------- device controller ---------------- */
+const D = { power: 'on', stage: 'active', lastInput: now(), frozenIdle: 0, paused: false, app: 'menu', scr: null, held: new Set(), consumed: false, holdT: null, waitRelease: false, minimal: null, bright: 1 };
+const content = $('#content'), dimmer = $('#dimmer'), swallow = $('#swallow'), crt = $('#crt'), hint = $('#hint');
+
+function make(id) {
+  if (id === 'menu') return buildMenu(true, open);
+  if (id === 'lights') return buildLights(lights, true);
+  if (id === 'bot') return buildBot(true, () => D.stage === 'dim');
+  if (id === 'pomodoro') return buildPomodoro(pomo, true);
+  if (id === 'espresso') return buildEspresso(esp, true);
+  if (id === 'system') return buildSystem(sys, true, () => { powerOff(() => setTimeout(powerOn, 500)); });
+  return buildLater(appById(id));
+}
+function show(id, animate = true) {
+  const old = D.scr;
+  const n = make(id);
+  D.app = id; D.scr = n;
+  if (animate) n.el.classList.add('enter');
+  content.append(n.el);
+  if (animate) requestAnimationFrame(() => requestAnimationFrame(() => n.el.classList.remove('enter')));
+  if (old) {
+    if (animate) { old.el.classList.add('leave'); setTimeout(() => old.el.remove(), 240); } else old.el.remove();
+  }
+}
+function open(id) { show(id); }
+function doHome() {
+  if (D.scr.blocksHome && D.scr.blocksHome()) return;
+  if (D.app === 'menu') D.scr.home(); else show('menu');
+}
+function doBack() {
+  if (D.scr.blocksHome && D.scr.blocksHome()) return;
+  if (D.scr.onBack && D.scr.onBack()) return;
+  if (D.app !== 'menu') show('menu');
+}
+function phaseFlash() {
+  const f = el('div', 'flash'); f.style.background = PH[pomo.phase].color;
+  content.append(f); setTimeout(() => f.remove(), 900);
+  D.lastInput = now();
+}
+
+function policy() {
+  if (D.app === 'espresso' && esp.mode === 'running') return 'keep';
+  if (D.scr && D.scr.policy && D.scr.policy() === 'keep') return 'keep';
+  if (pomo.running) return 'low';
+  return 'normal';
+}
+const STAGES = {
+  battery: [['active', 0], ['dim', 10], ['black', 15], ['sleep', 20]],
+  charger: [['active', 0], ['dim', 60], ['black', 300]],
+};
+function idleSec() { return D.paused ? D.frozenIdle : (now() - D.lastInput) / 1000; }
+
+function tick() {
+  if (pomo.running && pomoRem(pomo) <= 0) pomoAdvance(false);
+  if (D.power !== 'on') { updateReadout(); return; }
+  const idle = idleSec(), pol = policy(), prof = env.charger ? 'charger' : 'battery';
+  const maxB = env.charger ? 0.8 : 1;
+  let stage = 'active';
+  if (pol === 'low') stage = idle >= 10 ? 'minimal' : 'active';
+  else if (pol === 'normal') for (const [st, at] of STAGES[prof]) if (idle >= at) stage = st;
+  if (stage === 'sleep') { sleepNow(); return; }
+  D.stage = stage;
+  const b = { active: maxB, dim: env.charger ? 0.4 : 0.25, black: 0, minimal: 0.35 }[stage];
+  D.bright = b;
+  dimmer.style.opacity = 1 - b;
+  swallow.hidden = stage === 'active';
+  if (stage === 'minimal' && !D.minimal) { D.minimal = buildPomoMinimal(pomo, true); content.append(D.minimal.el); }
+  if (stage !== 'minimal' && D.minimal) { D.minimal.el.remove(); D.minimal = null; }
+  if (D.minimal) D.minimal.tick();
+  if (D.scr && D.scr.tick) D.scr.tick();
+  updateReadout();
+}
+function wakeScreen() { D.lastInput = now(); D.frozenIdle = 0; tick(); }
+
+function powerOff(after) {
+  if (D.power !== 'on') return;
+  if (pomo.running) { pomo.rem = pomoRem(pomo); pomo.running = false; }
+  D.power = 'anim';
+  crt.classList.remove('on', 'dead'); void crt.offsetWidth; crt.classList.add('off');
+  setTimeout(() => {
+    if (D.held.size) { D.waitRelease = true; hint.hidden = false; }
+    else finishSleep();
+    if (after) after();
+  }, 1000);
+  updateReadout();
+}
+function finishSleep() {
+  D.power = 'sleep'; D.waitRelease = false; hint.hidden = true;
+  crt.classList.remove('off'); crt.classList.add('dead');
+  updateReadout();
+}
+function sleepNow() {
+  D.power = 'sleep'; crt.classList.remove('on', 'off'); crt.classList.add('dead'); updateReadout();
+}
+function powerOn() {
+  if (D.power === 'on') return;
+  D.power = 'anim';
+  if (D.minimal) { D.minimal.el.remove(); D.minimal = null; }
+  content.innerHTML = ''; D.scr = null;
+  show('menu', false);
+  dimmer.style.opacity = env.charger ? 0.2 : 0; swallow.hidden = true;
+  crt.classList.remove('dead', 'off'); void crt.offsetWidth; crt.classList.add('on');
+  setTimeout(() => { crt.classList.remove('on'); D.power = 'on'; D.lastInput = now(); D.frozenIdle = 0; tick(); }, 600);
+}
+
+/* side buttons */
+function btnDown(kind, btn, ev) {
+  ev.preventDefault();
+  D.held.add(kind);
+  if (D.power === 'sleep') { D.consumed = true; powerOn(); return; }
+  if (D.power !== 'on') { D.consumed = true; return; }
+  const wasActive = D.stage === 'active';
+  wakeScreen();
+  D.consumed = !wasActive;
+  clearTimeout(D.holdT);
+  if (!(D.scr && D.scr.blocksHome && D.scr.blocksHome())) {
+    btn.classList.add('holding');
+    D.holdT = setTimeout(() => { D.consumed = true; btn.classList.remove('holding'); powerOff(); }, 1000);
+  }
+}
+function btnUp(kind, btn) {
+  if (!D.held.has(kind)) return;
+  D.held.delete(kind);
+  clearTimeout(D.holdT); btn.classList.remove('holding');
+  if (!D.consumed && D.power === 'on') (kind === 'back' ? doBack : doHome)();
+  D.consumed = false;
+  if (D.waitRelease && D.held.size === 0) finishSleep();
+}
+[['back', $('#btnBack')], ['home', $('#btnHome')]].forEach(([k, b]) => {
+  b.addEventListener('pointerdown', e => { b.setPointerCapture(e.pointerId); btnDown(k, b, e); });
+  b.addEventListener('pointerup', () => btnUp(k, b));
+  b.addEventListener('pointercancel', () => btnUp(k, b));
+  b.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) btnDown(k, b, e); });
+  b.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' ') btnUp(k, b); });
+});
+document.addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input')) return;
+  const k = e.key === 'Escape' || e.key === 'Backspace' ? 'back' : (e.key === 'h' || e.key === 'H') ? 'home' : null;
+  if (!k || e.repeat) return;
+  const b = k === 'back' ? $('#btnBack') : $('#btnHome');
+  btnDown(k, b, e);
+  const up = ev => { if (ev.key === e.key) { btnUp(k, b); document.removeEventListener('keyup', up); } };
+  document.addEventListener('keyup', up);
+});
+
+/* touches on the display */
+$('#glass').addEventListener('pointerdown', () => { if (D.power === 'on' && D.stage === 'active') D.lastInput = now(); }, true);
+$('#glass').addEventListener('wheel', () => { if (D.power === 'on' && D.stage === 'active') D.lastInput = now(); }, { capture: true, passive: true });
+swallow.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); wakeScreen(); });
+
+/* panel */
+function setProfile(chg) {
+  env.charger = chg; env.battery = chg ? 84 : 82;
+  $('#pBat').setAttribute('aria-pressed', String(!chg)); $('#pChg').setAttribute('aria-pressed', String(chg));
+  D.lastInput = now(); D.frozenIdle = 0; tick();
+}
+$('#pBat').addEventListener('click', () => setProfile(false));
+$('#pChg').addEventListener('click', () => setProfile(true));
+$('#pause').addEventListener('change', e => {
+  if (e.target.checked) { D.frozenIdle = (now() - D.lastInput) / 1000; D.paused = true; }
+  else { D.paused = false; D.lastInput = now() - D.frozenIdle * 1000; }
+});
+
+function updateReadout() {
+  const pol = policy(), prof = env.charger ? 'charger' : 'battery';
+  const label = D.power === 'sleep' ? 'Deep sleep' : D.power === 'anim' ? 'Powering…' : { active: 'Active', dim: 'Dimmed', black: 'Black', minimal: 'Minimal view' }[D.stage];
+  $('#rStage').textContent = label;
+  const idle = idleSec();
+  $('#rIdle').textContent = D.power === 'on' ? idle.toFixed(1) + ' s' + (D.paused ? ' (paused)' : '') : '—';
+  $('#rPolicy').textContent = { normal: 'Normal', keep: 'Keep awake', low: 'Low-power display (Pomodoro running)' }[pol];
+  $('#rBright').textContent = D.power === 'on' ? Math.round(D.bright * 100) + ' %' + (D.stage === 'minimal' ? ' (≈15 % on the device)' : '') : 'off';
+  let next = '—';
+  if (D.power === 'sleep') next = 'press a side button to wake';
+  else if (D.power === 'on') {
+    if (pol === 'keep') next = 'stays on while busy';
+    else if (pol === 'low') next = D.stage === 'minimal' ? 'touch for the full view' : `minimal view at 10 s`;
+    else {
+      const up = STAGES[prof].find(([, at]) => at > idle);
+      next = up ? `${{ dim: 'dims', black: 'goes black', sleep: 'sleeps' }[up[0]]} at ${up[1] >= 60 ? up[1] / 60 + ' min' : up[1] + ' s'}` : 'stays black (charger)';
+    }
+  }
+  $('#rNext').textContent = next;
+  const tl = $('#tl');
+  const stg = pol === 'low' ? [['active', 'Full · 0 s'], ['minimal', 'Minimal · 10 s']] :
+    prof === 'battery' ? [['active', 'Full · 0 s'], ['dim', '25 % · 10 s'], ['black', 'Black · 15 s'], ['sleep', 'Sleep · 20 s']] :
+      [['active', '80 % · 0 s'], ['dim', '40 % · 60 s'], ['black', 'Black · 5 min']];
+  const cur = D.power === 'sleep' ? 'sleep' : D.stage;
+  tl.style.gridTemplateColumns = `repeat(${stg.length}, minmax(0,1fr))`;
+  tl.innerHTML = stg.map(([k, l]) => `<span class="${k === cur ? 'now' : ''}">${l}</span>`).join('');
+}
+
+/* scale the device to fit */
+function fit() {
+  const host = $('#devHost'), w = host.clientWidth;
+  const k = Math.min(1, w / 470);
+  $('#device').style.transform = `scale(${k})`;
+  $('#devScale').style.height = 500 * k + 'px';
+}
+new ResizeObserver(fit).observe($('#devHost'));
+fit();
+
+show('menu', false);
+setInterval(tick, 200);
+tick();
+
+/* ---------------- gallery ---------------- */
+function thumb(title, note, build, dim) {
+  const fig = el('figure', 'thumb'); fig.style.margin = 0;
+  const fr = el('div', 'frame'), inner = el('div', 'inner');
+  const scr = build();
+  inner.append(scr);
+  if (dim != null) { const d = el('div'); d.style.cssText = `position:absolute;inset:0;background:#000;opacity:${1 - dim}`; inner.append(d); }
+  fr.append(inner);
+  fig.append(fr, el('figcaption', '', `${title}<span>${note}</span>`));
+  $('#gallery').append(fig);
+  return scr;
+}
+const gLights = [{ label: 'Living room', s: 'on' }, { label: 'Kitchen', s: 'off' }, { label: 'Bedroom', s: 'pending', prev: 'off' }, { label: 'Hallway', s: 'na' }];
+const gPomoStatic = { phase: 'focus', running: false, rem: (18 * 60 + 42) * 1000, count: 2 };
+const gPomoMin = { phase: 'focus', running: false, rem: 18 * 60e3, count: 2 };
+thumb('App menu', 'Round icons in pairs, vertical scroll with snapping', () => buildMenu(false).el);
+thumb('Home Assistant lights', 'On, off, toggling, unavailable', () => buildLights(gLights, false).el);
+thumb('Bot face', 'Blinks, looks around, breathes', () => buildBot(false).el);
+thumb('Pomodoro', 'Focus phase, 2 of 4 done', () => buildPomodoro(gPomoStatic, false).el);
+thumb('Pomodoro, minimal view', 'Shown at ≈15 % on the device; redraws once a minute', () => buildPomoMinimal(gPomoMin, false).el, 0.6);
+thumb('Espresso, running', '22.3 s: amber, close to target', () => buildEspresso({ mode: 'done', elapsed: 22.3, hist: [26.1, 31.8, 24.0] }, false).el);
+thumb('Espresso, done', '27.4 s in the 25–30 s window', () => buildEspresso({ mode: 'done', elapsed: 27.4, hist: [27.4, 26.1, 31.8, 24.0] }, false).el);
+thumb('System', 'Info list with the update entry', () => buildSystem({ view: 'info' }, false).el);
+thumb('Wireless update', 'Receiving firmware, 42 %', () => buildSystem({ view: 'ota', phase: 'receiving', pct: 42 }, false).el);
+thumb('Menu, dimmed', 'Battery: 25 % after 10 s idle', () => buildMenu(false).el, 0.25);
+thumb('Power-off animation', 'Long press: the picture collapses to a line, then a dot', () => {
+  const s = el('div', 'scr');
+  s.innerHTML = `<div style="position:absolute;left:24px;right:24px;top:222px;height:4px;border-radius:2px;background:#EDEDED;box-shadow:0 0 18px 4px rgba(237,237,237,.55)"></div>`;
+  return s;
+});
+thumb('Planned app', 'Placeholder for apps not built yet', () => buildLater(appById('weather')).el);
+
+/* the "running" espresso thumb: fix label and colour after build */
+(function () {
+  const figs = document.querySelectorAll('#gallery .thumb');
+  const run = figs[5].querySelector('.scr');
+  run.querySelector('.esp-msg').textContent = 'Tap to stop';
+  run.querySelector('.esp-msg').style.color = '#9A9A9A';
+  run.querySelector('.esp-hist').innerHTML = [26.1, 31.8, 24.0].map(v => `<span style="color:${v >= 25 && v <= 30 ? '#4CD07D' : '#9A9A9A'}">${v.toFixed(1)}${v >= 25 && v <= 30 ? ' ✓' : ''}</span>`).join('');
+})();
+</script>
+</body>
+</html>

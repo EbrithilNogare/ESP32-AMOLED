@@ -5,6 +5,19 @@
 > implemented once in `src/ui/theme.{h,cpp}`. Apps never hard-code colours,
 > sizes or durations.
 
+## 0. Mockup
+
+[`docs/design/ui-mockup.html`](design/ui-mockup.html) is a clickable draft of
+every planned screen, at the panel's real 368 × 448 size, using these tokens,
+fonts and icons. Open it in a browser (it loads fonts from Google Fonts). It
+simulates the side buttons, the long-press power-off animation and the
+battery/charger idle timelines.
+
+![UI mockup](design/ui-mockup.png)
+
+The mockup is the visual reference for implementation. When a design decision
+changes, update the mockup and this document together.
+
 ## 1. Canvas
 
 - **368 × 448 px, portrait**, ~1.8", ~330 ppi. A 16 px font is small, so
