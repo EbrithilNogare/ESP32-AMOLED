@@ -7,8 +7,9 @@ Firmware skeleton for the
 ESP32-S3R8 (16 MB flash, 8 MB PSRAM), 1.8" 368×448 AMOLED with touch, AXP2101
 PMU, QMI8658 IMU, PCF85063 RTC, ES8311 audio, microSD.
 
-Right now the app only prints a boot banner over USB and idles — the structure,
-config, and hardware data are ready for a real app.
+Right now the app only prints a boot banner over USB and idles. Planned next:
+an app launcher and a Home Assistant light switcher — see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ROADMAP.md](docs/ROADMAP.md).
 
 **Full board spec, pinout, I2C map, and library notes: [docs/HARDWARE.md](docs/HARDWARE.md).**
 
@@ -25,6 +26,8 @@ ESP32-AMOLED/
 ├── data/                    files packed into the LittleFS partition
 ├── docs/
 │   ├── HARDWARE.md          everything about the board
+│   ├── ARCHITECTURE.md      system design (launcher, power, Home Assistant)
+│   ├── ROADMAP.md           milestones and on-device checklists
 │   ├── DECISIONS.md         why things are the way they are
 │   └── LESSONS.md           gotchas learned along the way
 ├── AGENTS.md                instructions for AI coding agents (CLAUDE.md imports it)

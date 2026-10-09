@@ -14,6 +14,8 @@ Waveshare ESP32-S3-Touch-AMOLED-1.8 (ESP32-S3R8, 16 MB flash, 8 MB OPI PSRAM,
 | File | What's in it |
 | --- | --- |
 | `docs/HARDWARE.md` | board spec, V1/V2 revisions, full pinout, I2C map, IO expander, power, libraries, bring-up snippets |
+| `docs/ARCHITECTURE.md` | system design: app framework, power/sleep, Home Assistant integration |
+| `docs/ROADMAP.md` | milestones with on-device acceptance checklists — find the current one before coding |
 | `docs/DECISIONS.md` | why things are the way they are — check before changing toolchain, layout, partitions |
 | `docs/LESSONS.md` | gotchas learned on real hardware and in the toolchain |
 | `README.md` | layout, build/flash, environments |
