@@ -558,3 +558,6 @@ Still open:
 2. **Can PWR wake from deep sleep?** Unknown until M6 (§8.4). If it can't,
    choose between: BOOT-only wake from ESP deep sleep, or "deep off"
    (PWR-only wake, lowest drain).
+3. **OTA listener:** only from System → Wireless update (default,
+   `OTA_LISTEN_ON_CHARGER 0`), or also automatically while on the charger
+   with Wi-Fi up (`1`, more convenient, slightly larger attack surface)?
