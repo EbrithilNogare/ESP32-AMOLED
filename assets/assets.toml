@@ -1,0 +1,207 @@
+# Asset manifest — the single list of everything tools/assets.py builds.
+#
+#   python tools/assets.py           regenerate src/ui/generated/ (+ data/img/)
+#   python tools/assets.py --check   fail if the committed output is stale
+#
+# Paths are relative to this directory. Symbol names:
+#   [[font]]   name = "body"   ->  const lv_font_t font_body
+#   [[image]]  name = "bulb"   ->  const lv_image_dsc_t img_bulb
+#   [[sprite]] name = "steam"  ->  const SpriteInfo sprite_steam
+#                                  const lv_image_dsc_t *const sprite_steam_frames[]
+# Icon names become ICON_<NAME> UTF-8 string macros in assets.h.
+# See tools/README.md and docs/UI_DESIGN.md §7.
+#
+# Font provenance (licences next to the files in fonts/):
+#   Inter 4.001  — rsms/inter @ 353b61b9f4430d5f420d56605a6e7993e0941470,
+#                  docs/font-files/Inter-{Regular,Medium,SemiBold}.woff2 (the
+#                  project's official static instances), converted losslessly
+#                  WOFF2 -> TTF with fontTools. SIL OFL 1.1 (Inter-OFL.txt).
+#                  woff2 sha256: Regular e06f6b1b…ae085, Medium 0ff3e946…f2a48,
+#                  SemiBold 5cb7103e…a301.
+#   Roboto Mono 3.001 — googlefonts/RobotoMono @ 895ec691990d041dd727c7b5afa3ce56525d98e6,
+#                  fonts/ttf/RobotoMono-Medium.ttf, byte-identical. Upstream is
+#                  SIL OFL 1.1 since v3 (RobotoMono-OFL.txt).
+#   Material Symbols Rounded — variable font, NOT committed (15 MB): downloaded
+#                  on demand from [source.material_symbols_rounded] below,
+#                  checked against the pinned SHA-256, cached in tools/.cache/,
+#                  then subset + instanced with fontTools. Apache-2.0
+#                  (MaterialSymbols-LICENSE.txt).
+
+# ---------------------------------------------------------------------------
+# Remote sources (pinned commit + SHA-256). A font uses one with `source = "…"`
+# instead of `file = "…"`.
+# ---------------------------------------------------------------------------
+
+[source.material_symbols_rounded]
+url        = "https://raw.githubusercontent.com/google/material-design-icons/49d4db35df873165d6bd6ba09b063c7dafbac2f4/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.ttf"
+sha256     = "32e4011709e055596eb8d2dd0f7cb547b47c1d40ac9ecb8fad54f7f7eac202e7"
+# Official name -> codepoint list shipped next to the font; `icons = [...]`
+# are looked up here.
+codepoints        = "https://raw.githubusercontent.com/google/material-design-icons/49d4db35df873165d6bd6ba09b063c7dafbac2f4/variablefont/MaterialSymbolsRounded%5BFILL,GRAD,opsz,wght%5D.codepoints"
+codepoints_sha256 = "0c9dae3ed678a81549c3be046bc8045335e5f57f2cbe2287360fbf0c2cc1355f"
+
+# ---------------------------------------------------------------------------
+# Text fonts — Inter, 4 bpp, Latin-1 + Latin Extended-A (Czech) + punctuation:
+#   – U+2013  — U+2014  … U+2026  − U+2212  · U+00B7 (in Latin-1)
+#   ✓ U+2713  ✗ U+2717  ’ U+2019
+# ---------------------------------------------------------------------------
+
+[[font]]
+name  = "caption"            # status bar, small labels
+file  = "fonts/Inter-Medium.ttf"
+size  = 16
+bpp   = 4
+range = ["0x20-0x7E", "0xA0-0x17F", "0x2013", "0x2014", "0x2019", "0x2026", "0x2212", "0x2713", "0x2717"]
+
+[[font]]
+name  = "list"               # list rows
+file  = "fonts/Inter-Regular.ttf"
+size  = 17
+bpp   = 4
+range = ["0x20-0x7E", "0xA0-0x17F", "0x2013", "0x2014", "0x2019", "0x2026", "0x2212", "0x2713", "0x2717"]
+
+[[font]]
+name  = "body"               # normal text, menu labels
+file  = "fonts/Inter-Regular.ttf"
+size  = 20
+bpp   = 4
+range = ["0x20-0x7E", "0xA0-0x17F", "0x2013", "0x2014", "0x2019", "0x2026", "0x2212", "0x2713", "0x2717"]
+
+[[font]]
+name  = "body_medium"        # emphasised body text
+file  = "fonts/Inter-Medium.ttf"
+size  = 20
+bpp   = 4
+range = ["0x20-0x7E", "0xA0-0x17F", "0x2013", "0x2014", "0x2019", "0x2026", "0x2212", "0x2713", "0x2717"]
+
+[[font]]
+name  = "title"              # screen titles, tile labels
+file  = "fonts/Inter-SemiBold.ttf"
+size  = 28
+bpp   = 4
+range = ["0x20-0x7E", "0xA0-0x17F", "0x2013", "0x2014", "0x2019", "0x2026", "0x2212", "0x2713", "0x2717"]
+
+# ---------------------------------------------------------------------------
+# Digit fonts — Roboto Mono Medium (monospaced: counters don't jitter).
+# Only the characters timers/percentages need, plus − (U+2212).
+# ---------------------------------------------------------------------------
+
+[[font]]
+name    = "digits_44"
+file    = "fonts/RobotoMono-Medium.ttf"
+size    = 44
+bpp     = 4
+symbols = "0123456789:.-% "
+range   = ["0x2212"]
+
+[[font]]
+name    = "digits_56"
+file    = "fonts/RobotoMono-Medium.ttf"
+size    = 56
+bpp     = 4
+symbols = "0123456789:.-% "
+range   = ["0x2212"]
+
+[[font]]
+name    = "digits_80"
+file    = "fonts/RobotoMono-Medium.ttf"
+size    = 80
+bpp     = 4
+symbols = "0123456789:.-% "
+range   = ["0x2212"]
+
+[[font]]
+name    = "digits_120"
+file    = "fonts/RobotoMono-Medium.ttf"
+size    = 120
+bpp     = 4
+symbols = "0123456789:.-% "
+range   = ["0x2212"]
+
+# ---------------------------------------------------------------------------
+# Icon fonts — Material Symbols Rounded, filled (FILL 1), weight 500, grade 0.
+# `variations` pins every axis of the variable font. opsz (optical size,
+# 20–48) follows the pixel size, clamped to the axis range: 18 px -> 20,
+# 28 px -> 28, 56/64 px -> 48. Every icon font carries the same icon set so
+# any ICON_* macro works with any size.
+# ---------------------------------------------------------------------------
+
+[[font]]
+name       = "icon_18"
+source     = "material_symbols_rounded"
+size       = 18
+bpp        = 4
+variations = { FILL = 1, wght = 500, GRAD = 0, opsz = 20 }
+icons      = [
+    "lightbulb", "sentiment_satisfied", "timer", "coffee", "memory",
+    "wifi", "wifi_off", "wifi_tethering", "bolt",
+    "battery_full", "battery_6_bar", "battery_5_bar", "battery_4_bar",
+    "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
+    "pause", "play_arrow", "restart_alt", "skip_next",
+    "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
+]
+
+[[font]]
+name       = "icon_28"
+source     = "material_symbols_rounded"
+size       = 28
+bpp        = 4
+variations = { FILL = 1, wght = 500, GRAD = 0, opsz = 28 }
+icons      = [
+    "lightbulb", "sentiment_satisfied", "timer", "coffee", "memory",
+    "wifi", "wifi_off", "wifi_tethering", "bolt",
+    "battery_full", "battery_6_bar", "battery_5_bar", "battery_4_bar",
+    "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
+    "pause", "play_arrow", "restart_alt", "skip_next",
+    "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
+]
+
+[[font]]
+name       = "icon_56"
+source     = "material_symbols_rounded"
+size       = 56
+bpp        = 4
+variations = { FILL = 1, wght = 500, GRAD = 0, opsz = 48 }
+icons      = [
+    "lightbulb", "sentiment_satisfied", "timer", "coffee", "memory",
+    "wifi", "wifi_off", "wifi_tethering", "bolt",
+    "battery_full", "battery_6_bar", "battery_5_bar", "battery_4_bar",
+    "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
+    "pause", "play_arrow", "restart_alt", "skip_next",
+    "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
+]
+
+[[font]]
+name       = "icon_64"
+source     = "material_symbols_rounded"
+size       = 64
+bpp        = 4
+variations = { FILL = 1, wght = 500, GRAD = 0, opsz = 48 }
+icons      = [
+    "lightbulb", "sentiment_satisfied", "timer", "coffee", "memory",
+    "wifi", "wifi_off", "wifi_tethering", "bolt",
+    "battery_full", "battery_6_bar", "battery_5_bar", "battery_4_bar",
+    "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
+    "pause", "play_arrow", "restart_alt", "skip_next",
+    "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
+]
+
+# ---------------------------------------------------------------------------
+# Images and sprites — none yet. Templates:
+#
+# [[image]]
+# name   = "bulb_on"                 # -> const lv_image_dsc_t img_bulb_on
+# file   = "images/bulb_on.png"
+# format = "RGB565A8"                # RGB565 | RGB565A8 | A8 | A4 | ARGB8888 | ... (LVGLImage --cf)
+# dest   = "flash"                   # flash (C array) | fs (data/img/<name>.bin)
+# compress = "NONE"                  # fs only: NONE | RLE | LZ4
+#
+# [[sprite]]
+# name   = "steam"                   # -> sprite_steam, sprite_steam_frames[]
+# file   = "sprites/steam/sheet.png"
+# frame  = [64, 64]                  # w, h of one frame
+# frames = 12                        # read row by row, left to right
+# fps    = 12
+# loop   = "loop"                    # loop | once | pingpong
+# format = "RGB565A8"
+# ---------------------------------------------------------------------------

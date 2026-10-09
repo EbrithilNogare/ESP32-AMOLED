@@ -1,0 +1,12 @@
+{
+  "name": "esp32-amoled-asset-tools",
+  "private": true,
+  "description": "Node tools used by tools/assets.py (font conversion). Install with: npm ci --prefix tools",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "lv_font_conv": "1.5.3"
+  }
+}
