@@ -29,6 +29,7 @@ Rules:
 | JSON | **ArduinoJson** | 7.4.3 | MIT | `lib_deps` | Home Assistant responses |
 | HTTP | `HTTPClient` | core | LGPL-2.1 (core) | built in | HA REST |
 | Wi-Fi, NVS, FS, I2S, time | `WiFi`, `Preferences`, `LittleFS`, `ESP_I2S`, SNTP | core | core | built in | |
+| OTA | `ArduinoOTA` + `ESPmDNS` + `Update` (later `HTTPUpdate`) | core | core | built in | push updates via espota; rollback through the core's `verifyRollbackLater()` / `verifyOta()` hooks |
 | Unit tests | Unity (PlatformIO test runner) | bundled | MIT | `[env:native]` | pure-logic modules only |
 
 ### Considered and not used

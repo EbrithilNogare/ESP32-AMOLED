@@ -15,6 +15,7 @@
    - [Bot face](apps/bot-face.md): animated smiley face
    - [Pomodoro](apps/pomodoro.md): focus/break timer that keeps the screen on at minimal power
    - [Espresso shot timer](apps/espresso-timer.md): stopwatch for espresso shots
+   - [System](apps/system.md): version, battery, Wi-Fi, memory, and **wireless firmware update (OTA)**
 3. **Two power profiles:**
    - **On battery** (small ~400 mAh cell): aggressive dim → black → deep sleep.
    - **On charger**: never sleep; protect the AMOLED from burn-in instead
@@ -25,7 +26,7 @@
 
 ### Non-goals (for now)
 
-On-device Wi-Fi setup (credentials come from `secrets.h`), OTA updates,
+On-device Wi-Fi setup (credentials come from `secrets.h`),
 audio beyond short beeps, settings UI (later app).
 
 ## 2. User-facing behaviour
@@ -444,6 +445,11 @@ periodically (flash wear).
 #define SLEEP_MODE_DEEP_OFF        0     // 1 = AXP power-off instead of ESP deep sleep (§8.4)
 // ---- buttons ----
 #define BUTTON_BACK_IS_BOOT        1     // 1: BOOT = back, PWR = home; 0: swapped
+// ---- OTA (§12) ----
+#define OTA_HOSTNAME               "esp32-amoled"
+#define OTA_LISTEN_ON_CHARGER      0
+#define OTA_MIN_BATTERY_PCT        30
+#define OTA_HEALTHY_AFTER_MS       10000
 #define BUTTON_LONG_PRESS_MS       1000  // long press → power-off animation → deep sleep
 #define POWER_OFF_ANIM_MS          1000
 // ---- burn-in ----
@@ -476,7 +482,68 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
   owner (agents can't flash). Measured currents and timings go into
   HARDWARE.md.
 
-## 12. Open questions
+## 12. Firmware updates over Wi-Fi (OTA)
+
+### 12.1 Does it fit?
+
+Yes, by design. `partitions.csv` already has **two 4 MB app slots**
+(`app0`/`app1`) plus `otadata`: the new image is written to the inactive slot
+while the old one keeps running, then the bootloader switches over.
+
+| Budget | Limit | Enforced by |
+| --- | --- | --- |
+| Firmware image | **≤ 3.0 MB** target (warn), **3.5 MB** hard limit (fail) of the 4 MB slot | CI size check on `firmware.bin` |
+| Today (skeleton) | 0.3 MB | — |
+| Expected with LVGL, fonts, Wi-Fi/HTTP, apps | ~1.5–2.5 MB | measured each milestone, noted in the PR |
+
+If the budget gets tight: move big images/sprites to LittleFS (UI_DESIGN §7),
+subset fonts harder, or drop unused LVGL widgets in `lv_conf.h`. Changing the
+partition table would need one USB flash, so it's the last resort.
+
+### 12.2 How an update is delivered
+
+**v1 — push from the PC (ArduinoOTA / espota):**
+
+- On the device: **System → Wireless update** turns Wi-Fi on, takes a
+  `KeepAwake` lock (no dimming or sleep), starts the OTA listener with mDNS
+  name `esp32-amoled.local`, and shows host, IP and version.
+- On the PC: VS Code task **"ESP: upload OTA"** →
+  `pio run -e amoled-ota -t upload` (env with `upload_protocol = espota`,
+  `upload_port = esp32-amoled.local`). The password comes from the
+  `ESP_OTA_PASSWORD` environment variable on the PC and must match
+  `OTA_PASSWORD` in `secrets.h`. It's never written into `platformio.ini`.
+- During the update the screen shows a progress ring and "Don't power off";
+  touch and buttons are ignored except Home, which cancels before the transfer
+  starts.
+- The LittleFS image (`data/`) can be pushed the same way
+  (`-t uploadfs` on the OTA env).
+- **Convenience option:** `OTA_LISTEN_ON_CHARGER` (default 0). When 1, the
+  listener also runs whenever the device is on the charger with Wi-Fi up, so
+  an update needs no tap on the device.
+
+**Later — pull from GitHub Releases:** CI attaches `firmware.bin` and a
+`version.json` to tagged releases; System → "Check for updates" downloads
+over HTTPS (core `HTTPUpdate`, certificate bundle) when a newer version
+exists. Needs the repo releases to be reachable without auth.
+
+### 12.3 Safety
+
+| Risk | Protection |
+| --- | --- |
+| Bad firmware boots and crashes / hangs | **Rollback.** The Arduino core ships its bootloader with `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1`. We override the core's weak `verifyRollbackLater()` to return `true`, then mark the image valid (`esp_ota_mark_app_valid_cancel_rollback()`) only after a **health check**: display + touch initialised, menu rendered, 10 s without a reset. A crash or watchdog reset before that → the bootloader boots the previous slot. |
+| Power loss mid-transfer | the old slot stays active until the new image is complete and verified (SHA-256 check by the OTA library) |
+| Flat battery during update | listener refuses to start below **30 %** unless on the charger |
+| Someone else on the LAN flashes it | listener runs only while the update screen is open (or on the charger when opted in); password required; never enabled when `OTA_PASSWORD` is empty |
+| Wrong board / wrong project image | image `project_name` must match (`esp_app_desc_t`), checked in `onStart` |
+
+### 12.4 Versioning
+
+A pre-build script `tools/version.py` sets `APP_VERSION` from
+`git describe --tags --dirty` (e.g. `v0.3.0-5-gabc123`), replacing the
+hard-coded value in `config.h`. The version is shown in the System app and the
+update screen, logged at boot, and embedded in `esp_app_desc_t`.
+
+## 13. Open questions
 
 Answered (2026-10-09, see DECISIONS.md): back + home buttons like a
 smartwatch; wake → always the menu; battery dim level 25 %; portrait

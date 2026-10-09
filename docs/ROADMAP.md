@@ -17,7 +17,7 @@ Status: ☐ not started · ◐ in progress · ☑ done
 
 - [x] Architecture, app specs, roadmap written
 - [x] Most open questions answered (DECISIONS.md, 2026-10-09)
-- [ ] Remaining questions (ARCHITECTURE §12) answered
+- [ ] Remaining questions (ARCHITECTURE §13) answered
 - [ ] Plan reviewed → start M1
 
 ## Platform
@@ -145,7 +145,18 @@ battery; Wi-Fi icon in the status bar.
 **On device:** cold connect < 5 s; reconnect after wake < 1.5 s; a wrong
 password doesn't hang the UI.
 
-### M12 — Home Assistant client ☐
+### M12 — OTA + System app ☐ — [spec](apps/system.md)
+
+`tools/version.py` (git-describe version), CI firmware size check (warn
+3.0 MB / fail 3.5 MB), `[env:amoled-ota]` (espota, password from
+`ESP_OTA_PASSWORD`), VS Code task "ESP: upload OTA", System app with the
+info list and the update screen, rollback via `verifyRollbackLater()` and a
+health check (ARCHITECTURE §12).
+
+**On device:** spec acceptance list, including power-pull and rollback tests.
+From here on, day-to-day flashing can be wireless.
+
+### M13 — Home Assistant client ☐
 
 `HaClient` task + queues, GET state / POST toggle, JSON parsing
 (host-tested), error mapping.
@@ -153,13 +164,13 @@ password doesn't hang the UI.
 **On device:** the log shows correct states for the 4 lights; a wrong token
 logs 401.
 
-### M13 — Home Assistant app ☐ — [spec](apps/home-assistant.md)
+### M14 — Home Assistant app ☐ — [spec](apps/home-assistant.md)
 
 2×2 tiles, toggle, polling, stale cache after wake.
 
 **On device:** spec acceptance list.
 
-## M14 — Polish & merge ☐
+## M15 — Polish & merge ☐
 
 Icons and fonts, menu fisheye effect (optional), README usage section,
 DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
@@ -169,4 +180,4 @@ DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
 
 Settings app (brightness, timeouts), clock/watch face (RTC), battery/system
 info app, HA WebSocket push, IMU features (bot reactions, espresso
-auto-start), OTA updates, more apps from [apps/README.md](apps/README.md).
+auto-start), OTA pull from GitHub Releases, more apps from [apps/README.md](apps/README.md).

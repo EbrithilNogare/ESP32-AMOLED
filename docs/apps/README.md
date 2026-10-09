@@ -9,6 +9,7 @@ menu, burn-in rules) is in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 | Bot face | `bot_face` | Normal | — | [bot-face.md](bot-face.md) |
 | Pomodoro | `pomodoro` | LowPowerDisplay while running | — | [pomodoro.md](pomodoro.md) |
 | Espresso shot timer | `espresso` | KeepAwake while running | — | [espresso-timer.md](espresso-timer.md) |
+| System (info + OTA) | `system` | Normal; KeepAwake on the update screen | Wi-Fi | [system.md](system.md) |
 
 The menu is built for 10+ apps; candidates for later: clock / watch face,
 settings, battery & system info, stopwatch / countdown, IMU level (spirit

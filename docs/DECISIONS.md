@@ -5,6 +5,19 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-09 — OTA updates (plan)
+
+**Context:** The owner wants wireless updates if the firmware stays within the
+limits. The partition table already has two 4 MB OTA slots.
+**Decision:** v1 is push OTA from the PC (ArduinoOTA/espota), started from a
+System app screen that keeps the device awake. App rollback uses the core's
+bootloader (rollback enabled) plus a health check before the new image is
+marked valid. Firmware budget ≤ 3.0 MB target, 3.5 MB hard limit, checked
+in CI. Version from `git describe`. Pulling from GitHub Releases comes later.
+**Consequences:** Every milestone keeps the image inside the budget; big
+assets go to LittleFS. The listener never runs without a password, and only
+on demand (or on the charger if opted in).
+
 ## 2026-10-09 — Libraries, rendering and assets (plan)
 
 **Context:** Picking the software stack before implementation. Details:
@@ -42,7 +55,7 @@ Speaker beeps are OK for timer alerts.
 
 ## 2026-10-09 — UI & navigation basics (owner's answers)
 
-**Context:** Open questions from the launcher/apps plan (ARCHITECTURE.md §12).
+**Context:** Open questions from the launcher/apps plan (ARCHITECTURE.md, open questions section).
 **Decision:**
 - Two side buttons like a modern smartwatch: **Back** (one step, apps can
   handle it) and **Home** (always the menu). BOOT = Back and PWR = Home until
