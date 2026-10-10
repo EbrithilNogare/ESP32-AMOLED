@@ -216,7 +216,7 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 /* ---------- quick settings shade (menu) ---------- */
 .statusbar { touch-action: none; cursor: ns-resize; }
 .qs-scrim { position: absolute; inset: 0; background: #000; opacity: 0; z-index: 5; }
-.qs-shade { position: absolute; left: 0; right: 0; top: 0; height: 236px; transform: translateY(-236px); background: #141414;
+.qs-shade { position: absolute; left: 0; right: 0; top: 0; height: 312px; transform: translateY(-312px); background: #141414;
   border-radius: 0 0 28px 28px; z-index: 6; touch-action: none; }
 .qs-shade.anim, .qs-scrim.anim { transition: transform .22s ease-out, opacity .22s ease-out; }
 .qs-time { position: absolute; left: 24px; top: 18px; font: 600 28px Inter, sans-serif; font-variant-numeric: tabular-nums; }
@@ -226,7 +226,11 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 .scr .qs-wifi { top: 72px; }
 .scr .qs-wifi:active { transform: scale(.97); }
 .qs-wifi .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.qs-bar { top: 148px; overflow: hidden; touch-action: none; cursor: ew-resize; }
+.qs-bar { overflow: hidden; touch-action: none; cursor: ew-resize; }
+.scr .qs-bright { top: 148px; }
+.scr .qs-vol { top: 224px; left: 92px; justify-content: flex-end; }
+.scr .qs-mute { top: 224px; right: auto; width: 64px; padding: 0; justify-content: center; }
+.scr .qs-mute:active { transform: scale(.94); }
 .qs-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #2F5F96; }
 .qs-bar > :not(.qs-fill) { position: relative; }
 .qs-grip { position: absolute; left: 50%; bottom: 10px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: #3A3A3A; }
@@ -292,6 +296,38 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 .scr .lv-btn.on { background: #FFD54F; color: #261F0C; }
 .scr .seg2.units button { width: 46px; padding: 0; font-size: 20px; }
 
+/* ---------- Timer ---------- */
+.tm-tabs { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); height: 48px; padding: 4px; gap: 2px; border-radius: 24px;
+  background: #141414; display: flex; }
+.scr .tm-tabs button { padding: 0 14px; border-radius: 20px; font: 500 16px Inter, sans-serif; color: #9A9A9A; white-space: nowrap; }
+.tm-big { position: absolute; left: 0; right: 0; height: 160px; pointer-events: none; text-align: center; font: 500 160px/1 "Roboto Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tm-date { position: absolute; left: 0; right: 0; top: 386px; text-align: center; font: 400 20px/24px Inter, sans-serif; color: #9A9A9A; }
+.tm-sw { position: absolute; left: 0; right: 0; top: 164px; display: flex; justify-content: center; align-items: baseline; }
+.tm-sw small { font: 500 44px/1 "Roboto Mono", monospace; color: #9A9A9A; }
+.tm-cap { position: absolute; left: 0; right: 0; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; }
+.tm-tap { position: absolute; left: 0; right: 0; cursor: pointer; }
+.tm-col { position: absolute; top: 92px; width: 120px; height: 236px; display: grid; grid-template-rows: 40px 1fr 40px; justify-items: center;
+  align-items: center; color: #9A9A9A; touch-action: none; cursor: ns-resize; }
+.tm-col .digits { color: #EDEDED; }
+.tm-colon { position: absolute; left: 0; right: 0; top: 170px; text-align: center; color: #9A9A9A; pointer-events: none; }
+.tm-ring { position: absolute; left: 51px; top: 85px; }
+.tm-ring svg circle { transition: stroke .2s; }
+.tm-mid { position: absolute; left: 0; right: 0; top: 170px; text-align: center; pointer-events: none; }
+
+/* ---------- Noise ---------- */
+.nz-canvas { position: absolute; left: 0; top: 0; width: 368px; height: 448px; }
+.nz-hit { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
+.nz-title { position: absolute; left: 0; right: 0; top: 24px; text-align: center; font: 600 28px/34px Inter, sans-serif; pointer-events: none; }
+.nz-state { position: absolute; left: 0; right: 0; top: 64px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; white-space: pre; pointer-events: none; }
+.nz-play { position: absolute; left: 128px; top: 168px; width: 112px; height: 112px; border-radius: 50%; background: rgba(20, 20, 20, .8);
+  display: grid; place-items: center; pointer-events: none; }
+.nz-muted { position: absolute; left: 0; right: 0; bottom: 54px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #FFB020; pointer-events: none; }
+.nz-dots { position: absolute; left: 0; right: 0; top: 416px; display: flex; justify-content: center; gap: 10px; pointer-events: none; }
+.nz-dots i { width: 8px; height: 8px; border-radius: 50%; background: #3A3A3A; }
+.nz-chrome { transition: opacity .4s; }
+.nz-chrome.hide { opacity: 0; }
+
 @media (prefers-reduced-motion: reduce) {
   .scr, .tile, .dimmer { transition: none; }
   .crt.off, .crt.on { animation-duration: .01s; }
@@ -303,7 +339,7 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
   <header>
     <span class="eyebrow">Waveshare ESP32-S3-Touch-AMOLED-1.8 · 368 × 448 · firmware mock</span>
     <h1>ESP32-AMOLED screens</h1>
-    <p class="lede">Every screen of the current firmware, clickable, at the panel's real pixel size with its tokens, fonts and icons: the seven apps, the quick settings you pull down from the menu's status bar, and the Wi-Fi setup with its phone keypad. The side buttons behave like the device: Back steps back, Home returns to the menu, holding either for 1 s powers off. The idle timeline runs for real.</p>
+    <p class="lede">Every screen of the current firmware, clickable, at the panel's real pixel size with its tokens, fonts and icons: the nine apps, the quick settings you pull down from the menu's status bar, and the Wi-Fi setup with its phone keypad. The side buttons behave like the device: Back steps back, Home returns to the menu, holding either for 1 s powers off. The idle timeline runs for real.</p>
   </header>
 
   <section class="bench" aria-label="Interactive device">
@@ -358,12 +394,14 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 
       <ul class="howto">
         <li><b>Tap</b> an icon to open an app. Scroll the menu with the wheel or trackpad.</li>
-        <li><b>Pull the status bar down</b> (or tap it) for quick settings: slide the brightness bar, tap Wi-Fi to pick a network and type its password with multi-tap (2 2 2 = c, # = abc/ABC/123). In this mock any 8+ character password connects; "wrongpass" shows the failure.</li>
+        <li><b>Pull the status bar down</b> (or tap it) for quick settings: slide the brightness or volume bar (sliding it unmutes), tap the speaker to mute, tap Wi-Fi to pick a network and type its password with multi-tap (2 2 2 = c, # = abc/ABC/123). In this mock any 8+ character password connects; "wrongpass" shows the failure.</li>
         <li><b>Dice:</b> tap the middle to roll. <b>Level:</b> drag on the screen to tilt the board; switch flat / edge under Sensor.</li>
         <li><b>Back</b> (upper side button, or Esc): one step back. <b>Home</b> (lower, or H): menu.</li>
         <li><b>Hold</b> either button for 1 s: power-off animation, then deep sleep. Press again to wake.</li>
         <li>While dimmed or black, the first tap only wakes the screen.</li>
         <li>Start the Pomodoro and leave it alone: after 10 s it switches to its minimal view instead of sleeping.</li>
+        <li><b>Timer:</b> the Clock tab never blanks: after 10 s it drops to a minimal clock at 25 % that moves every minute. A running stopwatch or countdown does the same, even from the menu. Set the countdown by dragging a column up or down, or tapping above / below its middle; at 0 it flashes and beeps (Back silences it).</li>
+        <li><b>Noise:</b> tap to play or pause, swipe sideways for rain, white or blue noise (it really plays, at the quick-settings volume). Playing, the screen dims and goes black as usual but the device never deep-sleeps, so the sound goes on, also from the menu.</li>
       </ul>
       <p class="note">A mock of the firmware, not the firmware: colours, sizes and fonts follow docs/UI_DESIGN.md, but the real panel is far brighter and sharper than a monitor, so brightness is shown compressed here. Values like IP, battery, networks and firmware version are examples.</p>
     </div>
@@ -395,6 +433,8 @@ const APPS = [
   { id: 'espresso', name: 'Espresso', icon: 'coffee', accent: '#C8915A' },
   { id: 'dice', name: 'Dice', icon: 'casino', accent: '#FF8A1F' },
   { id: 'level', name: 'Level', icon: 'straighten', accent: '#FFD54F' },
+  { id: 'timer', name: 'Timer', icon: 'alarm', accent: '#B388FF' },
+  { id: 'noise', name: 'Noise', icon: 'rainy', accent: '#6E8BFF' },
   { id: 'system', name: 'System', icon: 'memory', accent: '#8FA3BF' },
 ];
 const appById = id => APPS.find(a => a.id === id);
@@ -1276,8 +1316,437 @@ function ticks(ctx, cx, cy, r0, r1, a0, a1, step, color, lw = 1) {
 })();
 const levelSensor = { mode: 'flat', x: 2.4, y: -1.1, a: 12, p: 4 };
 
+/* ---------------- sound: the speaker (Web Audio; volume and mute from the quick settings) ---------------- */
+const Snd = (() => {
+  let ctx = null, master = null, cur = null;   // cur: the noise playing { kind, src, g }
+  const bufs = {};
+  // The first call must come from a tap (browser autoplay rules); nothing plays before one.
+  function ensure() {
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC(); master = ctx.createGain(); master.gain.value = level(); master.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { ctx = null; }
+    return ctx;
+  }
+  // 100 % = 0 dB, 1 % = −40 dB, 0 % = silent (SOUND_VOLUME_RANGE_DB); muted = silent.
+  const level = () => user.muted || !user.vol ? 0 : 0.5 * Math.pow(10, -40 * (100 - user.vol) / 99 / 20);
+  function apply() { if (master) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.015); }
+  // 6 s of each sound, generated once and looped (seam cross-faded), all at the same loudness.
+  function buffer(kind) {
+    if (bufs[kind]) return bufs[kind];
+    const sr = ctx.sampleRate, len = Math.round(sr * 6), xf = Math.round(sr * 0.05), d = new Float32Array(len + xf);
+    let b0 = 0, b1 = 0, b2 = 0, prev = 0, lp = 0, hp = 0, hpIn = 0;
+    const pink = () => { const w = Math.random() * 2 - 1; b0 = .99765 * b0 + w * .099046; b1 = .963 * b1 + w * .2965164; b2 = .57 * b2 + w * 1.0526913; return b0 + b1 + b2 + w * .1848; };
+    const kLp = 1 - Math.exp(-2 * Math.PI * 3000 / sr), kHp = Math.exp(-2 * Math.PI * 150 / sr);
+    for (let i = 0; i < d.length; i++) {
+      if (kind === 0) {                  // rain: pink noise band-passed 150 Hz–3 kHz, in slow gusts
+        lp += (pink() - lp) * kLp; hp = kHp * (hp + lp - hpIn); hpIn = lp;
+        d[i] = hp * (0.75 + 0.25 * Math.sin(4 * Math.PI * i / len));
+      } else if (kind === 1) d[i] = Math.random() * 2 - 1;   // white: uniform samples
+      else { const x = pink(); d[i] = x - prev; prev = x; }   // blue: first difference of pink
+    }
+    if (kind === 0) for (let n = 0; n < 28 * 6; n++) {         // ~28 drops a second: short noise ticks
+      const at = Math.floor(Math.random() * len), dl = Math.round(sr * (0.004 + Math.random() * 0.01)), a = 0.3 + Math.random();
+      for (let j = 0; j < dl && at + j < d.length; j++) d[at + j] += (Math.random() * 2 - 1) * a * Math.exp(-6 * j / dl);
+    }
+    for (let i = 0; i < xf; i++) { const t = i / xf; d[i] = d[i] * t + d[len + i] * (1 - t); }
+    let rms = 0;
+    for (let i = 0; i < len; i++) rms += d[i] * d[i];
+    rms = Math.sqrt(rms / len) || 1;
+    const ab = ctx.createBuffer(1, len, sr), out = ab.getChannelData(0);
+    for (let i = 0; i < len; i++) out[i] = Math.max(-1, Math.min(1, d[i] * 0.25 / rms));
+    return (bufs[kind] = ab);
+  }
+  function stopNoise() {
+    if (!cur) return;
+    const { src, g } = cur, t = ctx.currentTime;
+    g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.4);   // NOISE_FADE_MS
+    src.stop(t + 0.45); cur = null;
+  }
+  function startNoise(kind) {
+    if (!ensure() || (cur && cur.kind === kind)) return;
+    stopNoise();
+    const src = ctx.createBufferSource(), g = ctx.createGain(), t = ctx.currentTime;
+    src.buffer = buffer(kind); src.loop = true;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.4);
+    src.connect(g); g.connect(master); src.start(t);
+    cur = { kind, src, g };
+  }
+  function tone(t, f, dur) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.005);
+    g.gain.setValueAtTime(0.5, t + dur - 0.01); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  // Muted (or before any tap): beeps are dropped, like the device.
+  const alarm = () => { if (!ctx || !level()) return; const t = ctx.currentTime + 0.02; for (let i = 0; i < 4; i++) tone(t + i * 0.16, 2000, 0.09); };
+  const blip = () => { if (!ctx || !level()) return; tone(ctx.currentTime + 0.02, 1500, 0.06); };
+  return { ensure, apply, startNoise, stopNoise, alarm, blip };
+})();
+const devK = () => parseFloat(getComputedStyle($('#device')).transform.split(',')[3]) || 1;   // device scale, for drags
+const showEl = (e, on) => { e.style.display = on ? '' : 'none'; };
+const two = n => String(n).padStart(2, '0');
+
+/* ---------------- Timer (docs/apps/timer.md) ---------------- */
+const TIMER_C = '#B388FF', WARN = '#FFB020';
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Both timers keep absolute timestamps, so they run on whatever screen is shown.
+const tmr = { tab: 'clock', sw: { run: false, t0: 0, acc: 0 }, cd: { set: 300, st: 'idle', endAt: 0, rem: 0, doneAt: 0 }, alarmUntil: 0, nextAlarm: 0 };
+// mm:ss, or h:mm:ss from an hour up; overtime ("-") drops the leading zero
+function fmtT(s, sign = '') {
+  if (s >= 3600) return `${sign}${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+  return sign ? `${sign}${Math.floor(s / 60)}:${two(s % 60)}` : `${two(Math.floor(s / 60))}:${two(s % 60)}`;
+}
+const swMs = (sw, t) => sw.acc + (sw.run ? t - sw.t0 : 0);
+const cdRem = (c, t) => c.st === 'running' ? Math.max(0, c.endAt - t) : c.st === 'paused' ? c.rem : c.st === 'idle' ? c.set * 1000 : 0;
+// ui::drift: a new spot every step, so no pixel stays lit
+const drift = (step, ax, ay) => ({ x: Math.round(Math.sin(step * 1.7) * ax), y: Math.round(Math.cos(step * 1.1) * ay) });
+
+// What the Timer's minimal view would show: the open tab if it has something, else a running timer.
+function timerShows() {
+  const c = tmr.cd.st, cdActive = c === 'running' || c === 'done';
+  if (D.app === 'timer') {
+    if (tmr.tab === 'clock') return 'clock';
+    if (tmr.tab === 'stopwatch' && tmr.sw.run) return 'stopwatch';
+    if (tmr.tab === 'countdown' && cdActive) return 'countdown';
+  }
+  return cdActive ? 'countdown' : tmr.sw.run ? 'stopwatch' : null;
+}
+// Time's up: alarm (four quick beeps every 2 s for 30 s), wake the screen, flash, show the Countdown tab.
+function timerService() {
+  const c = tmr.cd, t = Date.now();
+  if (c.st === 'running' && t >= c.endAt) {
+    c.st = 'done'; c.doneAt = c.endAt;
+    tmr.alarmUntil = t + 30000; tmr.nextAlarm = t;
+    D.lastInput = now(); D.frozenIdle = 0;
+    if (D.app === 'timer' && D.power === 'on') { tmr.tab = 'countdown'; D.scr.showTab(); phaseFlash(TIMER_C); }
+  }
+  if (tmr.alarmUntil) {
+    if (t >= tmr.alarmUntil) tmr.alarmUntil = 0;
+    else if (t >= tmr.nextAlarm) { Snd.alarm(); tmr.nextAlarm = t + 2000; }
+  }
+}
+
+function buildTimer(t, live, preset) {
+  const wall = () => preset ? preset.now : Date.now();
+  if (live && t.cd.st === 'done') { t.tab = 'countdown'; tmr.alarmUntil = 0; }   // a finished countdown is why we're here
+  const s = el('div', 'scr');
+  const views = {}, last = {};
+  for (const k of ['clock', 'stopwatch', 'countdown']) { views[k] = el('div'); views[k].style.cssText = 'position:absolute;inset:0'; s.append(views[k]); }
+  const pillKey = new WeakMap();
+  const setPill = (b, icon, label) => { const k = icon + label; if (pillKey.get(b) !== k) { b.innerHTML = `${ic(icon, 28, 1)}${label}`; pillKey.set(b, k); } };
+  const btnRow = () => {
+    const row = el('div', 'pomo-btns'), pill = el('button', 'pill'), reset = el('button', 'round', ic('restart_alt', 28, 0));
+    pill.style.color = TIMER_C; reset.setAttribute('aria-label', 'Reset');
+    if (!live) [pill, reset].forEach(b => b.tabIndex = -1);
+    row.append(pill, reset);
+    return [row, pill, reset];
+  };
+
+  // Clock: hours over minutes
+  views.clock.innerHTML = `<div class="tm-big" style="top:87px"></div><div class="tm-big" style="top:219px;color:${TIMER_C}"></div><div class="tm-date"></div>`;
+  const [hh, mm, date] = views.clock.children;
+
+  // Stopwatch: mm:ss with tenths
+  views.stopwatch.innerHTML = `<div class="tm-sw"><span class="digits"></span><small></small></div><div class="tm-cap" style="top:256px"></div>
+    <div class="tm-tap" style="top:110px;height:200px"></div>`;
+  const [swDig, swTen] = views.stopwatch.querySelector('.tm-sw').children, swCap = views.stopwatch.querySelector('.tm-cap');
+  const [swRow, swPill, swReset] = btnRow();
+  views.stopwatch.append(swRow);
+
+  // Countdown: two wheels to set it, a ring while it runs
+  const edit = el('div'), run = el('div');
+  edit.style.cssText = run.style.cssText = 'position:absolute;inset:0';
+  const col = (x, lab) => `<div class="tm-col" style="left:${x}px" role="spinbutton" aria-label="${lab}">${ic('expand_less', 28, 1)}<span class="digits"></span>${ic('expand_more', 28, 1)}</div>
+    <div class="tm-cap" style="top:332px;left:${x}px;right:auto;width:120px">${lab === 'Minutes' ? 'min' : 'sec'}</div>`;
+  edit.innerHTML = col(44, 'Minutes') + col(204, 'Seconds') + '<div class="digits tm-colon">:</div>';
+  const [colMin, colSec] = edit.querySelectorAll('.tm-col');
+  run.innerHTML = `<div class="tm-ring"></div><div class="tm-mid"><span class="digits"></span></div><div class="tm-cap" style="top:250px"></div>
+    <div class="tm-tap" style="left:74px;right:auto;width:220px;top:108px;height:220px;border-radius:50%"></div>`;
+  const ring = run.querySelector('.tm-ring'), cdDig = run.querySelector('.tm-mid .digits'), cdCap = run.querySelector('.tm-cap');
+  const [cdRow, cdPill, cdReset] = btnRow();
+  views.countdown.append(edit, run, cdRow);
+
+  const tabs = el('div', 'tm-tabs');
+  const TABS = [['clock', 'Clock'], ['stopwatch', 'Stopwatch'], ['countdown', 'Countdown']];
+  const tabBtns = TABS.map(([k, lab]) => {
+    const b = el('button', '', lab);
+    if (live) b.addEventListener('click', () => { t.tab = k; showTab(); }); else b.tabIndex = -1;
+    tabs.append(b);
+    return b;
+  });
+  s.append(tabs);
+
+  // Redraw only what changed (the firmware keys each tab the same way).
+  const render = () => {
+    const tm = wall();
+    if (t.tab === 'clock') {
+      const key = Math.floor(tm / 60000);
+      if (last.clock === key) return;
+      last.clock = key;
+      const d = new Date(tm);
+      hh.textContent = two(d.getHours()); mm.textContent = two(d.getMinutes());
+      date.textContent = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    } else if (t.tab === 'stopwatch') {
+      const ms = swMs(t.sw, tm), ds = Math.floor(ms / 100), key = ds * 2 + (t.sw.run ? 1 : 0);
+      if (last.sw === key) return;
+      last.sw = key;
+      swDig.textContent = fmtT(Math.floor(ds / 10));
+      swTen.textContent = ds >= 36000 ? '' : '.' + ds % 10;   // h:mm:ss fills the width
+      const zero = ms === 0;
+      swCap.textContent = t.sw.run ? 'running' : zero ? 'tap to start' : 'paused';
+      setPill(swPill, t.sw.run ? 'pause' : 'play_arrow', t.sw.run ? 'Pause' : zero ? 'Start' : 'Resume');
+      showEl(swReset, !t.sw.run && !zero);
+    } else {
+      const c = t.cd, rem = cdRem(c, tm), done = c.st === 'done';
+      const sec = done ? Math.floor((tm - c.doneAt) / 1000) : Math.ceil(rem / 1000), key = `${sec}|${c.st}|${c.set}`;
+      if (last.cd === key) return;
+      last.cd = key;
+      showEl(edit, c.st === 'idle'); showEl(run, c.st !== 'idle');
+      showEl(cdReset, c.st === 'running' || c.st === 'paused');
+      if (c.st === 'idle') {
+        colMin.querySelector('.digits').textContent = two(Math.floor(c.set / 60));
+        colSec.querySelector('.digits').textContent = two(c.set % 60);
+        setPill(cdPill, 'play_arrow', 'Start');
+        cdPill.style.color = c.set ? TIMER_C : '#5A5A5A';
+        return;
+      }
+      const txt = fmtT(sec, done ? '-' : ''), color = done ? WARN : TIMER_C;
+      cdDig.textContent = txt;
+      cdDig.style.fontSize = txt.length > 5 ? '56px' : '';
+      cdDig.style.color = done ? WARN : '';
+      ring.innerHTML = ringSvg(127, 6, color, done || !c.set ? 1 : Math.max(0.001, 1 - rem / (c.set * 1000)), '#1E1E1E');
+      cdPill.style.color = color;
+      if (done) { cdCap.textContent = 'time’s up'; setPill(cdPill, 'cancel', 'Stop'); }
+      else if (c.st === 'paused') { cdCap.textContent = 'paused'; setPill(cdPill, 'play_arrow', 'Resume'); }
+      else { const e = new Date(tm + sec * 1000); cdCap.textContent = `ends ${two(e.getHours())}:${two(e.getMinutes())}`; setPill(cdPill, 'pause', 'Pause'); }
+    }
+  };
+  const showTab = () => {
+    TABS.forEach(([k], i) => {
+      const on = t.tab === k;
+      tabBtns[i].style.background = on ? TIMER_C : ''; tabBtns[i].style.color = on ? mix(TIMER_C, .14) : '';
+      tabBtns[i].setAttribute('aria-pressed', String(on));
+    });
+    for (const k in views) showEl(views[k], k === t.tab);
+    for (const k in last) delete last[k];
+    render();
+  };
+
+  if (live) {
+    const swToggle = () => {
+      const n = Date.now(), sw = t.sw;
+      if (sw.run) { sw.acc += n - sw.t0; sw.run = false; } else { sw.t0 = n; sw.run = true; }
+      render();
+    };
+    swPill.addEventListener('click', swToggle);
+    views.stopwatch.querySelector('.tm-tap').addEventListener('click', swToggle);
+    swReset.addEventListener('click', () => { t.sw.acc = 0; render(); });
+    const cdToggle = () => {
+      const c = t.cd, n = Date.now();
+      if (c.st === 'idle') { if (!c.set) return; c.endAt = n + c.set * 1000; c.st = 'running'; Snd.ensure(); }
+      else if (c.st === 'running') { c.rem = Math.max(0, c.endAt - n); c.st = 'paused'; }
+      else if (c.st === 'paused') { c.endAt = n + c.rem; c.st = 'running'; }
+      else c.st = 'idle';                      // Stop: back to the set time
+      tmr.alarmUntil = 0; render();
+    };
+    cdPill.addEventListener('click', cdToggle);
+    run.querySelector('.tm-tap').addEventListener('click', cdToggle);
+    cdReset.addEventListener('click', () => { t.cd.st = 'idle'; tmr.alarmUntil = 0; render(); });
+    // A wheel column: drag up to count up (16 px a step), or tap above / below the middle (hold repeats).
+    // Minutes 0–99 and seconds 0–59 wrap, with no carry.
+    const wheel = (colEl, minutes) => {
+      const stepBy = d => {
+        const c = t.cd;
+        if (c.st !== 'idle') return;
+        let m = Math.floor(c.set / 60), sc = c.set % 60;
+        if (minutes) m = ((m + d) % 100 + 100) % 100; else sc = ((sc + d) % 60 + 60) % 60;
+        c.set = m * 60 + sc; render();
+      };
+      const dir = e => { const b = colEl.getBoundingClientRect(); return e.clientY < b.top + b.height / 2 ? 1 : -1; };
+      let y0 = null, steps = 0, dragged = false, repeated = false, rep = null;
+      colEl.addEventListener('pointerdown', e => {
+        colEl.setPointerCapture(e.pointerId); y0 = e.clientY; steps = 0; dragged = false; repeated = false;
+        const d = dir(e);
+        clearTimeout(rep);
+        rep = setTimeout(function go() { if (dragged || y0 == null) return; repeated = true; stepBy(d); rep = setTimeout(go, 120); }, 500);
+      });
+      colEl.addEventListener('pointermove', e => {
+        if (y0 == null) return;
+        const d = (y0 - e.clientY) / devK();
+        if (Math.abs(d) > 10) { dragged = true; clearTimeout(rep); }
+        const n = Math.trunc(d / 16);
+        if (dragged && n !== steps) { stepBy(n - steps); steps = n; }
+      });
+      const up = e => {
+        if (y0 == null) return;
+        y0 = null; clearTimeout(rep);
+        if (!dragged && !repeated && e.type === 'pointerup') stepBy(dir(e));
+      };
+      colEl.addEventListener('pointerup', up);
+      colEl.addEventListener('pointercancel', up);
+      colEl.tabIndex = 0;
+      colEl.addEventListener('keydown', e => { const k = { ArrowUp: 1, ArrowDown: -1 }[e.key]; if (k) { e.preventDefault(); e.stopPropagation(); stepBy(k); } });
+    };
+    wheel(colMin, true); wheel(colSec, false);
+  }
+  showTab();
+  return {
+    el: s, tick: render, frame: live ? render : null, showTab,
+    onBack() { if (tmr.alarmUntil) { tmr.alarmUntil = 0; return true; } return false; },   // first Back silences the alarm
+  };
+}
+
+// Minimal view: no tabs, no buttons, just the digits; a new spot every minute.
+function buildTimerMinimal(t, show, preset) {
+  const s = el('div', 'scr minimal');
+  const render = () => {
+    const tm = preset ? preset.now : Date.now(), step = preset ? preset.step : Math.floor(tm / 60000);
+    if (show === 'clock') {
+      const d = new Date(tm), o = drift(step, 40, 50), pos = cy => `left:${o.x}px;right:${-o.x}px;top:${cy - 14 - 85 + o.y}px`;
+      s.innerHTML = `<div class="tm-big" style="${pos(172)}">${two(d.getHours())}</div><div class="tm-big" style="${pos(304)};color:${TIMER_C}">${two(d.getMinutes())}</div>`;
+      return;
+    }
+    let sec, sign = '', cap = 'stopwatch', color = TIMER_C;
+    if (show === 'countdown' && t.cd.st === 'done') { sec = Math.floor((tm - t.cd.doneAt) / 1000); sign = '-'; cap = 'time’s up'; color = WARN; }
+    else if (show === 'countdown') { sec = Math.ceil(cdRem(t.cd, tm) / 1000); cap = 'countdown'; }
+    else sec = Math.floor(swMs(t.sw, tm) / 1000);
+    const o = drift(step, sec >= 3600 ? 8 : 40, 110), cy = 224 + o.y, x = `left:${o.x}px;right:${-o.x}px`;
+    s.innerHTML = `<div class="digits" style="position:absolute;${x};top:${cy - 42}px;text-align:center;color:${color}">${fmtT(sec, sign)}</div>
+      <div class="tm-cap" style="${x};top:${cy + 40}px">${cap}</div>`;
+  };
+  render();
+  return { el: s, tick: render };
+}
+
+/* ---------------- Noise (docs/apps/noise.md) ---------------- */
+const NOISE_C = '#6E8BFF';
+const NOISES = ['Rain', 'White noise', 'Blue noise'];
+const noiseSt = { kind: 0, playing: false };   // keeps playing in the background
+function buildNoise(live, preset) {
+  const W = 368, H = 448, N = 72, OPA = [70, 130, 210];
+  const st = preset ? { ...preset } : noiseSt;
+  const s = el('div', 'scr');
+  const cv = el('canvas', 'nz-canvas'); cv.width = W * 2; cv.height = H * 2;
+  const ctx = cv.getContext('2d');
+  const title = el('div', 'nz-title nz-chrome'), state = el('div', 'nz-state nz-chrome'), play = el('div', 'nz-play', ic('play_arrow', 64, 1));
+  const muted = el('div', 'nz-muted', 'Muted: unmute in quick settings'), dots = el('div', 'nz-dots nz-chrome', '<i></i><i></i><i></i>');
+  const hit = el('div', 'nz-hit');
+  hit.setAttribute('aria-label', 'Tap to play or pause, swipe to change the sound');
+  s.append(cv, title, state, play, muted, dots, hit);
+  let parts = [], splashes = [], T = 0, chrome = true, chromeUntil = now() + 4000, lastT = null, nextAt = 0;
+
+  // Rain: streaks in three depths (far ones short, dim and slow). White: soft snow drifting down.
+  // Blue: a jittered 8 × 9 grid of twinkling points rising slowly.
+  const seed = () => {
+    parts = Array.from({ length: N }, (_, i) => {
+      const p = { depth: i % 3, x: Math.random() * W, y: Math.random() * H, phase: Math.random() * 6.283 };
+      if (st.kind === 0) { p.v = 420 + 260 * p.depth + Math.random() * 120; p.size = 10 + 9 * p.depth + Math.random() * 8; }
+      else if (st.kind === 1) { p.v = 14 + 12 * p.depth + Math.random() * 10; p.size = 1.2 + 0.8 * p.depth + Math.random() * 0.8; }
+      else { p.x = (i % 8 + 0.2 + 0.6 * Math.random()) * W / 8; p.y = (Math.floor(i / 8) + 0.2 + 0.6 * Math.random()) * H / 9; p.v = 6 + 4 * Math.random(); p.size = 1.4 + Math.random(); }
+      return p;
+    });
+    splashes = Array.from({ length: 6 }, () => ({ age: -1 }));
+  };
+  const step = dt => {
+    T += dt;
+    for (const p of parts) {
+      if (st.kind === 0) {
+        p.y += p.v * dt; p.x -= p.v * dt * 0.12;   // a little wind
+        if (p.y - p.size > H) {
+          const free = p.depth === 2 && splashes.find(q => q.age < 0);   // near drops splash
+          if (free) Object.assign(free, { x: p.x, y: H - 40 - Math.random() * 140, age: 0 });
+          p.y = -Math.random() * 60; p.x = Math.random() * (W + 60);
+        }
+        if (p.x < -20) p.x += W + 40;
+      } else if (st.kind === 1) {
+        p.y += p.v * dt; p.x += Math.sin(T * 0.7 + p.phase) * 8 * dt;
+        if (p.y > H + 4) { p.y = -4; p.x = Math.random() * W; }
+      } else {
+        p.y -= p.v * dt;
+        if (p.y < -4) p.y += H + 8;
+      }
+    }
+    for (const q of splashes) if (q.age >= 0 && (q.age += dt) > 0.45) q.age = -1;
+  };
+  const dot = (x, y, r, color, a) => { ctx.globalAlpha = a; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
+  const draw = () => {
+    ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    const k = st.playing ? 1 : 0.45;   // paused: dimmer, and still
+    ctx.strokeStyle = '#9DB7FF'; ctx.lineCap = 'round';
+    for (const p of parts) {
+      const a = OPA[p.depth] / 255 * k;
+      if (st.kind === 0) {
+        ctx.globalAlpha = a; ctx.lineWidth = p.depth === 2 ? 2 : 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.size * 0.12, p.y - p.size); ctx.stroke();
+      } else if (st.kind === 1) dot(p.x, p.y, p.size, '#E8ECF2', a);
+      else dot(p.x, p.y, p.size, '#3D6BFF', (60 + 170 * (0.5 + 0.5 * Math.sin(T * 2.3 + p.phase))) / 255 * k);   // twinkle
+    }
+    // Splash: three droplets thrown up and out from where a drop landed.
+    for (const q of splashes) {
+      if (q.age < 0) continue;
+      const t = q.age;
+      for (let d = -1; d <= 1; d++) dot(q.x + d * 34 * t, q.y - (d ? 70 : 95) * t + 300 * t * t, 1.3, '#9DB7FF', 190 / 255 * (1 - t / 0.45) * k);
+    }
+    ctx.globalAlpha = 1;
+  };
+  // The labels go away while it plays untouched; the mute warning stays, it explains the silence.
+  const render = () => {
+    title.textContent = NOISES[st.kind];
+    state.textContent = st.playing ? 'playing' : 'tap to play  ·  swipe to change';
+    showEl(play, !st.playing);
+    showEl(muted, preset ? !!preset.muted : user.muted);
+    [...dots.children].forEach((d, i) => { d.style.background = i === st.kind ? NOISE_C : ''; });
+    [title, state, dots].forEach(e => e.classList.toggle('hide', !chrome));
+  };
+  const showChrome = () => { chrome = true; chromeUntil = now() + 4000; render(); };
+  const setKind = k => { if (k === st.kind) return; st.kind = k; T = 0; seed(); step(0); };
+
+  seed();
+  if (preset) { chrome = preset.chrome !== false; for (let i = 0; i < 60; i++) step(1 / 24); } else step(0);
+  draw(); render();
+  if (live) {
+    let p0 = null;
+    hit.addEventListener('pointerdown', e => { hit.setPointerCapture(e.pointerId); p0 = { x: e.clientX, y: e.clientY }; });
+    hit.addEventListener('pointercancel', () => { p0 = null; });
+    // Tap: play / pause. Swipe left / right: the next / previous sound, playing.
+    hit.addEventListener('pointerup', e => {
+      if (!p0) return;
+      const k = devK(), dx = (e.clientX - p0.x) / k, dy = (e.clientY - p0.y) / k;
+      p0 = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { setKind((st.kind + (dx < 0 ? 1 : 2)) % 3); st.playing = true; Snd.startNoise(st.kind); }
+      else if (Math.abs(dx) <= 12 && Math.abs(dy) <= 12) {
+        st.playing = !st.playing;
+        if (st.playing) Snd.startNoise(st.kind); else Snd.stopNoise();
+      } else return;   // a vague drag: ignore
+      lastT = null; showChrome(); draw();
+    });
+  }
+  return {
+    el: s,
+    tick() {
+      if (chrome && st.playing && now() > chromeUntil) chrome = false;
+      render();
+    },
+    // 24 fps, 8 fps when dimmed; nothing to draw with the panel off
+    frame: live ? tm => {
+      if (!st.playing || D.stage === 'black') { lastT = null; return; }
+      if (tm < nextAt) return;
+      nextAt = tm + 1000 / (D.stage === 'dim' ? 8 : 24);
+      const dt = lastT == null ? 0 : Math.min((tm - lastT) / 1000, 0.15);
+      lastT = tm; step(dt); draw();
+    } : null,
+  };
+}
+
 /* ---------------- device controller ---------------- */
-const D = { power: 'on', stage: 'active', lastInput: now(), frozenIdle: 0, paused: false, app: 'menu', scr: null, held: new Set(), consumed: false, holdT: null, waitRelease: false, minimal: null, bright: 1 };
+const D = { power: 'on', stage: 'active', lastInput: now(), frozenIdle: 0, paused: false, app: 'menu', scr: null, held: new Set(), consumed: false, holdT: null, waitRelease: false, minimal: null, minimalOwner: null, bright: 1 };
 const content = $('#content'), dimmer = $('#dimmer'), swallow = $('#swallow'), crt = $('#crt'), hint = $('#hint');
 
 function make(id) {
@@ -1289,6 +1758,8 @@ function make(id) {
   if (id === 'system') return buildSystem(sys, true, () => { powerOff(() => setTimeout(powerOn, 500)); });
   if (id === 'dice') return DiceKit.build(true);
   if (id === 'level') return LevelKit.build(true);
+  if (id === 'timer') return buildTimer(tmr, true);
+  if (id === 'noise') return buildNoise(true);
   if (id === 'wifi') return buildWifi(true);
   return buildMenu(true, open);
 }
@@ -1313,18 +1784,29 @@ function doBack() {
   if (D.scr.onBack && D.scr.onBack()) return;
   if (D.app !== 'menu') show('menu');
 }
-function phaseFlash() {
-  const f = el('div', 'flash'); f.style.background = PH[pomo.phase].color;
+function phaseFlash(color = PH[pomo.phase].color) {
+  const f = el('div', 'flash'); f.style.background = color;
   content.append(f); setTimeout(() => f.remove(), 900);
   D.lastInput = now();
 }
 
+// Like the firmware's app manager: keep awake (open app) beats a minimal view (open app first,
+// then the others in menu order), which beats no-sleep (noise playing, open or in the background).
+function minimalOwner() {
+  const t = timerShows();
+  if (D.app === 'timer' && t) return 'timer';
+  if (pomo.running) return 'pomodoro';
+  return t ? 'timer' : null;
+}
 function policy() {
   if (D.app === 'espresso' && esp.mode === 'running') return 'keep';
   if (D.scr && D.scr.policy && D.scr.policy() === 'keep') return 'keep';
-  if (pomo.running) return 'low';
+  if (minimalOwner()) return 'low';
+  if (noiseSt.playing) return 'nosleep';
   return 'normal';
 }
+// Minimal views have their own fixed level (Pomodoro 15 %, Timer 25 %), never above the user's.
+const minimalPct = () => Math.min(minimalOwner() === 'timer' ? 25 : 15, user.bright);
 const STAGES = {
   battery: [['active', 0], ['dim', 10], ['black', 15], ['sleep', 20]],
   charger: [['active', 0], ['dim', 60], ['black', 300]],
@@ -1333,20 +1815,25 @@ function idleSec() { return D.paused ? D.frozenIdle : (now() - D.lastInput) / 10
 
 function tick() {
   if (pomo.running && pomoRem(pomo) <= 0) pomoAdvance(false);
+  timerService();
   if (D.power !== 'on') { updateReadout(); return; }
   const idle = idleSec(), pol = policy(), prof = env.charger ? 'charger' : 'battery';
-  const ub = user.bright / 100;
+  const ub = user.bright / 100, owner = minimalOwner();
   let stage = 'active';
   if (pol === 'low') stage = idle >= 10 ? 'minimal' : 'active';
-  else if (pol === 'normal') for (const [st, at] of STAGES[prof]) if (idle >= at) stage = st;
+  else if (pol === 'normal' || pol === 'nosleep') for (const [st, at] of STAGES[prof]) if (idle >= at) stage = st;
+  if (stage === 'sleep' && pol === 'nosleep') stage = 'black';   // noise plays on: black, never asleep
   if (stage === 'sleep') { sleepNow(); return; }
   D.stage = stage;
-  const b = { active: ub, dim: Math.min(env.charger ? 0.4 : 0.25, ub / 2), black: 0, minimal: 0.15 }[stage];
+  const b = { active: ub, dim: Math.min(env.charger ? 0.4 : 0.25, ub / 2), black: 0, minimal: minimalPct() / 100 }[stage];
   D.bright = b;
   dimmer.style.opacity = 1 - vis(b);
   swallow.hidden = stage === 'active';
-  if (stage === 'minimal' && !D.minimal) { D.minimal = buildPomoMinimal(pomo, true); content.append(D.minimal.el); }
-  if (stage !== 'minimal' && D.minimal) { D.minimal.el.remove(); D.minimal = null; }
+  if (D.minimal && (stage !== 'minimal' || D.minimalOwner !== owner)) { D.minimal.el.remove(); D.minimal = null; }
+  if (stage === 'minimal' && !D.minimal) {
+    D.minimal = owner === 'timer' ? buildTimerMinimal(tmr, timerShows()) : buildPomoMinimal(pomo, true);
+    D.minimalOwner = owner; content.append(D.minimal.el);
+  }
   if (D.minimal) D.minimal.tick();
   if (D.scr && D.scr.tick) D.scr.tick();
   updateReadout();
@@ -1360,6 +1847,9 @@ function wakeScreen() { D.lastInput = now(); D.frozenIdle = 0; tick(); }
 function powerOff(after) {
   if (D.power !== 'on') return;
   if (pomo.running) { pomo.rem = pomoRem(pomo); pomo.running = false; }
+  // the device can't sleep on its own while these run; a long press stops them
+  if (noiseSt.playing) { noiseSt.playing = false; Snd.stopNoise(); }
+  Object.assign(tmr.sw, { run: false, acc: 0 }); tmr.cd.st = 'idle'; tmr.alarmUntil = 0;
   D.power = 'anim';
   crt.classList.remove('on', 'dead'); void crt.offsetWidth; crt.classList.add('off');
   setTimeout(() => {
@@ -1458,23 +1948,26 @@ function updateReadout() {
   $('#rStage').textContent = label;
   const idle = idleSec();
   $('#rIdle').textContent = D.power === 'on' ? idle.toFixed(1) + ' s' + (D.paused ? ' (paused)' : '') : '—';
-  $('#rPolicy').textContent = { normal: 'Normal', keep: 'Keep awake', low: 'Low-power display (Pomodoro running)' }[pol];
+  const owner = minimalOwner(), why = owner === 'pomodoro' ? 'Pomodoro running' : timerShows() === 'clock' ? 'Timer: clock open' : 'Timer running';
+  $('#rPolicy').textContent = { normal: 'Normal', keep: 'Keep awake', low: `Low-power display (${why})`, nosleep: 'No sleep (noise playing)' }[pol];
   $('#rBright').textContent = D.power === 'on' ? Math.round(D.bright * 100) + ' %' + (D.stage === 'active' ? ' (quick settings)' : '') : 'off';
   let next = '—';
   if (D.power === 'sleep') next = 'press a side button to wake';
   else if (D.power === 'on') {
     if (pol === 'keep') next = 'stays on while busy';
-    else if (pol === 'low') next = D.stage === 'minimal' ? 'touch for the full view' : `minimal view at 10 s`;
+    else if (pol === 'low') next = D.stage === 'minimal' ? `touch for the full view${owner === 'timer' ? ' (never blanks)' : ''}` : `minimal view at 10 s`;
     else {
-      const up = STAGES[prof].find(([, at]) => at > idle);
-      next = up ? `${{ dim: 'dims', black: 'goes black', sleep: 'sleeps' }[up[0]]} at ${up[1] >= 60 ? up[1] / 60 + ' min' : up[1] + ' s'}` : 'stays black (charger)';
+      const up = STAGES[prof].find(([k, at]) => at > idle && !(pol === 'nosleep' && k === 'sleep'));
+      next = up ? `${{ dim: 'dims', black: 'goes black', sleep: 'sleeps' }[up[0]]} at ${up[1] >= 60 ? up[1] / 60 + ' min' : up[1] + ' s'}`
+        : pol === 'nosleep' ? 'stays black, never sleeps (noise plays on)' : 'stays black (charger)';
     }
   }
   $('#rNext').textContent = next;
   const tl = $('#tl');
   const ub = user.bright, dimP = Math.round(Math.min(prof === 'battery' ? 25 : 40, ub / 2));
-  const stg = pol === 'low' ? [['active', `${ub} % · 0 s`], ['minimal', 'Minimal · 10 s']] :
-    prof === 'battery' ? [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 10 s`], ['black', 'Black · 15 s'], ['sleep', 'Sleep · 20 s']] :
+  const stg = pol === 'low' ? [['active', `${ub} % · 0 s`], ['minimal', `Minimal ${minimalPct()} % · 10 s`]] :
+    prof === 'battery' ? [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 10 s`], ['black', 'Black · 15 s'],
+      pol === 'nosleep' ? ['nosleep', 'No sleep (noise)'] : ['sleep', 'Sleep · 20 s']] :
       [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 60 s`], ['black', 'Black · 5 min']];
   const cur = D.power === 'sleep' ? 'sleep' : D.stage;
   tl.style.gridTemplateColumns = `repeat(${stg.length}, minmax(0,1fr))`;
@@ -1482,20 +1975,24 @@ function updateReadout() {
 }
 
 /* ---------------- user settings (quick settings, NVS on the device) ---------------- */
-const user = { bright: 60, wifi: 'HomeNet' };   // brightness 5–70 %
+const user = { bright: 60, wifi: 'HomeNet', vol: 80, muted: false };   // brightness 5–70 %, volume 0–100 %
 const B_MIN = 5, B_MAX = 70;
 
-/* the shade inside the menu screen; `opts.open` draws it open (gallery) */
+/* the shade inside the menu screen; `opts.open` draws it open, `opts.user` overrides the settings (gallery) */
 function addQuickSettings(s, sb, live, opts = {}) {
-  const H = 236;
+  const H = 312, u = opts.user || user;
   const scrim = el('div', 'qs-scrim'), shade = el('div', 'qs-shade');
   shade.innerHTML = `<div class="qs-time"></div><div class="qs-bat"></div>
     <button class="qs-row qs-wifi" aria-label="Wi-Fi settings"><span class="ic"></span><span class="nm"></span></button>
-    <div class="qs-row qs-bar" role="slider" aria-label="Brightness" tabindex="0" aria-valuemin="${B_MIN}" aria-valuemax="${B_MAX}">
+    <div class="qs-row qs-bar qs-bright" role="slider" aria-label="Brightness" tabindex="0" aria-valuemin="${B_MIN}" aria-valuemax="${B_MAX}">
       <div class="qs-fill"></div>${ic('light_mode', 28, 1)}<span class="qs-pct"></span></div>
+    <button class="qs-row qs-mute"></button>
+    <div class="qs-row qs-bar qs-vol" role="slider" aria-label="Volume" tabindex="0" aria-valuemin="0" aria-valuemax="100">
+      <div class="qs-fill"></div><span class="qs-pct"></span></div>
     <div class="qs-grip"></div>`;
   s.append(scrim, shade);
-  const wifiRow = shade.querySelector('.qs-wifi'), bar = shade.querySelector('.qs-bar');
+  const wifiRow = shade.querySelector('.qs-wifi'), bar = shade.querySelector('.qs-bright');
+  const muteBtn = shade.querySelector('.qs-mute'), volBar = shade.querySelector('.qs-vol');
   let y = -H, open = false;
   const setY = (v, anim) => {
     y = Math.max(-H, Math.min(0, v));
@@ -1508,19 +2005,30 @@ function addQuickSettings(s, sb, live, opts = {}) {
     const d = new Date();
     shade.querySelector('.qs-time').textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     shade.querySelector('.qs-bat').textContent = env.charger ? `${env.battery} % · charging` : `${env.battery} %`;
-    wifiRow.querySelector('.ic').innerHTML = `<span style="color:#4DA3FF">${ic(user.wifi ? 'wifi' : 'wifi_off', 28, 1)}</span>`;
-    wifiRow.querySelector('.nm').textContent = user.wifi || 'Set up Wi-Fi';
-    const f = (user.bright - B_MIN) / (B_MAX - B_MIN);
-    shade.querySelector('.qs-fill').style.width = `${40 + (336 - 40) * f}px`;
-    shade.querySelector('.qs-pct').textContent = `${user.bright} %`;
-    bar.setAttribute('aria-valuenow', user.bright);
+    wifiRow.querySelector('.ic').innerHTML = `<span style="color:#4DA3FF">${ic(u.wifi ? 'wifi' : 'wifi_off', 28, 1)}</span>`;
+    wifiRow.querySelector('.nm').textContent = u.wifi || 'Set up Wi-Fi';
+    const f = (u.bright - B_MIN) / (B_MAX - B_MIN);
+    bar.querySelector('.qs-fill').style.width = `${40 + (336 - 40) * f}px`;   // never empty
+    bar.querySelector('.qs-pct').textContent = `${u.bright} %`;
+    bar.setAttribute('aria-valuenow', u.bright);
+    // volume: muted, the bar turns grey and reads "Muted"; the button turns red
+    const vf = volBar.querySelector('.qs-fill'), vp = volBar.querySelector('.qs-pct');
+    vf.style.width = `${40 + (260 - 40) * u.vol / 100}px`;
+    vf.style.background = u.muted ? '#3A3A3A' : '';
+    vp.textContent = u.muted ? 'Muted' : `${u.vol} %`;
+    vp.style.color = u.muted ? '#9A9A9A' : '';
+    volBar.setAttribute('aria-valuenow', u.vol);
+    muteBtn.innerHTML = ic(u.muted ? 'volume_off' : 'volume_up', 28, 1);
+    muteBtn.style.color = u.muted ? '#FF5A5F' : '';
+    muteBtn.style.background = u.muted ? mix('#FF5A5F', .22) : '';
+    muteBtn.setAttribute('aria-label', u.muted ? 'Unmute' : 'Mute');
   };
   const doOpen = () => { open = true; render(); setY(0, true); };
   const doClose = () => { open = false; setY(-H, true); };
   render();
   if (opts.open) { open = true; setY(0); }
   else setY(-H);
-  if (!live) { wifiRow.tabIndex = -1; bar.tabIndex = -1; return { isOpen: () => open, close: doClose, render }; }
+  if (!live) { [wifiRow, bar, muteBtn, volBar].forEach(e => e.tabIndex = -1); return { isOpen: () => open, close: doClose, render }; }
 
   const scale = () => parseFloat(getComputedStyle($('#device')).transform.split(',')[3]) || 1;
   // pull the status bar down (or tap it)
@@ -1552,6 +2060,17 @@ function addQuickSettings(s, sb, live, opts = {}) {
     const k = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
     if (k) { e.preventDefault(); e.stopPropagation(); user.bright = Math.max(B_MIN, Math.min(B_MAX, user.bright + k)); render(); applyBrightness(); }
   });
+  // volume: live while touched (hear it on playing noise), unmutes; a blip on release unless noise plays
+  const setVol = v => { user.vol = Math.max(0, Math.min(100, v)); user.muted = false; render(); Snd.apply(); };
+  const volFrom = e => { const b = volBar.getBoundingClientRect(); setVol(Math.round(Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * 100)); };
+  volBar.addEventListener('pointerdown', e => { volBar.setPointerCapture(e.pointerId); Snd.ensure(); volFrom(e); volBar.dataset.drag = 1; });
+  volBar.addEventListener('pointermove', e => { if (volBar.dataset.drag) volFrom(e); });
+  volBar.addEventListener('pointerup', () => { if (!volBar.dataset.drag) return; delete volBar.dataset.drag; if (!noiseSt.playing) Snd.blip(); });
+  volBar.addEventListener('keydown', e => {
+    const k = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
+    if (k) { e.preventDefault(); e.stopPropagation(); setVol(user.vol + k); }
+  });
+  muteBtn.addEventListener('click', () => { user.muted = !user.muted; render(); Snd.apply(); });
   return { isOpen: () => open, close: doClose, render };
 }
 
@@ -1711,9 +2230,22 @@ thumb('Dice, d20', 'Advantage: 19 kept, 18 dropped', () => DiceKit.build(false, 
   roll: { die: 20, count: 1, mode: 'adv', sets: [[19], [18]], totals: [19, 18], kept: 0, crit: null, idle: false } }).el);
 thumb('Level, lying flat', 'Bullseye: the bubble sits on the high side', () => LevelKit.build(false, { mode: 'flat', x: 2.4, y: -1.1, a: 0, p: 0 }).el);
 thumb('Level, on an edge', 'Horizon: rotation from level, plus the lean', () => LevelKit.build(false, { mode: 'edge', x: 0, y: 0, a: 12, p: 4 }).el);
+const gNow = new Date(2026, 9, 10, 18, 11, 10).getTime();
+const gTimer = (tab, sw, cd) => ({ tab, sw: { run: false, t0: 0, acc: 0, ...sw }, cd: { set: 300, st: 'idle', endAt: 0, rem: 0, doneAt: 0, ...cd } });
+thumb('Timer, clock', 'Hours over minutes in 160 px digits', () => buildTimer(gTimer('clock'), false, { now: gNow }).el);
+thumb('Timer, minimal clock', 'Never blanks: 25 % and a new spot every minute', () => buildTimerMinimal(gTimer('clock'), 'clock', { now: gNow, step: 49 }).el, 0.55);
+thumb('Stopwatch', 'Running; the tenths are small', () => buildTimer(gTimer('stopwatch', { run: true, t0: gNow - 75300 }), false, { now: gNow }).el);
+thumb('Countdown, set', 'Drag a column, or tap above / below its middle', () => buildTimer(gTimer('countdown', {}, { set: 414 }), false, { now: gNow }).el);
+thumb('Countdown, running', 'The ring is the time gone; "ends" by the wall clock', () => buildTimer(gTimer('countdown', {}, { set: 60, st: 'running', endAt: gNow + 50000 }), false, { now: gNow }).el);
+thumb('Countdown, time’s up', 'Amber, counting the overtime until Stop', () => buildTimer(gTimer('countdown', {}, { set: 60, st: 'done', doneAt: gNow - 4200 }), false, { now: gNow }).el);
+thumb('Noise, paused', 'Still and dimmed, a play button in the middle', () => buildNoise(false, { kind: 0, playing: false }).el);
+thumb('Noise, rain', 'Streaks in three depths, splashes; labels hide after 4 s', () => buildNoise(false, { kind: 0, playing: true }).el);
+thumb('Noise, white', 'Soft snow drifting down', () => buildNoise(false, { kind: 1, playing: true }).el);
+thumb('Noise, blue', 'A jittered grid of twinkling points rising slowly', () => buildNoise(false, { kind: 2, playing: true }).el);
 thumb('System', 'Info list with the update entry', () => buildSystem({ view: 'info' }, false).el);
 thumb('Wireless update', 'Receiving firmware, 42 %', () => buildSystem({ view: 'ota', phase: 'receiving', pct: 42 }, false).el);
-thumb('Quick settings', 'Pulled down from the status bar: Wi-Fi and brightness', () => buildMenu(false, null, { open: true }).el);
+thumb('Quick settings', 'Pulled down from the status bar: Wi-Fi, brightness, volume', () => buildMenu(false, null, { open: true, user: { ...user } }).el);
+thumb('Quick settings, muted', 'Red speaker; the volume bar turns grey', () => buildMenu(false, null, { open: true, user: { ...user, muted: true } }).el);
 thumb('Wi-Fi networks', 'Scan results, strongest first; the one in use is blue', () => buildWifi(false, { view: 'list', scanning: false }).el);
 thumb('Wi-Fi password', 'Nokia multi-tap: the blue letter is still cycling', () => buildWifi(false, { view: 'password', ssid: 'Neighbour 5G', text: 'pasr', pending: true, mode: 'abc' }).el);
 thumb('Wi-Fi, connected', 'Saved on the device only once it connects', () => buildWifi(false, { view: 'join', join: 'joined', ssid: 'Neighbour 5G' }).el);
