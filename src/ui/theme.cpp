@@ -1,5 +1,6 @@
 #include "theme.h"
 
+#include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -172,6 +173,25 @@ lv_obj_t *toast(lv_obj_t *parent, const char *text) {
   lv_obj_set_style_pad_hor(t, 14, 0);
   lv_obj_set_style_pad_ver(t, 8, 0);
   return t;
+}
+
+void flash(lv_obj_t *parent, uint32_t color) {
+  lv_obj_t *f = box(parent);  // not clickable: taps go through
+  lv_obj_set_size(f, lv_obj_get_width(parent), lv_obj_get_height(parent));
+  lv_obj_set_style_bg_color(f, c(color), 0);
+  lv_anim_t a;
+  lv_anim_init(&a);
+  lv_anim_set_var(&a, f);
+  lv_anim_set_values(&a, 0, 90);  // ~35 % at the peak
+  lv_anim_set_duration(&a, 400);
+  lv_anim_set_playback_duration(&a, 400);
+  lv_anim_set_exec_cb(&a, [](void *o, int32_t v) { lv_obj_set_style_bg_opa((lv_obj_t *)o, lv_opa_t(v), 0); });
+  lv_anim_set_completed_cb(&a, [](lv_anim_t *an) { lv_obj_delete((lv_obj_t *)an->var); });
+  lv_anim_start(&a);
+}
+
+lv_point_t drift(int32_t step, int32_t ax, int32_t ay) {
+  return {int32_t(lroundf(sinf(step * 1.7f) * ax)), int32_t(lroundf(cosf(step * 1.1f) * ay))};
 }
 
 lv_obj_t *progressRing(lv_obj_t *parent, int32_t size, int32_t width) {

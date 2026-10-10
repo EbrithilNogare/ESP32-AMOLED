@@ -43,6 +43,7 @@ class App {
     (void)nowMs;
     return 60000;
   }
+  virtual uint8_t minimalBrightness() const { return 0; }  // panel level; 0 = BRIGHTNESS_MINIMAL
 
   virtual void onSleep() {}  // deep sleep is coming: persist what matters
   virtual ~App() = default;

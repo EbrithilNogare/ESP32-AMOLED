@@ -34,10 +34,11 @@ LV_FONT_DECLARE(font_digits_44)    /* RobotoMono-Medium.ttf, 44 px, 4 bpp, 0x221
 LV_FONT_DECLARE(font_digits_56)    /* RobotoMono-Medium.ttf, 56 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_80)    /* RobotoMono-Medium.ttf, 80 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_120)   /* RobotoMono-Medium.ttf, 120 px, 4 bpp, 0x2212, "0123456789:.-% " */
-LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 38 icons */
-LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 38 icons */
-LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 38 icons */
-LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 38 icons */
+LV_FONT_DECLARE(font_digits_160)   /* RobotoMono-Medium.ttf, 160 px, 4 bpp, "0123456789-" */
+LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 44 icons */
+LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 44 icons */
+LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 44 icons */
+LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 44 icons */
 
 /* ---- Images ---- */
 /* (none) */
@@ -85,6 +86,12 @@ LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,ops
 #define ICON_BACKSPACE           "\xEE\x85\x8A"  /* U+E14A */
 #define ICON_REFRESH             "\xEE\x97\x95"  /* U+E5D5 */
 #define ICON_CHEVRON_RIGHT       "\xEE\x97\x8C"  /* U+E5CC */
+#define ICON_ALARM               "\xEE\xA1\x95"  /* U+E855 */
+#define ICON_RAINY               "\xEF\x85\xB6"  /* U+F176 */
+#define ICON_VOLUME_UP           "\xEE\x81\x90"  /* U+E050 */
+#define ICON_VOLUME_OFF          "\xEE\x81\x8F"  /* U+E04F */
+#define ICON_EXPAND_LESS         "\xEE\x97\x8E"  /* U+E5CE */
+#define ICON_EXPAND_MORE         "\xEE\x97\x8F"  /* U+E5CF */
 
 #ifdef __cplusplus
 } /* extern "C" */

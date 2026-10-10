@@ -136,6 +136,15 @@ bpp     = 4
 symbols = "0123456789:.-% "
 range   = ["0x2212"]
 
+# Timer app clock: hours over minutes, big enough to read across a room.
+# Digits and "-" (no valid time yet) only.
+[[font]]
+name    = "digits_160"
+file    = "fonts/RobotoMono-Medium.ttf"
+size    = 160
+bpp     = 4
+symbols = "0123456789-"
+
 # ---------------------------------------------------------------------------
 # Icon fonts — Material Symbols Rounded, filled (FILL 1), weight 500, grade 0.
 # `variations` pins every axis of the variable font. opsz (optical size,
@@ -160,6 +169,7 @@ icons      = [
     "casino", "straighten",
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
+    "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
 ]
 
 [[font]]
@@ -178,6 +188,7 @@ icons      = [
     "casino", "straighten",
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
+    "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
 ]
 
 [[font]]
@@ -196,6 +207,7 @@ icons      = [
     "casino", "straighten",
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
+    "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
 ]
 
 [[font]]
@@ -214,6 +226,7 @@ icons      = [
     "casino", "straighten",
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
+    "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
 ]
 
 # ---------------------------------------------------------------------------

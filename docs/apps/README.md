@@ -11,14 +11,16 @@ menu, burn-in rules) is in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 | Espresso shot timer | `espresso` | KeepAwake while running | — | [espresso-timer.md](espresso-timer.md) |
 | Dice | `dice` | Normal | — | [dice.md](dice.md) |
 | Level | `level` | Normal (dims after 60 s) | — | [level.md](level.md) |
+| Timer (clock, stopwatch, countdown) | `timer` | LowPowerDisplay on the clock tab and while a timer runs | — | [timer.md](timer.md) |
+| Noise (rain, white, blue) | `noise` | NoSleep while playing | — | [noise.md](noise.md) |
 | System (info + OTA) | `system` | Normal; KeepAwake on the update screen | Wi-Fi | [system.md](system.md) |
 | Wi-Fi settings (not in the menu) | `wifi` | Normal (dims after 60 s) | Wi-Fi | [wifi.md](wifi.md) |
 
 Part of the menu rather than an app: the [quick settings](quick-settings.md)
-shade (Wi-Fi, brightness), pulled down from the status bar.
+shade (Wi-Fi, brightness, volume), pulled down from the status bar.
 
-The menu is built for 10+ apps; candidates for later: clock / watch face,
-stopwatch / countdown, coin flip, weather from Home Assistant, HA scenes.
+The menu is built for 10+ apps; candidates for later: coin flip, weather
+from Home Assistant, HA scenes.
 
 ## Adding an app
 

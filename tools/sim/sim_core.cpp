@@ -17,6 +17,7 @@
 #include "core/pmu.h"
 #include "core/power.h"
 #include "core/rtc_clock.h"
+#include "core/settings.h"
 #include "core/sound.h"
 #include "core/store.h"
 #include "sim.h"
@@ -40,6 +41,9 @@ int scans = 0;
 core::net::Join join = core::net::Join::Idle;
 std::string joinSsid, joinPassword;
 int brightnessApplied = 0;
+int volumeApplied = 0;
+int noise = -1;
+std::vector<int> beeps;
 }  // namespace sim
 
 SimEsp ESP;
@@ -87,7 +91,15 @@ void applyBrightness() { sim::brightnessApplied++; }
 }  // namespace power
 
 namespace sound {
-void play(Pattern) { printf("[sim] beep\n"); }
+void play(Pattern p) {
+  if (core::settings::muted()) return;
+  sim::beeps.push_back(int(p));
+}
+void applyVolume() { sim::volumeApplied++; }
+void startNoise(noise::Kind kind) { sim::noise = int(kind); }
+void stopNoise() { sim::noise = -1; }
+bool noisePlaying() { return sim::noise >= 0; }
+bool busy() { return sim::noise >= 0; }
 }  // namespace sound
 
 namespace board {

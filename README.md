@@ -6,13 +6,16 @@ A little smartwatch-style gadget for the desk: firmware for the
 [Waveshare ESP32-S3-Touch-AMOLED-1.8](https://www.waveshare.com/esp32-s3-touch-amoled-1.8.htm?sku=29957),
 a palm-sized board with a 1.8" touch AMOLED screen, a battery charger, a
 motion sensor, a clock chip and a speaker. Swipe through round app icons,
-switch your lights, time your espresso, roll dice, level a shelf.
+switch your lights, time your espresso, roll dice, level a shelf, keep the
+time on stage, fall asleep to the rain.
 
 <p>
   <img src="docs/design/screens/01-menu.png" width="184" alt="App menu">
   <img src="docs/design/screens/04-lights.png" width="184" alt="Home Assistant lights">
   <img src="docs/design/screens/18-dice-d20-adv.png" width="184" alt="Dice with advantage">
   <img src="docs/design/screens/24-level-edge.png" width="184" alt="Level standing on an edge">
+  <img src="docs/design/screens/32-timer-clock.png" width="184" alt="Timer: big clock">
+  <img src="docs/design/screens/39-noise-rain.png" width="184" alt="Noise: rain">
 </p>
 
 > **Status:** everything builds, the logic is unit-tested and every screen
@@ -24,7 +27,8 @@ switch your lights, time your espresso, roll dice, level a shelf.
 
 - **Menu** of round app icons, two per row, scrolling. The status bar shows
   the time, Wi-Fi and battery; pull it down for **quick settings**: pick a
-  Wi-Fi network (typed on a Nokia-style keypad) and set the brightness.
+  Wi-Fi network (typed on a Nokia-style keypad), set the brightness and the
+  volume, or mute.
 - **Lights**: four Home Assistant lights as big tap-to-toggle tiles.
 - **Bot face**: a friendly animated face that reacts to taps.
 - **Pomodoro**: 25 / 5 / 15 min focus timer that keeps running in the
@@ -33,6 +37,10 @@ switch your lights, time your espresso, roll dice, level a shelf.
 - **Dice**: 3D wireframe d4, d6, d8, d10, d12, d20 and d100; up to 10 dice;
   advantage and disadvantage.
 - **Level**: a bubble level lying flat, an inclinometer standing on an edge.
+- **Timer**: a big clock for presenting that never blanks (and never burns
+  in), a stopwatch, and a countdown up to 99:59.
+- **Noise**: rain with falling rain on screen; swipe for white or blue
+  noise. Keeps playing while you use other apps.
 - **System**: battery, Wi-Fi, memory, uptime and the **wireless update**
   screen.
 
@@ -44,6 +52,7 @@ over Wi-Fi.
 ## Quick settings
 
 <img src="docs/design/screens/28-quick-settings.png" width="184" alt="Quick settings">
+<img src="docs/design/screens/43-quick-settings-muted.png" width="184" alt="Quick settings, muted">
 <img src="docs/design/screens/29-wifi-networks.png" width="184" alt="Wi-Fi networks">
 <img src="docs/design/screens/30-wifi-password.png" width="184" alt="Typing the password">
 <img src="docs/design/screens/31-wifi-connected.png" width="184" alt="Connected">
@@ -60,8 +69,11 @@ over the menu, like on a phone:
   one.
 - **Brightness**: one big bar from 5 % to 70 %. Touch or slide along it and
   the screen follows your finger; it's remembered when you let go.
+- **Volume**: the button on the left mutes everything (beeps and noise; it
+  turns red); the bar sets the volume from 0 to 100 %. Slide it while noise
+  plays to hear the level, or let go and it blips once at the new volume.
 
-Both settings stay through restarts, sleep and firmware updates. Drag the
+All settings stay through restarts, sleep and firmware updates. Drag the
 shade up, tap below it or press a button to close it.
 
 ## The apps
@@ -141,6 +153,52 @@ green within 0.3° and beeps once.
 - **Hold**: freeze the reading.
 - **° / %**: degrees or percent slope.
 
+### Timer
+
+<img src="docs/design/screens/32-timer-clock.png" width="184" alt="Clock">
+<img src="docs/design/screens/33-timer-clock-minimal.png" width="184" alt="Clock, minimal view">
+<img src="docs/design/screens/34-timer-stopwatch.png" width="184" alt="Stopwatch">
+<img src="docs/design/screens/35-timer-countdown-set.png" width="184" alt="Setting a countdown">
+<img src="docs/design/screens/36-timer-countdown-running.png" width="184" alt="Countdown running">
+<img src="docs/design/screens/37-timer-countdown-done.png" width="184" alt="Time's up">
+
+Three tabs at the top:
+
+- **Clock**: hours over minutes, as big as the screen allows, and the date.
+  Put it on the lectern while you present: the screen **never turns off**.
+  After the idle time it switches to a dim view with only the digits (a
+  quarter of full brightness, still readable across a room), which moves to
+  a new spot every minute so nothing burns into the AMOLED, and the chip
+  sleeps between minutes.
+- **Stopwatch**: tap the digits or Start / Pause; ⟲ resets while paused.
+- **Countdown**: set minutes and seconds (up to 99:59) by dragging each
+  number up or down, or tapping above / below it (hold to repeat). Start it
+  and a ring shows the time gone and when it will end. When time's up it
+  beeps for 30 s, the screen wakes and flashes, and it counts the overtime
+  in amber until you press Stop (Back just silences it).
+
+The stopwatch and countdown keep running when you leave the app, with the
+same dim, moving view while the device is idle. The countdown remembers its
+last time.
+
+### Noise
+
+<img src="docs/design/screens/38-noise-paused.png" width="184" alt="Noise, paused">
+<img src="docs/design/screens/39-noise-rain.png" width="184" alt="Rain">
+<img src="docs/design/screens/41-noise-white.png" width="184" alt="White noise">
+<img src="docs/design/screens/42-noise-blue.png" width="184" alt="Blue noise">
+
+Tap to play or pause the **rain**. **Swipe left or right** to cycle through
+rain, **white noise** and **blue noise** (the dots at the bottom show which).
+Every sound is generated live and has its own picture: falling rain with
+splashes, drifting snow, twinkling blue points.
+
+It's made for long sessions. The labels fade out after a few seconds, the
+picture never stands still, and the screen dims and goes black as usual
+while the sound plays on, in the menu and in other apps too (open Noise
+again to pause it). The board won't deep-sleep while it plays, so on
+battery it lasts hours, not days. Volume and mute are in quick settings.
+
 ### System
 
 <img src="docs/design/screens/25-system.png" width="184" alt="System info">
@@ -164,8 +222,10 @@ free memory, uptime. **Wireless update** opens the update screen (see
 <img src="docs/design/screens/27-power-off.png" width="184" alt="Power-off animation">
 
 **Power.** On battery the screen dims after 10 s, goes black after 15 s and
-the board deep-sleeps after 20 s idle (Espresso and Level wait longer, a
-running Pomodoro never sleeps). On the charger it dims after 1 min, goes
+the board deep-sleeps after 20 s idle (Espresso and Level wait longer; a
+running Pomodoro, the Timer's clock or a running timer never sleep and show
+a dim minimal view instead; playing Noise blanks the screen but doesn't
+sleep). On the charger it dims after 1 min, goes
 black after 5 min and never sleeps. Apps remember their state across sleep
 (Pomodoro comes back paused). All timings are in `include/config.h`.
 
@@ -256,7 +316,10 @@ Everything you'd want to tweak is in **`include/config.h`**:
 | Dice colour and roll time | `DICE_COLOR`, `DICE_ROLL_MS` |
 | Level colour, beep | `LEVEL_COLOR`, `LEVEL_BEEP` |
 | Bot face colour | `BOT_FACE_COLOR` |
-| Beep volume (0 = mute) | `SOUND_VOLUME` |
+| Timer colour, first countdown, minimal-view brightness | `TIMER_COLOR`, `TIMER_DEFAULT_COUNTDOWN_S`, `TIMER_MINIMAL_BRIGHTNESS` |
+| How long a finished countdown beeps | `SOUND_ALARM_MS` |
+| Noise colour, animation speed, fade | `NOISE_*` |
+| Volume default and range (the level itself is set in quick settings) | `SOUND_VOLUME_DEFAULT_PCT`, `SOUND_VOLUME_RANGE_DB` |
 | Device name on the network | `OTA_HOSTNAME` |
 
 Rebuild and flash (USB or Wi-Fi) after changing it.
@@ -268,7 +331,8 @@ Rebuild and flash (USB or Wi-Fi) after changing it.
 | Board doesn't appear as a serial port / upload fails | hold BOOT, replug USB, release BOOT, upload again |
 | Lights show "Connecting…" forever | pick the network again in quick settings → Wi-Fi (2.4 GHz only), or check `WIFI_SSID` / `WIFI_PASSWORD` |
 | Wi-Fi: "Couldn't connect" | wrong password (try again, mind ABC / abc), or too far from the router |
-| Forget the saved Wi-Fi and brightness | "ESP: erase flash", then flash again |
+| Forget the saved Wi-Fi, brightness and volume | "ESP: erase flash", then flash again |
+| No sound at all | quick settings: is the speaker button red (muted), or the volume at 0 %? |
 | "HA token rejected" | create a new long-lived token, update `HA_TOKEN` |
 | A light tile is grey | wrong entity ID in `HA_LIGHTS`, or the light is offline in HA |
 | Wireless update: "Wrong password" | `ESP_OTA_PASSWORD` on the PC ≠ `OTA_PASSWORD` on the board |

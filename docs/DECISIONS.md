@@ -5,6 +5,36 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-10 — Timer and Noise apps; volume and mute in quick settings
+
+**Context:** The owner asked for a Timer (a big presentation clock that must
+never blank but mustn't burn in, plus stopwatch and a countdown up to
+99:59) and a Noise app (rain with a rain animation; swipe for white or blue
+noise) that may run for hours. Noise needed a volume and mute setting.
+**Decision:**
+- The clock tab is `LowPowerDisplay`: after the dim delay it shows a dim
+  minimal clock (160 px hours over minutes, about 5 % of the pixels) that
+  moves every minute, with light sleep between minute redraws. Apps may now
+  ask for a brighter minimal view (`App::minimalBrightness()`); the Timer
+  uses 25 % instead of 15 % so the clock reads across a room.
+- Noise is generated live (`lib/NoiseGen`), not stored: rain is band-passed
+  pink noise with gusts plus synthesised drops; blue is differenced pink.
+  `core::sound` streams it from its task in 16 ms buffers with fades, and
+  plays beeps in between.
+- New policy `NoSleep` (the Normal timeline without deep sleep) for Noise
+  while playing: the screen still dims and goes black, which is the best
+  burn-in protection, and the sound goes on. Light sleep is skipped while the
+  I2S output runs, so a minimal view (Pomodoro, Timer) and noise coexist.
+- Volume (0–100 %, 40 dB span) and mute are settings in NVS (key `volume`),
+  replacing the compile-time `SOUND_VOLUME`. Mute drops beeps and keeps the
+  amplifier off.
+**Consequences:** While noise plays the chip never sleeps: hours of battery,
+not days; a sleep timer is the obvious next step. Running timers stop on a
+long-press power-off (only the countdown's set time is saved). The minimal
+brightness check in `power.cpp` now compares against the capped level, which
+also fixes a minimal view that never light-slept when the user brightness
+was below 15 %.
+
 ## 2026-10-10 — Quick settings: Wi-Fi and brightness set on the device
 
 **Context:** Changing networks or brightness meant editing `secrets.h` /

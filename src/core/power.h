@@ -16,6 +16,7 @@ struct Hooks {
   void (*minimalTick)(uint32_t nowMs);
   uint32_t (*minimalRefreshMs)(uint32_t nowMs);
   void (*prepareSleep)();
+  uint8_t (*minimalLevel)();  // the minimal view's brightness, 0 = BRIGHTNESS_MINIMAL
 };
 
 void begin(const Hooks &hooks);

@@ -11,7 +11,7 @@ struct Step {
 };
 
 // The timeline for a profile/policy pair, in order. Returns the step count.
-// KeepAwake has no steps (Active forever).
+// KeepAwake has no steps (Active forever); NoSleep drops the Sleep step.
 uint8_t timelineRaw(Profile profile, Policy policy, const Timings &t, Step out[3]) {
   switch (policy) {
     case Policy::KeepAwake: return 0;
@@ -19,7 +19,8 @@ uint8_t timelineRaw(Profile profile, Policy policy, const Timings &t, Step out[3
       // Battery dim delay in both profiles: policies beat profiles (§3.1).
       out[0] = {t.batDimMs, Stage::Minimal};
       return 1;
-    case Policy::Normal: break;
+    case Policy::Normal:
+    case Policy::NoSleep: break;
   }
   if (profile == Profile::Charger) {
     out[0] = {t.chgDimMs, Stage::Dimmed};
@@ -29,7 +30,7 @@ uint8_t timelineRaw(Profile profile, Policy policy, const Timings &t, Step out[3
   out[0] = {t.batDimMs, Stage::Dimmed};
   out[1] = {t.batBlackMs, Stage::Black};
   out[2] = {t.batSleepMs, Stage::Sleep};
-  return 3;
+  return policy == Policy::NoSleep ? 2 : 3;  // NoSleep stops at black
 }
 
 // Thresholds are clamped to be non-decreasing, so a deeper stage never comes

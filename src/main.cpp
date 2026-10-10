@@ -12,8 +12,10 @@
 #include "apps/home_assistant/ha_app.h"
 #include "apps/level/level_app.h"
 #include "apps/menu/menu_app.h"
+#include "apps/noise/noise_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
 #include "apps/system/system_app.h"
+#include "apps/timer/timer_app.h"
 #include "apps/wifi/wifi_app.h"
 #include "config.h"
 #include "core/board_init.h"
@@ -44,6 +46,8 @@ static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
 static apps::DiceApp diceApp;
 static apps::LevelApp levelApp;
+static apps::TimerApp timerApp;
+static apps::NoiseApp noiseApp;
 static apps::SystemApp systemApp;
 
 static void dispatch(const core::Event &e) {
@@ -99,6 +103,8 @@ void setup() {
   apps::manager::add(&espressoApp);
   apps::manager::add(&diceApp);
   apps::manager::add(&levelApp);
+  apps::manager::add(&timerApp);
+  apps::manager::add(&noiseApp);
   apps::manager::add(&systemApp);
   apps::manager::begin();
   ui::power_anim::on();
@@ -119,6 +125,7 @@ void setup() {
       apps::manager::minimalTick,
       apps::manager::minimalRefreshMs,
       apps::manager::prepareSleep,
+      apps::manager::minimalLevel,
   });
 }
 

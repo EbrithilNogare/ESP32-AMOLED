@@ -176,19 +176,7 @@ void PomodoroApp::render(uint32_t nowMs) {
 }
 
 void PomodoroApp::flash() {
-  if (!root_) return;
-  lv_obj_t *f = ui::box(root_);  // not clickable: taps go through
-  lv_obj_set_size(f, LCD_WIDTH, LCD_HEIGHT);
-  lv_obj_set_style_bg_color(f, ui::c(phaseColor(timer_.phase())), 0);
-  lv_anim_t a;
-  lv_anim_init(&a);
-  lv_anim_set_var(&a, f);
-  lv_anim_set_values(&a, 0, 90);  // ~35 % at the peak
-  lv_anim_set_duration(&a, 400);
-  lv_anim_set_playback_duration(&a, 400);
-  lv_anim_set_exec_cb(&a, [](void *o, int32_t v) { lv_obj_set_style_bg_opa((lv_obj_t *)o, lv_opa_t(v), 0); });
-  lv_anim_set_completed_cb(&a, [](lv_anim_t *an) { lv_obj_delete((lv_obj_t *)an->var); });
-  lv_anim_start(&a);
+  if (root_) ui::flash(root_, phaseColor(timer_.phase()));
 }
 
 void PomodoroApp::onToggle(lv_event_t *e) {
@@ -261,9 +249,8 @@ void PomodoroApp::renderMinimal(uint32_t nowMs) {
   const uint32_t dur = timer_.phaseDurationMs();
   const uint32_t minutes = (rem + 59999) / 60000;
   const uint32_t color = phaseColor(timer_.phase());
-  const int32_t k = int32_t(minutes);
-  const int32_t cx = LCD_WIDTH / 2 + int32_t(lroundf(sinf(k * 1.7f) * 22));
-  const int32_t cy = LCD_HEIGHT / 2 + int32_t(lroundf(cosf(k * 1.1f) * 26));
+  const lv_point_t d = ui::drift(int32_t(minutes), 22, 26);
+  const int32_t cx = LCD_WIDTH / 2 + d.x, cy = LCD_HEIGHT / 2 + d.y;
   const int lit = dur ? int((uint64_t(rem) * kMinDots + dur - 1) / dur) : 0;
   for (int i = 0; i < kMinDots; i++) {
     const float a = -float(M_PI) / 2 + i * 2 * float(M_PI) / kMinDots;

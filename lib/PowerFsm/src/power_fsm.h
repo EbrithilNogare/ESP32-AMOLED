@@ -9,7 +9,9 @@
 namespace power {
 
 enum class Profile : uint8_t { Battery, Charger };
-enum class Policy : uint8_t { Normal, KeepAwake, LowPowerDisplay };
+// NoSleep: the Normal timeline without deep sleep: the screen dims and goes
+// black as usual, but the chip stays up (e.g. sound is playing).
+enum class Policy : uint8_t { Normal, KeepAwake, LowPowerDisplay, NoSleep };
 enum class Stage : uint8_t { Active, Dimmed, Black, Minimal, Sleep };
 
 // Idle thresholds in ms (time since the last touch/button). Meant to be

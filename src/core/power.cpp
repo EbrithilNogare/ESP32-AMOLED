@@ -15,6 +15,7 @@
 #include "ota.h"
 #include "pmu.h"
 #include "settings.h"
+#include "sound.h"
 #include "ticks.h"
 #include "touch.h"
 #include "ui/power_anim.h"
@@ -31,18 +32,22 @@ static constexpr gpio_num_t kBootPin = gpio_num_t(PIN_BOOT_BUTTON);
 static constexpr gpio_num_t kTouchIntPin = gpio_num_t(PIN_TOUCH_INT);
 static constexpr uint32_t kFlushWaitMs = 100;  // longest wait for the minimal frame's DMA before sleeping
 
-// Active = the user's brightness (both profiles); dimmed stays clearly
-// darker than that, whatever the user picked.
-static ::power::Levels levels() {
-  const uint8_t user = settings::brightnessLevel();
-  const uint8_t half = user / 2;
-  return {user, user, uint8_t(half < BRIGHTNESS_DIM_BATTERY ? half : BRIGHTNESS_DIM_BATTERY),
-          uint8_t(half < BRIGHTNESS_DIM_CHARGER ? half : BRIGHTNESS_DIM_CHARGER), BRIGHTNESS_MINIMAL};
-}
-
 enum class SleepPhase : uint8_t { None, Animating, WaitRelease };
 
 static Hooks h;
+
+// Active = the user's brightness (both profiles); dimmed stays clearly
+// darker than that, whatever the user picked. The minimal view's level comes
+// from the app showing it (the Timer clock is brighter than the default);
+// brightnessFor() caps every level at the user's.
+static ::power::Levels levels() {
+  const uint8_t user = settings::brightnessLevel();
+  const uint8_t half = user / 2;
+  const uint8_t minimal = h.minimalLevel ? h.minimalLevel() : 0;
+  return {user, user, uint8_t(half < BRIGHTNESS_DIM_BATTERY ? half : BRIGHTNESS_DIM_BATTERY),
+          uint8_t(half < BRIGHTNESS_DIM_CHARGER ? half : BRIGHTNESS_DIM_CHARGER),
+          minimal ? minimal : uint8_t(BRIGHTNESS_MINIMAL)};
+}
 static uint32_t lastInputMs;
 static Stage st = Stage::Active;
 static Profile prof = Profile::Battery;
@@ -119,7 +124,8 @@ static Stage apply(Stage s, Stage old) {
 // PWR can't wake the chip (the AXP2101 IRQ only reaches the TCA9554, not a
 // GPIO), so a sleep lasts at most MINIMAL_PWR_POLL_MS; the main loop then
 // polls the PMU and a PWR press ends the minimal view within ~1 s. A wake
-// that isn't a redraw only runs one loop pass and that I2C poll.
+// that isn't a redraw only runs one loop pass and that I2C poll. While sound
+// plays (Noise app, a beep) the CPU doesn't light-sleep at all.
 static void minimalCycle(uint32_t now) {
   if (reached(now, minimalDueMs)) {
     if (h.minimalTick) h.minimalTick(now);
@@ -130,7 +136,9 @@ static void minimalCycle(uint32_t now) {
     ms = constrain(ms, uint32_t(MINIMAL_REFRESH_MIN_MS), uint32_t(MINIMAL_REFRESH_MAX_MS));
     minimalDueMs = now + ms;
   }
-  if (buttons::bootHeld() || display::brightness() != BRIGHTNESS_MINIMAL) return;  // still fading
+  if (buttons::bootHeld() || display::brightness() != ::power::brightnessFor(Stage::Minimal, prof, levels()))
+    return;                   // still fading
+  if (sound::busy()) return;  // light sleep would stop the I2S stream: stay awake, just idle
 
   const int32_t left = int32_t(minimalDueMs - millis());
   if (left <= 0) return;  // redraw on the next pass

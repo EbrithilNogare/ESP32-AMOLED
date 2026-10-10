@@ -89,9 +89,11 @@
 
 // ---- sound ----
 #define SOUND_SAMPLE_RATE 16000  // the ES8311 dividers in sound.cpp assume 16 kHz
-// 0-100, linear in dB: ES8311 DAC volume 0 = mute, 100 = 0 dB (register 0xBF),
-// 0.5 dB per register step, so 90 ≈ -10 dB and 50 ≈ -48 dB.
-#define SOUND_VOLUME 93  // ≈ -7 dB
+// Volume 0-100 % (quick settings, saved in NVS), linear in dB on the ES8311
+// DAC: 100 % = 0 dB, 1 % = -SOUND_VOLUME_RANGE_DB, 0 % = silent.
+#define SOUND_VOLUME_DEFAULT_PCT 80  // -8 dB
+#define SOUND_VOLUME_RANGE_DB 40
+#define SOUND_ALARM_MS 30000  // a finished countdown beeps this long unless dismissed
 
 // ---- home assistant ----
 // Exactly 4 lights, in screen order: top-left, top-right, bottom-left, bottom-right.
@@ -131,6 +133,21 @@
 #define LEVEL_IDLE_DIM_MS 60000  // the screen stays bright longer: hands are busy
 #define LEVEL_BEEP 1             // short beep when the reading becomes level
 #define LEVEL_SAMPLE_MS 20       // accelerometer read period while the app is open
+
+// ---- timer (docs/apps/timer.md) ----
+#define TIMER_COLOR 0xB388FF           // app accent: lavender
+#define TIMER_DEFAULT_COUNTDOWN_S 300  // first countdown before one is set: 5:00
+// Brightness of the Timer's minimal views (the clock while presenting, a
+// running countdown or stopwatch): readable across a room, still far below
+// the active level. The digits move every minute against burn-in.
+#define TIMER_MINIMAL_BRIGHTNESS 64  // 25 %
+#define TIMER_ALARM_REPEAT_MS 2000   // a finished countdown beeps this often, for SOUND_ALARM_MS
+
+// ---- noise (docs/apps/noise.md) ----
+#define NOISE_COLOR 0x6E8BFF  // app accent: rain blue
+#define NOISE_FPS 24          // animation frame rate
+#define NOISE_FPS_DIM 8       // ... while dimmed
+#define NOISE_FADE_MS 400     // sound fades in and out instead of clicking
 
 // ---- IMU (QMI8658) axis mapping ----
 // Raw sensor axis (0 = X, 1 = Y, 2 = Z) and sign for each screen axis: x to the

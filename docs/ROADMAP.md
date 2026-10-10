@@ -13,15 +13,15 @@ then Wi-Fi + Home Assistant.
 
 Status: ☐ not started · ◐ code written, on-device check pending · ☑ done
 
-**Where we are (2026-10-10):** M1–M14, M16 (Dice), M17 (Level) and M18 (quick settings) are
-implemented on this branch. Both firmware envs build with 0 warnings, the
+**Where we are (2026-10-10):** M1–M14, M16 (Dice), M17 (Level), M18 (quick
+settings), M19 (Timer) and M20 (Noise) are implemented on this branch. Both firmware envs build with 0 warnings, the
 `lib/` logic passes the host unit tests, and the PC simulator taps through
 every app (`docs/design/firmware-screens.png`). **Nothing has been flashed
 yet**: the next step is the owner working through the **On device**
 checklists below, in order, starting with M1. Differences from the plan: no
 SensorLib (own touch, RTC and IMU drivers), the panel and ES8311 code is
 ported into `src/core/` instead of vendored libraries, and the menu has the
-7 real apps instead of 10 placeholders.
+9 real apps instead of 10 placeholders.
 
 ## Phase 0 — Plan ☑
 
@@ -64,7 +64,7 @@ all four corners; ≥ 30 fps while animating (log LVGL's FPS).
 2. **Framework:** `apps/app.h`, `apps/app_manager`, `MenuApp` with round
    icon-font icons in pairs (UI_DESIGN §5),
 vertical scroll with row snapping, open/close transitions, remembered scroll
-position, with the **7 real apps**. Temporary on-screen back button.
+position, with the **9 real apps**. Temporary on-screen back button.
 
 **On device:** smooth scrolling across all rows, snapping to rows,
 tap opens the right app, back returns to the same scroll position.
@@ -164,6 +164,22 @@ Hold / ° %.
 **On device:** the checklist in the spec — start with the IMU axis mapping
 (`IMU_SCREEN_*` in `config.h`), which hasn't been checked on the board.
 
+### M19 — Timer ◐ — [spec](apps/timer.md)
+
+Clock / stopwatch / countdown tabs, `lib/TimerCore` (host-tested), the
+clock's minimal view (160 px digits, 25 % via `App::minimalBrightness()`,
+moving every minute), countdown alarm.
+
+**On device:** spec acceptance list, including the minimal clock's current.
+
+### M20 — Noise ◐ — [spec](apps/noise.md)
+
+`lib/NoiseGen` (rain, white, blue; host-tested), noise streaming with fades
+in `core::sound`, policy `NoSleep`, rain / snow / shimmer animations; volume
+and mute in quick settings.
+
+**On device:** spec acceptance list; listen to the rain first.
+
 ## Networked apps
 
 ### M11 — Wi-Fi ◐
@@ -202,9 +218,9 @@ logs 401.
 
 ### M18 — Quick settings + Wi-Fi setup ◐ — [spec](apps/quick-settings.md), [Wi-Fi](apps/wifi.md)
 
-Shade pulled down from the menu's status bar with a Wi-Fi row and a live
-brightness bar (5–70 %, saved in NVS); Wi-Fi screen with scan, Nokia-style
-multi-tap keypad (`lib/MultiTap`, host-tested) and a trial join that saves
+Shade pulled down from the menu's status bar with a Wi-Fi row, a live
+brightness bar (5–70 %, saved in NVS) and a volume bar with mute; Wi-Fi
+screen with scan, Nokia-style multi-tap keypad (`lib/MultiTap`, host-tested) and a trial join that saves
 the network only once it connects (`core::settings`, `net::join()`).
 
 **On device:** both specs' acceptance lists.
@@ -219,6 +235,5 @@ DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
 
 ## Later
 
-Settings app (brightness, timeouts), clock/watch face (RTC), HA WebSocket
-push, IMU features (bot reactions, espresso auto-start), OTA pull from GitHub
+Settings app (timeouts), HA WebSocket push, IMU features (bot reactions, espresso auto-start), OTA pull from GitHub
 Releases, more apps from [apps/README.md](apps/README.md).

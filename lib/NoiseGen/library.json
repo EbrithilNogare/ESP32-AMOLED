@@ -1,0 +1,7 @@
+{
+  "name": "NoiseGen",
+  "version": "0.1.0",
+  "description": "Procedural rain, white and blue noise for the speaker (16-bit mono)",
+  "platforms": "*",
+  "frameworks": "*"
+}

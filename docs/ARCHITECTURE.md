@@ -121,12 +121,18 @@ Each app declares how it interacts with the idle timeline:
 | --- | --- | --- |
 | `Normal` | follow the profile's dim → black → sleep timeline | menu, Home Assistant, bot face, dice, level (longer dim delay), espresso and System when idle |
 | `KeepAwake` | full UI stays on while the app says it's busy | espresso timer *while running*, System *while the update screen is open* |
-| `LowPowerDisplay` | never deep sleep; after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) | pomodoro *while a timer runs* (also in the background) |
+| `LowPowerDisplay` | never deep sleep; after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) | pomodoro *while a timer runs* (also in the background); Timer *on the clock tab* and *while a stopwatch or countdown runs* |
+| `NoSleep` | the `Normal` timeline without deep sleep: dims and goes black, the chip stays up | Noise *while playing* (also in the background) |
 
 A policy can change at runtime: the manager asks the open app for
 `powerPolicy()` every loop (and closed apps for `backgroundPolicy()`), so the
 espresso timer is `KeepAwake` only while the stopwatch runs. An app can also
 lengthen its dim delay with `idleDimMs()` (espresso, level).
+
+When several apps ask, `KeepAwake` (open app) beats a minimal view (open or
+background app), which beats `NoSleep` (open or background app), which beats
+`Normal`. A minimal view never deep-sleeps either, and while sound plays it
+skips light sleep, so noise and a running pomodoro or timer coexist.
 
 **Policies beat profiles.** A non-`Normal` policy behaves the same on the
 charger as on battery. A running pomodoro switches to its minimal view after
@@ -181,7 +187,7 @@ flowchart TB
         imu["Imu<br/>QMI8658 accelerometer"]
         power["PowerManager<br/>profile, idle timeline, policies,<br/>light/deep sleep, wake cause"]
         net["Net<br/>Wi-Fi on demand,<br/>fast reconnect"]
-        sound["Sound<br/>ES8311 beeps"]
+        sound["Sound<br/>ES8311 beeps, noise stream,<br/>volume + mute"]
         store["Store<br/>NVS + RTC memory"]
         apps["apps::manager<br/>registry, menu, open/close"]
     end
@@ -193,6 +199,8 @@ flowchart TB
         esp["Espresso"]
         dice["Dice"]
         level["Level"]
+        timer["Timer"]
+        noise["Noise"]
         sys["System"]
     end
     main --> core
@@ -203,6 +211,8 @@ flowchart TB
     apps --> appdir
     ha --> net
     pomo --> sound
+    timer --> sound
+    noise --> sound
     level --> imu
     sys --> net
 ```
@@ -245,6 +255,7 @@ class App {
   virtual void exitMinimal() {}
   virtual void minimalTick(uint32_t nowMs) {}
   virtual uint32_t minimalRefreshMs(uint32_t nowMs) const { return 60000; }
+  virtual uint8_t minimalBrightness() const { return 0; }  // 0 = BRIGHTNESS_MINIMAL (Timer: 25 %)
 
   virtual void onSleep() {}  // deep sleep is coming: persist what matters
   virtual ~App() = default;
@@ -342,8 +353,9 @@ created on open and deleted on close.
 power-off). When Wi-Fi is up, SNTP corrects it. Timezone is a POSIX TZ
 string in `config.h` (`TIMEZONE`, e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`).
 
-**Settings.** Compile-time defaults in `config.h`. The two settings changed on
-the device, brightness and the Wi-Fi network, live in `core::settings` (NVS)
+**Settings.** Compile-time defaults in `config.h`. The settings changed on
+the device, brightness, volume + mute and the Wi-Fi network, live in
+`core::settings` (NVS)
 and are set from the [quick settings](apps/quick-settings.md) shade and the
 [Wi-Fi screen](apps/wifi.md). A saved network wins over `WIFI_SSID` in
 `secrets.h`; a new one is saved only after it connects (`net::join()`).
@@ -392,7 +404,7 @@ stateDiagram-v2
 Brightness changes fade over ~300 ms. "Black" is brightness 0 with the panel
 on, so a touch restores the picture instantly.
 
-### 8.2 `LowPowerDisplay` (pomodoro)
+### 8.2 `LowPowerDisplay` (pomodoro, timer)
 
 Active → (dim timeout) → **Minimal**: the app redraws a sparse, dim view;
 Wi-Fi is suspended (`net::suspend()`, even if an app holds it); LVGL refreshes
@@ -403,7 +415,11 @@ BOOT (GPIO0). The AXP2101 IRQ only reaches the expander (EXIO5), so PWR can't
 wake the chip: each light sleep lasts at most `MINIMAL_PWR_POLL_MS` (1 s) and
 a wake that isn't a redraw just polls the PMU. A touch or button returns to
 the full view. If no app offers a minimal view, the stage falls back to
-Black.
+Black. While the sound output runs (Noise, a beep) the CPU stays awake
+between redraws instead of light-sleeping, which would stop the I2S stream.
+The brightness is `BRIGHTNESS_MINIMAL` (15 %) unless the app asks for more
+with `minimalBrightness()` (the Timer's clock: 25 %), always capped at the
+user's brightness.
 
 ### 8.3 Deep sleep entry
 

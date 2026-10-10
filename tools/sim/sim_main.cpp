@@ -20,11 +20,14 @@
 #include "apps/home_assistant/ha_app.h"
 #include "apps/level/level_app.h"
 #include "apps/menu/menu_app.h"
+#include "apps/noise/noise_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
 #include "apps/system/system_app.h"
+#include "apps/timer/timer_app.h"
 #include "apps/wifi/wifi_app.h"
 #include "board.h"
 #include "core/settings.h"
+#include "core/sound.h"
 #include "core/store.h"
 #include "sim.h"
 #include "ui/power_anim.h"
@@ -38,6 +41,8 @@ static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
 static apps::DiceApp diceApp;
 static apps::LevelApp levelApp;
+static apps::TimerApp timerApp;
+static apps::NoiseApp noiseApp;
 static apps::SystemApp systemApp;
 
 static uint16_t fb[LCD_WIDTH * LCD_HEIGHT];
@@ -144,6 +149,7 @@ static lv_obj_t *findIcon(lv_obj_t *obj, const apps::App *app) {
   return nullptr;
 }
 
+// Scrolls the menu (a row at a time) until the app's icon is on screen, then taps it.
 static void tapIcon(const apps::App *app) {
   lv_obj_t *icon = findIcon(lv_screen_active(), app);
   if (!icon) {
@@ -152,8 +158,52 @@ static void tapIcon(const apps::App *app) {
     return;
   }
   lv_area_t a;
-  lv_obj_get_coords(icon, &a);
+  for (int i = 0; i < 6; i++) {
+    lv_obj_get_coords(icon, &a);
+    const int32_t cy = (a.y1 + a.y2) / 2;
+    if (cy > LCD_HEIGHT - 60)
+      drag(184, 380, 204);
+    else if (cy < 60)
+      drag(184, 204, 380);
+    else
+      break;
+  }
   tap((a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+}
+
+// The first visible label showing exactly `text`, depth first.
+static lv_obj_t *findLabel(lv_obj_t *obj, const char *text) {
+  if (lv_obj_is_visible(obj) && lv_obj_check_type(obj, &lv_label_class) && strcmp(lv_label_get_text(obj), text) == 0)
+    return obj;
+  for (uint32_t i = 0; i < lv_obj_get_child_count(obj); i++) {
+    if (lv_obj_t *found = findLabel(lv_obj_get_child(obj, i), text)) return found;
+  }
+  return nullptr;
+}
+
+static void tapText(const char *text) {
+  lv_obj_t *l = findLabel(lv_screen_active(), text);
+  if (!l) {
+    printf("FAIL: no label \"%s\" on screen\n", text);
+    failures++;
+    return;
+  }
+  lv_area_t a;
+  lv_obj_get_coords(l, &a);
+  tap((a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2);
+}
+
+static void swipe(int32_t x0, int32_t x1, int32_t y) {
+  touchX = x0;
+  touchY = y;
+  touchDown = true;
+  advance(30);
+  for (int i = 1; i <= 8; i++) {
+    touchX = x0 + (x1 - x0) * i / 8;
+    advance(15);
+  }
+  touchDown = false;
+  advance(300);
 }
 
 int main() {
@@ -179,6 +229,8 @@ int main() {
   apps::manager::add(&espressoApp);
   apps::manager::add(&diceApp);
   apps::manager::add(&levelApp);
+  apps::manager::add(&timerApp);
+  apps::manager::add(&noiseApp);
   apps::manager::add(&systemApp);
   apps::manager::begin();
   advance(100);
@@ -361,8 +413,102 @@ int main() {
   advance(400);
   CHECK(apps::manager::inMenu());
 
+  // ---- timer: the clock (and its minimal view), stopwatch, countdown
+  tapIcon(&timerApp);
+  CHECK(apps::manager::current() == &timerApp && timerApp.tab() == apps::TimerApp::Tab::Clock);
+  CHECK(timerApp.powerPolicy() == power::Policy::LowPowerDisplay);  // the clock never lets the screen go off
+  capture("32-timer-clock");
+  CHECK(apps::manager::enterMinimal());
+  CHECK(apps::manager::minimalLevel() == TIMER_MINIMAL_BRIGHTNESS);
+  apps::manager::minimalTick(sim::nowMs);
+  advance(50);
+  capture("33-timer-clock-minimal");
+  apps::manager::exitMinimal();
+
+  tapText("Stopwatch");
+  CHECK(timerApp.tab() == apps::TimerApp::Tab::Stopwatch);
+  CHECK(timerApp.powerPolicy() == power::Policy::Normal);  // nothing running: may sleep
+  tapText("Start");
+  CHECK(timerApp.stopwatch().running());
+  CHECK(timerApp.powerPolicy() == power::Policy::LowPowerDisplay);
+  advance(75400 - 400);
+  capture("34-timer-stopwatch");
+  tapText("Pause");
+  CHECK(!timerApp.stopwatch().running());
+
+  tapText("Countdown");
+  CHECK(timerApp.tab() == apps::TimerApp::Tab::Countdown);
+  CHECK(timerApp.countdown().seconds() == TIMER_DEFAULT_COUNTDOWN_S);
+  // Wheels: minutes x 44-164, seconds x 204-324, y 92-328. Tap above the
+  // middle to count up, below to count down, or drag (16 px a step).
+  tap(104, 130);        // 6:00
+  drag(264, 150, 250);  // 100 px down: 6 steps → 5:54... of the seconds: 6:54
+  CHECK(timerApp.countdown().seconds() == 6 * 60 + 54);
+  capture("35-timer-countdown-set");
+  for (int i = 0; i < 6; i++) tap(104, 290);  // down to 0:54
+  CHECK(timerApp.countdown().seconds() == 54);
+  tapText("Start");
+  CHECK(timerApp.countdown().running());
+  advance(4000);
+  capture("36-timer-countdown-running");
+  apps::manager::back();  // keeps running in the background
+  advance(400);
+  CHECK(apps::manager::inMenu());
+  CHECK(timerApp.backgroundPolicy() == power::Policy::LowPowerDisplay);
+  advance(51000);  // time's up while in the menu: the alarm beeps
+  CHECK(timerApp.countdown().state() == timer::State::Done && timerApp.alarming());
+  CHECK(!sim::beeps.empty() && sim::beeps.back() == int(core::sound::Pattern::Alarm));
+  tapIcon(&timerApp);  // opening it silences the alarm and shows the overtime
+  CHECK(!timerApp.alarming() && timerApp.tab() == apps::TimerApp::Tab::Countdown);
+  advance(2000);
+  capture("37-timer-countdown-done");
+  tapText("Stop");
+  CHECK(timerApp.countdown().state() == timer::State::Idle && timerApp.countdown().seconds() == 54);
+  tapText("Clock");
+  apps::manager::back();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+
+  // ---- noise: rain, then swipe through white and blue noise
+  tapIcon(&noiseApp);
+  CHECK(apps::manager::current() == &noiseApp && !noiseApp.playing());
+  CHECK(noiseApp.kind() == noise::Kind::Rain);
+  advance(200);
+  capture("38-noise-paused");
+  tap(184, 224);
+  CHECK(sim::noise == int(noise::Kind::Rain));
+  CHECK(noiseApp.powerPolicy() == power::Policy::NoSleep);  // screen may go black, the sound goes on
+  advance(1500);
+  capture("39-noise-rain");
+  advance(4000);
+  CHECK(!noiseApp.chromeShown());  // labels fade out while it plays untouched
+  capture("40-noise-rain-calm");
+  swipe(300, 80, 260);  // left: next
+  CHECK(noiseApp.kind() == noise::Kind::White && sim::noise == int(noise::Kind::White));
+  CHECK(noiseApp.chromeShown());
+  advance(1500);
+  capture("41-noise-white");
+  swipe(300, 80, 260);
+  CHECK(noiseApp.kind() == noise::Kind::Blue && sim::noise == int(noise::Kind::Blue));
+  advance(1500);
+  capture("42-noise-blue");
+  swipe(80, 300, 260);  // right: previous
+  CHECK(noiseApp.kind() == noise::Kind::White);
+  swipe(80, 300, 260);
+  CHECK(noiseApp.kind() == noise::Kind::Rain);
+  apps::manager::back();  // the rain keeps playing in the menu
+  advance(400);
+  CHECK(sim::noise == int(noise::Kind::Rain));
+  // The running pomodoro's minimal view wins over NoSleep (it never sleeps
+  // either, and skips light sleep while sound plays).
+  CHECK(apps::manager::effectivePolicy() == power::Policy::LowPowerDisplay);
+  tapIcon(&noiseApp);
+  tap(184, 224);  // pause
+  CHECK(sim::noise == -1 && noiseApp.powerPolicy() == power::Policy::Normal);
+  apps::manager::back();
+  advance(400);
+
   // ---- system + wireless update
-  drag(184, 380, 204);  // scroll to the end of the list
   tapIcon(&systemApp);
   CHECK(apps::manager::current() == &systemApp);
   capture("25-system");
@@ -397,16 +543,18 @@ int main() {
   CHECK(qs.isOpen());
 
   // Brightness bar (y 148-212, x 16-352): a tap in the middle, then a drag;
-  // live while touched, saved on release.
+  // live while touched, saved on release. sx: the pixel shift of the menu
+  // by now, which moves the bars too.
+  const int32_t sx = lv_obj_get_x(lv_obj_get_child(lv_screen_active(), 0));
   const int applied = sim::brightnessApplied;
-  tap(184, 180);
+  tap(184 + sx, 180);
   CHECK(core::settings::brightnessPct() == 38 && sim::brightnessApplied > applied);
-  touchX = 100;  // press at x 100 and slide to x 300
+  touchX = 100 + sx;  // press at x 100 and slide to x 300
   touchY = 180;
   touchDown = true;
   advance(40);
   for (int i = 1; i <= 10; i++) {
-    touchX = 100 + 20 * i;
+    touchX = 100 + sx + 20 * i;
     advance(15);
   }
   touchDown = false;
@@ -414,6 +562,23 @@ int main() {
   CHECK(core::settings::brightnessPct() == 60);
   uint8_t saved = 0;
   CHECK(core::store::load("bright", &saved, 1) && saved == 60);
+
+  // Volume (mute button x 16-80, bar x 92-352, y 224-288): the bar sets it
+  // and blips on release; the button mutes, and muted means no beeps.
+  const int volApplied = sim::volumeApplied;
+  sim::beeps.clear();
+  tap(92 + 130 + sx, 256);
+  CHECK(core::settings::volumePct() == 50 && sim::volumeApplied > volApplied);
+  CHECK(sim::beeps.size() == 1 && sim::beeps[0] == int(core::sound::Pattern::Confirm));
+  tap(48, 256);
+  CHECK(core::settings::muted());
+  uint8_t vol[2] = {};
+  CHECK(core::store::load("volume", vol, 2) && vol[0] == 50 && vol[1] == 1);
+  capture("43-quick-settings-muted");
+  core::sound::play(core::sound::Pattern::Confirm);
+  CHECK(sim::beeps.size() == 1);
+  tap(48, 256);
+  CHECK(!core::settings::muted());
 
   // ---- Wi-Fi: open from the shade, pick a network, type the password
   sim::networks = {{"HomeNet", -52, true}, {"Neighbour 5G", -68, true}, {"Cafe Guest", -80, false}};

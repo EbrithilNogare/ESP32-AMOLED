@@ -114,10 +114,17 @@ static App *minimalCandidate() {
   return nullptr;
 }
 
+// KeepAwake (open app) beats a minimal view (open or background app), which
+// beats NoSleep (open or background app, e.g. noise playing): the minimal
+// view never deep-sleeps either, and skips light sleep while sound plays.
 power::Policy effectivePolicy() {
   const power::Policy p = cur->powerPolicy();
   if (p == power::Policy::KeepAwake) return p;
-  return minimalCandidate() ? power::Policy::LowPowerDisplay : p;
+  if (minimalCandidate()) return power::Policy::LowPowerDisplay;
+  if (p == power::Policy::NoSleep) return p;
+  for (size_t i = 0; i < n; i++)
+    if (list[i] != cur && list[i]->backgroundPolicy() == power::Policy::NoSleep) return power::Policy::NoSleep;
+  return p;
 }
 
 uint32_t idleDimMs() { return cur->idleDimMs(); }
@@ -149,6 +156,8 @@ void minimalTick(uint32_t nowMs) {
 uint32_t minimalRefreshMs(uint32_t nowMs) {
   return minimalApp ? minimalApp->minimalRefreshMs(nowMs) : MINIMAL_REFRESH_DEFAULT_MS;
 }
+
+uint8_t minimalLevel() { return minimalApp ? minimalApp->minimalBrightness() : 0; }
 
 void prepareSleep() {
   for (size_t i = 0; i < n; i++) list[i]->onSleep();

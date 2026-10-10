@@ -63,7 +63,11 @@ inline int eventIndex(lv_event_t *e) {
   return int(intptr_t(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e)))));
 }
 
-lv_obj_t *toast(lv_obj_t *parent, const char *text);                    // caption on a raised chip
+lv_obj_t *toast(lv_obj_t *parent, const char *text);  // caption on a raised chip
+void flash(lv_obj_t *parent, uint32_t color);         // full-screen pulse (a timer ended); taps go through
+// Burn-in drift for minimal views (UI_DESIGN §6): a different offset within
+// ±ax, ±ay for every step, e.g. every minute.
+lv_point_t drift(int32_t step, int32_t ax, int32_t ay);
 lv_obj_t *progressRing(lv_obj_t *parent, int32_t size, int32_t width);  // 0..1000 from 12 o'clock
 
 // lv_label_set_text() always invalidates; these skip unchanged text so

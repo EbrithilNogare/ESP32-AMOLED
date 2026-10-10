@@ -26,6 +26,7 @@ bool enterMinimal();  // false if no app wants a minimal view
 void exitMinimal();
 void minimalTick(uint32_t nowMs);
 uint32_t minimalRefreshMs(uint32_t nowMs);
+uint8_t minimalLevel();
 void prepareSleep();
 
 }  // namespace apps::manager

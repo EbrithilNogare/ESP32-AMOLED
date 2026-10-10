@@ -31,12 +31,29 @@ those 10 s went into deep sleep with the image still `PENDING_VERIFY`; the
 wake is a reboot through the bootloader, which counts it as a failed boot
 and rolls back. `goDeepSleep()` now confirms a pending image first.
 
+## A minimal view never light-slept below 15 % brightness
+
+`minimalCycle()` waited for the fade to reach `BRIGHTNESS_MINIMAL` before
+light-sleeping, but `brightnessFor()` caps every level at the user's
+brightness. With the quick-settings brightness under 15 % the panel never got
+there, so the CPU stayed awake for the whole minimal view. It now compares
+against the capped level that the fade actually targets.
+
+## Simulator taps move with the pixel shift
+
+The app manager shifts every screen by up to 4 px every 3 minutes (burn-in).
+A simulator flow that runs long enough (the Timer's 75 s stopwatch and 51 s
+countdown) shifts the menu, and a tap at a fixed x on the brightness bar read
+37 % instead of 38 %. Tests that convert a tap position into a value add the
+current root offset.
+
 ## `SOUND_VOLUME` 0 was the loudest setting
 
 The ported ES8311 code wrote `SOUND_VOLUME * 256 / 100 - 1` to register
 `0x32`: 0 wrapped to `0xFF` (+32 dB, the loudest) and 100 also gave `0xFF`,
 which clips. Espressif's driver special-cases 0. Now 0 is mute and 100 is
-`0xBF` (0 dB); the default 93 is about the old loudness.
+`0xBF` (0 dB). (The volume is now a quick setting, `settings::volumePct()`,
+with the same rule: 0 % writes `0x00`, never more than `0xBF`.)
 
 ## Every `lv_obj_set_style_*` call redraws the object
 

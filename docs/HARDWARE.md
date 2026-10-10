@@ -286,7 +286,9 @@ qmi.begin(Wire, I2C_ADDR_QMI8658, PIN_I2C_SDA, PIN_I2C_SCL);
 Speaker: `pinMode(PIN_PA_EN, OUTPUT); digitalWrite(PIN_PA_EN, HIGH);` then
 configure the ES8311 over I2C and stream PCM over I2S. DAC volume register
 `0x32`: 0.5 dB per step, `0xBF` = 0 dB, `0xFF` = +32 dB (clips), `0x00` =
-mute; `SOUND_VOLUME` 0–100 maps linearly onto `0x00`–`0xBF`.
+mute. The volume setting (0–100 %) maps 1–100 % linearly onto the top
+40 dB (`0xBF − (100 − pct) × 0.8`), 0 % onto `0x00`; see `core/sound.cpp`.
+`PIN_PA_EN` (speaker amplifier) is on only while sound plays and not muted.
 
 ## Vendor demo index
 

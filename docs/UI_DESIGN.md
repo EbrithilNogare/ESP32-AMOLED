@@ -84,6 +84,7 @@ The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
 | `digits_56` | Roboto Mono Medium | 56 | dice, System update progress |
 | `digits_80` | Roboto Mono Medium | 80 | pomodoro full view, dice |
 | `digits_120` | Roboto Mono Medium | 120 | espresso timer |
+| `digits_160` | Roboto Mono Medium | 160 | Timer clock (digits and "-" only) |
 | `icon_18`, `icon_28` | Material Symbols Rounded | 18, 28 | status bar, inline icons |
 | `icon_56`, `icon_64` | Material Symbols Rounded | 56, 64 | light tiles and System; app icons |
 

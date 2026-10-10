@@ -28,4 +28,7 @@ extern int scans;
 extern core::net::Join join;
 extern std::string joinSsid, joinPassword;
 extern int brightnessApplied;
+extern int volumeApplied;
+extern int noise;               // -1 silent, else the noise::Kind playing
+extern std::vector<int> beeps;  // core::sound::Pattern of every beep played
 }  // namespace sim

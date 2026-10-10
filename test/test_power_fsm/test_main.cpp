@@ -50,6 +50,17 @@ static void test_low_power_display_minimal_never_sleep() {
   TEST_ASSERT_EQUAL(Stage::Minimal, stageFor(UINT32_MAX, Profile::Battery, lp, T));
 }
 
+static void test_no_sleep_stops_at_black() {
+  const Policy ns = Policy::NoSleep;
+  TEST_ASSERT_EQUAL(Stage::Dimmed, stageFor(10000, Profile::Battery, ns, T));
+  TEST_ASSERT_EQUAL(Stage::Black, stageFor(15000, Profile::Battery, ns, T));
+  TEST_ASSERT_EQUAL(Stage::Black, stageFor(20000, Profile::Battery, ns, T));  // no deep sleep
+  TEST_ASSERT_EQUAL(Stage::Black, stageFor(UINT32_MAX, Profile::Battery, ns, T));
+  TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, msUntilNextStage(15000, Profile::Battery, ns, T));
+  TEST_ASSERT_EQUAL(Stage::Dimmed, stageFor(60000, Profile::Charger, ns, T));  // charger: as Normal
+  TEST_ASSERT_EQUAL(Stage::Black, stageFor(300000, Profile::Charger, ns, T));
+}
+
 static void test_policy_beats_profile_on_charger() {
   // A running pomodoro on the charger uses the *battery* dim delay, not 60 s.
   const Policy lp = Policy::LowPowerDisplay;
@@ -162,6 +173,7 @@ int main() {
   RUN_TEST(test_charger_normal_never_sleeps);
   RUN_TEST(test_keep_awake_always_active);
   RUN_TEST(test_low_power_display_minimal_never_sleep);
+  RUN_TEST(test_no_sleep_stops_at_black);
   RUN_TEST(test_policy_beats_profile_on_charger);
   RUN_TEST(test_brightness_levels);
   RUN_TEST(test_brightness_capped_by_profile_max);

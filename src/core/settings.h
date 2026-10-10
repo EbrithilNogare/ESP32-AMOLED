@@ -19,6 +19,14 @@ void setBrightnessPct(uint8_t pct);  // clamped; takes effect via power::applyBr
 void saveBrightness();               // persist the current value (on release, not while dragging)
 uint8_t brightnessLevel();           // the same as a panel level, 0..255
 
+// Speaker volume 0..100 % (0 = silent) and mute, for beeps and the Noise app.
+// Both take effect via sound::applyVolume().
+uint8_t volumePct();
+void setVolumePct(uint8_t pct);  // clamped; unmutes
+void saveVolume();               // persist volume and mute (on release, not while dragging)
+bool muted();
+void setMuted(bool on);  // saved immediately
+
 bool hasWifi();  // credentials saved on the device
 const char *wifiSsid();
 const char *wifiPassword();

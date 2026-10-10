@@ -1,0 +1,7 @@
+{
+  "name": "TimerCore",
+  "version": "0.1.0",
+  "description": "Stopwatch and countdown (up to 99:59) on a 64-bit millisecond clock",
+  "platforms": "*",
+  "frameworks": "*"
+}
