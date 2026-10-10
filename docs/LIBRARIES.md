@@ -23,6 +23,7 @@ Rules:
 | AMOLED panel commands | derived from **esp_lcd_sh8601** (Waveshare/Espressif) | — | Apache-2.0 | ported → `src/core/display.cpp` | only the QSPI framing (opcodes `0x02` cmd, `0x32` pixels) and the vendor BSP init sequence were needed (~60 lines), so no separate library. One sequence for V1 and V2. |
 | Touch | own driver | — | — | `src/core/touch.cpp` | CST820 (V2) and FT3168 (V1) share the register layout we need: 7 bytes from `0x00` |
 | RTC | own driver | — | — | `src/core/rtc_clock.cpp` | PCF85063: one 7-byte BCD read at boot, one write after SNTP |
+| IMU | own driver | — | — | `src/core/imu.cpp` | QMI8658 accelerometer: 5 register writes and one 6-byte read; values checked against SensorLib (MIT) |
 | PMU | **XPowersLib** (lewisxhe) | 0.3.3 | MIT | `lib_deps` (git tag) | AXP2101: VBUS, charging, battery %, PEK IRQs; I2C through our locked bus via its callback API |
 | IO expander | own driver | — | — | `src/core/board_init.cpp` | TCA9554 is 4 registers; avoids pulling in Adafruit XCA9554 + BusIO |
 | Audio codec | register setup from **es8311** (Espressif) | from vendor example `15_ES8311` | Apache-2.0 | ported → `src/core/sound.cpp` | the original uses the legacy I2C driver, which can't coexist with `Wire`; audio data via the core's `ESP_I2S` |
@@ -34,7 +35,8 @@ Rules:
 | UI simulator | LVGL on the host + `tools/sim/` | — | — | `[env:sim]` | runs the real apps against stubbed hardware, scripted flow test + screenshots |
 
 Not used (yet): **SensorLib** (planned for touch/RTC/IMU; replaced by the
-small own drivers above, revisit when the QMI8658 IMU is needed), LittleFS
+small own drivers above; revisit if the IMU needs its FIFO, gestures or
+step counter), LittleFS
 and `lv_animimg` sprites (no app needs files or sprite sheets so far).
 
 ### Considered and not used

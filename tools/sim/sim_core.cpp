@@ -11,6 +11,7 @@
 #include "apps/home_assistant/ha_client.h"
 #include "config.h"
 #include "core/board_init.h"
+#include "core/imu.h"
 #include "core/net.h"
 #include "core/ota.h"
 #include "core/pmu.h"
@@ -30,6 +31,7 @@ core::ota::State otaState = core::ota::State::Waiting;
 uint8_t otaProgress = 0;
 int haRefreshes = 0;
 std::vector<int> haToggles;
+level::Accel accel{0, 0, 1};
 }  // namespace sim
 
 SimEsp ESP;
@@ -88,6 +90,16 @@ bool save(const char *key, const void *data, size_t len) {
   return true;
 }
 }  // namespace store
+
+namespace imu {
+bool begin() { return true; }
+bool present() { return true; }
+void enable(bool) {}
+bool read(level::Accel &out) {
+  out = sim::accel;
+  return true;
+}
+}  // namespace imu
 
 namespace ota {
 bool start() { return true; }

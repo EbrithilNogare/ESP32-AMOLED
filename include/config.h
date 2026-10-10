@@ -101,3 +101,20 @@
 #define DICE_COLOR              0xFF8A1F  // primary colour: wireframes, kept roll, selected die
 #define DICE_ROLL_MS            1150      // spin time of one die; later dice start 80 ms apart
 #define DICE_FPS                30        // frame rate while dice are spinning
+
+// ---- level (docs/apps/level.md) ----
+#define LEVEL_COLOR             0xFFD54F  // app accent (menu, Hold, horizon line)
+#define LEVEL_IDLE_DIM_MS       60000     // the screen stays bright longer: hands are busy
+#define LEVEL_BEEP              1         // short beep when the reading becomes level
+#define LEVEL_SAMPLE_MS         20        // accelerometer read period while the app is open
+
+// ---- IMU (QMI8658) axis mapping ----
+// Raw sensor axis (0 = X, 1 = Y, 2 = Z) and sign for each screen axis: x to the
+// right edge, y to the top edge, z out of the screen. Lying face up must read
+// z ≈ +1 g. Not yet checked on the board: see docs/apps/level.md.
+#define IMU_SCREEN_X_AXIS       0
+#define IMU_SCREEN_X_SIGN       1
+#define IMU_SCREEN_Y_AXIS       1
+#define IMU_SCREEN_Y_SIGN       1
+#define IMU_SCREEN_Z_AXIS       2
+#define IMU_SCREEN_Z_SIGN       1

@@ -250,7 +250,7 @@ screens are deleted on pause to save RAM, opt-out per app).
 src/
 ├── main.cpp           wiring: bring-up order in setup(), servicing in loop()
 ├── core/              board_init (I2C, TCA9554, revision), i2c_bus, display,
-│                      touch, buttons, pmu, power, net, ota, sound, rtc_clock,
+│                      touch, buttons, pmu, imu, power, net, ota, sound, rtc_clock,
 │                      store, events
 ├── apps/
 │   ├── app.h, app_manager.{h,cpp}
@@ -260,14 +260,16 @@ src/
 │   ├── pomodoro/
 │   ├── espresso/
 │   ├── dice/             wireframe dice roller
+│   ├── level/            spirit level + inclinometer
 │   └── system/           info + wireless update
 └── ui/
     ├── theme.{h,cpp}     design tokens and shared widgets
     ├── power_anim.{h,cpp} power-off / power-on animation
+    ├── draw.{h,cpp}      immediate-mode drawing helpers (Dice, Level)
     └── generated/        fonts + icon codepoints from tools/assets.py (committed)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
 lib/       Arduino-free logic (host-testable):
-           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/  DiceCore/
+           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/  DiceCore/  LevelCore/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
 tools/     assets.py, version.py, size_check.py, sim/ (PC simulator + screenshots)

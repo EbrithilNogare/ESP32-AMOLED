@@ -8,11 +8,13 @@
 #include "board.h"
 #include "config.h"
 #include "core/store.h"
+#include "ui/draw.h"
 #include "ui/theme.h"
 
 namespace apps {
 
 using dice::Mode;
+namespace draw = ui::draw;
 
 static const AppInfo kInfo = {"dice", "Dice", ICON_CASINO, DICE_COLOR};
 
@@ -29,37 +31,6 @@ static float clamp01(float t) { return t < 0 ? 0 : t > 1 ? 1 : t; }
 const AppInfo &DiceApp::info() const { return kInfo; }
 
 // ---------------------------------------------------------------- drawing helpers
-
-static void drawText(lv_layer_t *layer, const lv_font_t *font, uint32_t color, lv_opa_t opa, const char *txt,
-                     int32_t cx, int32_t cy, int32_t letterSpace = 0) {
-  lv_draw_label_dsc_t d;
-  lv_draw_label_dsc_init(&d);
-  d.font = font;
-  d.color = ui::c(color);
-  d.opa = opa;
-  d.text = txt;
-  d.text_local = 1;  // the draw task runs later; let LVGL copy the text
-  d.align = LV_TEXT_ALIGN_CENTER;
-  d.letter_space = letterSpace;
-  const int32_t h = lv_font_get_line_height(font);
-  const lv_area_t a = {cx - 170, cy - h / 2, cx + 170, cy + h - h / 2};
-  lv_draw_label(layer, &d, &a);
-}
-
-static void drawLine(lv_layer_t *layer, float x1, float y1, float x2, float y2, uint32_t color, int32_t width,
-                     lv_opa_t opa) {
-  lv_draw_line_dsc_t d;
-  lv_draw_line_dsc_init(&d);
-  d.p1.x = lv_value_precise_t(x1);
-  d.p1.y = lv_value_precise_t(y1);
-  d.p2.x = lv_value_precise_t(x2);
-  d.p2.y = lv_value_precise_t(y2);
-  d.color = ui::c(color);
-  d.width = width;
-  d.opa = opa;
-  d.round_start = d.round_end = 1;
-  lv_draw_line(layer, &d);
-}
 
 // Largest digit font that fits `px`. Only the smaller ones carry "?".
 static const lv_font_t *digitFont(float px, bool question) {
@@ -222,45 +193,36 @@ void DiceApp::drawPiece(lv_layer_t *layer, const Piece &pc, bool dropped) {
     const bool front = z < 0;
     const float opa = (front ? 0.55f + 0.45f * d : 0.14f + 0.2f * d) * bright;
     const int32_t width = front ? int32_t(fmaxf(2, r * 0.028f) + 0.5f) : int32_t(fmaxf(1, r * 0.016f) + 0.5f);
-    drawLine(layer, a.x, a.y, b.x, b.y, color, width, lv_opa_t(opa * 255));
+    draw::line(layer, a.x, a.y, b.x, b.y, color, width, lv_opa_t(opa * 255));
   }
   if (pc.reveal <= 0) return;
 
   // Landed: fill the face toward the viewer (a fan; faces are convex),
   // outline it again on top and put the number in the middle.
   const lv_opa_t opa = lv_opa_t(pc.reveal * 255);
-  const lv_color_t fillColor = idle_ || dropped ? ui::c(kGhost) : ui::mixBlack(DICE_COLOR, 15);
-  for (int k = 1; k + 1 < s.nface; k++) {
-    lv_draw_triangle_dsc_t t;
-    lv_draw_triangle_dsc_init(&t);
-    const dice::Point *p[3] = {&pc.p[s.face[0]], &pc.p[s.face[k]], &pc.p[s.face[k + 1]]};
-    for (int i = 0; i < 3; i++) {
-      t.p[i].x = lv_value_precise_t(p[i]->x);
-      t.p[i].y = lv_value_precise_t(p[i]->y);
-    }
-    t.color = fillColor;
-    t.opa = opa;
-    lv_draw_triangle(layer, &t);
-  }
+  const uint32_t fillColor = idle_ || dropped ? kGhost : lv_color_to_u32(ui::mixBlack(DICE_COLOR, 15)) & 0xFFFFFF;
+  float face[dice::kMaxFaceVerts][2];
+  for (int k = 0; k < s.nface; k++) face[k][0] = pc.p[s.face[k]].x, face[k][1] = pc.p[s.face[k]].y;
+  draw::polygon(layer, face, s.nface, fillColor, opa);
   const int32_t outline = int32_t(fmaxf(2, r * 0.032f) + 0.5f);
   for (int k = 0; k < s.nface; k++) {
     const dice::Point &a = pc.p[s.face[k]], &b = pc.p[s.face[(k + 1) % s.nface]];
-    drawLine(layer, a.x, a.y, b.x, b.y, color, outline, opa);
+    draw::line(layer, a.x, a.y, b.x, b.y, color, outline, opa);
   }
   const size_t len = strlen(pc.text);
   const float px = r * faceFontScale(pc.die) * (len >= 3 ? 0.62f : len == 2 ? 0.8f : 1.0f);
   const uint32_t textColor = idle_ || dropped                               ? kOff
                              : keptLanded && roll_.crit != dice::Crit::None ? color
                                                                             : ui::col::text;
-  drawText(layer, digitFont(px, idle_), textColor, opa, pc.text, int32_t(pc.x), int32_t(pc.y + px * 0.05f));
+  draw::text(layer, digitFont(px, idle_), textColor, opa, pc.text, int32_t(pc.x), int32_t(pc.y + px * 0.05f));
 }
 
 void DiceApp::drawSummary(lv_layer_t *layer) {
   const uint32_t elapsed = millis() - t0_;
   const bool finished = !animating_ || elapsed + 260 >= endMs_;
   if (idle_) {
-    drawText(layer, &font_body, ui::col::textDim, LV_OPA_COVER, roll_.sets == 2 ? "Tap to roll twice" : "Tap to roll",
-             LCD_WIDTH / 2, kBot - 20);
+    draw::text(layer, &font_body, ui::col::textDim, LV_OPA_COVER, roll_.sets == 2 ? "Tap to roll twice" : "Tap to roll",
+               LCD_WIDTH / 2, kBot - 20);
     return;
   }
   const uint32_t crit = roll_.crit == dice::Crit::Nat20  ? ui::col::success
@@ -271,11 +233,11 @@ void DiceApp::drawSummary(lv_layer_t *layer) {
   const bool showTotal = roll_.count > 1 || roll_.die == 100;  // a d100 is read as tens + ones
   if (roll_.sets == 1) {
     if (showTotal && finished) {
-      drawText(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, "TOTAL", LCD_WIDTH / 2, kBot - 64, 1);
+      draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, "TOTAL", LCD_WIDTH / 2, kBot - 64, 1);
       snprintf(buf, sizeof buf, "%u", roll_.total[0]);
-      drawText(layer, &font_digits_44, ui::col::text, LV_OPA_COVER, buf, LCD_WIDTH / 2, kBot - 30);
+      draw::text(layer, &font_digits_44, ui::col::text, LV_OPA_COVER, buf, LCD_WIDTH / 2, kBot - 30);
     } else if (finished && crit) {
-      drawText(layer, &font_caption, crit, LV_OPA_COVER, critText, LCD_WIDTH / 2, kBot - 20, 1);
+      draw::text(layer, &font_caption, crit, LV_OPA_COVER, critText, LCD_WIDTH / 2, kBot - 20, 1);
     }
     return;
   }
@@ -283,27 +245,27 @@ void DiceApp::drawSummary(lv_layer_t *layer) {
     const int32_t x = s ? LCD_WIDTH * 3 / 4 - 2 : LCD_WIDTH / 4 + 2;
     const bool kept = s == roll_.kept;
     const char *lab = !finished ? (s ? "2ND" : "1ST") : kept ? "KEPT" : "DROPPED";
-    drawText(layer, &font_caption,
-             !finished ? ui::col::textDim
-             : kept    ? DICE_COLOR
-                       : kOff,
-             LV_OPA_COVER, lab, x, kTop + 16, 1);
+    draw::text(layer, &font_caption,
+               !finished ? ui::col::textDim
+               : kept    ? DICE_COLOR
+                         : kOff,
+               LV_OPA_COVER, lab, x, kTop + 16, 1);
     if (showTotal && finished) {
       snprintf(buf, sizeof buf, "%u", roll_.total[s]);
-      drawText(layer, &font_digits_32, kept ? ui::col::text : kOff, LV_OPA_COVER, buf, x, kBot - 46);
+      draw::text(layer, &font_digits_32, kept ? ui::col::text : kOff, LV_OPA_COVER, buf, x, kBot - 46);
       if (!kept) {
         const float w = strlen(buf) * 19.0f + 8;
-        drawLine(layer, x - w / 2, kBot - 45, x + w / 2, kBot - 45, kOff, 2, LV_OPA_COVER);
+        draw::line(layer, x - w / 2, kBot - 45, x + w / 2, kBot - 45, kOff, 2, LV_OPA_COVER);
       }
     }
   }
   if (finished) {
     if (crit)
-      drawText(layer, &font_caption, crit, LV_OPA_COVER, critText, LCD_WIDTH / 2, kBot - 14, 1);
+      draw::text(layer, &font_caption, crit, LV_OPA_COVER, critText, LCD_WIDTH / 2, kBot - 14, 1);
     else
-      drawText(layer, &font_caption, ui::col::textDim, LV_OPA_COVER,
-               roll_.mode == Mode::Adv ? "Advantage · higher total kept" : "Disadvantage · lower total kept",
-               LCD_WIDTH / 2, kBot - 14);
+      draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER,
+                 roll_.mode == Mode::Adv ? "Advantage · higher total kept" : "Disadvantage · lower total kept",
+                 LCD_WIDTH / 2, kBot - 14);
   }
 }
 
@@ -504,8 +466,8 @@ void DiceApp::onIconDraw(lv_event_t *e) {
   const int n = dice::icon(die, seg);
   lv_layer_t *layer = lv_event_get_layer(e);
   for (int i = 0; i < n; i++)
-    drawLine(layer, cx + seg[i].x1 * k, cy + seg[i].y1 * k, cx + seg[i].x2 * k, cy + seg[i].y2 * k, color, 2,
-             seg[i].inner ? LV_OPA_50 : LV_OPA_COVER);
+    draw::line(layer, cx + seg[i].x1 * k, cy + seg[i].y1 * k, cx + seg[i].x2 * k, cy + seg[i].y2 * k, color, 2,
+               seg[i].inner ? LV_OPA_50 : LV_OPA_COVER);
 }
 
 }  // namespace apps

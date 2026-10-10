@@ -5,6 +5,15 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## Faint lines across a shape filled as a triangle fan
+
+LVGL anti-aliases every triangle edge, so a polygon filled as a fan of many
+thin triangles shows faint seams between them (the horizon's ground did).
+Fill with as few triangles as possible: the ground is one big triangle over
+the whole half-plane, and a wide black `lv_draw_arc` ring masks everything
+outside the disc. Note `lv_draw_arc_dsc_t.radius` is the *outer* radius;
+the stroke grows inward by `width`.
+
 ## Taps on a button do nothing when they hit its child
 
 `lv_obj_create()` children (and `ui::box()`) are clickable by default, so a

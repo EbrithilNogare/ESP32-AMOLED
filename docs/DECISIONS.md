@@ -5,6 +5,21 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-10 — Level: bullseye flat, horizon on an edge; own IMU driver
+
+**Context:** Five Level drafts (bullseye, horizon, carpenter tubes,
+protractor, marble). The owner picked the bullseye for lying flat and the
+attitude horizon for standing on an edge, with the up/down lean added.
+**Decision:** One app that switches view from the gravity vector (40° / 50°
+hysteresis). The QMI8658 gets a ~60-line driver in `core/imu` on the shared
+I2C bus (accelerometer only, standby when unused) instead of SensorLib, in
+line with the touch and RTC drivers. The screen axis mapping is a set of
+`IMU_SCREEN_*` macros because the chip's orientation on this PCB isn't
+documented; it is the first item of the on-device checklist. The gyroscope
+isn't used until the board shows the accelerometer alone is too jumpy.
+**Consequences:** Low power (the IMU sleeps outside the app), testable maths
+in `lib/LevelCore`; the axis mapping may need a one-line fix after flashing.
+
 ## 2026-10-09 — Dice: wireframe design, drawn in the draw event
 
 **Context:** Five dice designs were drafted (tumbling silhouettes, a physics

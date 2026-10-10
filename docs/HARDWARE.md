@@ -110,7 +110,7 @@ the products quickly.
 | AXP2101 | `0x34` | PMU |
 | FT3168 (V1) | `0x38` | touch |
 | PCF85063A | `0x51` | RTC |
-| QMI8658 | `0x6B` | IMU |
+| QMI8658 | `0x6B` | IMU (WHO_AM_I `0x00` = `0x05`) |
 
 ### TCA9554 IO expander
 

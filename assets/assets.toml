@@ -86,21 +86,23 @@ range = ["0x20-0x7E", "0xA0-0x17F", "0x2013", "0x2014", "0x2019", "0x2026", "0x2
 # Only the characters timers/percentages need, plus − (U+2212).
 # ---------------------------------------------------------------------------
 
-# Dice face numbers (Dice app): small sizes with "?" for the idle face
-# (digits_44 carries "?" too).
+# Small digit sizes: dice face numbers ("?" = idle face; digits_44 has it too)
+# and Level readouts (signed angles in ° and %).
 [[font]]
 name    = "digits_24"
 file    = "fonts/RobotoMono-Medium.ttf"
 size    = 24
 bpp     = 4
-symbols = "0123456789? "
+symbols = "0123456789?.%°+ "
+range   = ["0x2212"]
 
 [[font]]
 name    = "digits_32"
 file    = "fonts/RobotoMono-Medium.ttf"
 size    = 32
 bpp     = 4
-symbols = "0123456789? "
+symbols = "0123456789?.%°+ "
+range   = ["0x2212"]
 
 [[font]]
 name    = "digits_44"
@@ -155,7 +157,7 @@ icons      = [
     "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
-    "casino",
+    "casino", "straighten",
 ]
 
 [[font]]
@@ -171,7 +173,7 @@ icons      = [
     "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
-    "casino",
+    "casino", "straighten",
 ]
 
 [[font]]
@@ -187,7 +189,7 @@ icons      = [
     "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
-    "casino",
+    "casino", "straighten",
 ]
 
 [[font]]
@@ -203,7 +205,7 @@ icons      = [
     "battery_3_bar", "battery_2_bar", "battery_1_bar", "battery_0_bar", "battery_alert",
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
-    "casino",
+    "casino", "straighten",
 ]
 
 # ---------------------------------------------------------------------------

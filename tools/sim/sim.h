@@ -1,4 +1,5 @@
 #pragma once
+#include <level_core.h>
 #include <power_fsm.h>
 #include <stdint.h>
 
@@ -17,4 +18,5 @@ extern core::ota::State otaState;
 extern uint8_t otaProgress;
 extern int haRefreshes;
 extern std::vector<int> haToggles;
+extern level::Accel accel;  // IMU reading (screen axes, g)
 }  // namespace sim

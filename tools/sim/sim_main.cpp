@@ -17,6 +17,7 @@
 #include "apps/dice/dice_app.h"
 #include "apps/espresso/espresso_app.h"
 #include "apps/home_assistant/ha_app.h"
+#include "apps/level/level_app.h"
 #include "apps/menu/menu_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
 #include "apps/system/system_app.h"
@@ -31,6 +32,7 @@ static apps::BotFaceApp botApp([]() { return sim::stage == power::Stage::Dimmed;
 static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
 static apps::DiceApp diceApp;
+static apps::LevelApp levelApp;
 static apps::SystemApp systemApp;
 
 static uint16_t fb[LCD_WIDTH * LCD_HEIGHT];
@@ -171,6 +173,7 @@ int main() {
   apps::manager::add(&pomodoroApp);
   apps::manager::add(&espressoApp);
   apps::manager::add(&diceApp);
+  apps::manager::add(&levelApp);
   apps::manager::add(&systemApp);
   apps::manager::begin();
   advance(100);
@@ -309,17 +312,49 @@ int main() {
   advance(400);
   CHECK(apps::manager::inMenu());
 
+  // ---- level: flat and tilted, flat and level, on an edge; Hold and Zero
+  tapIcon(&levelApp);
+  CHECK(apps::manager::current() == &levelApp);
+  sim::accel = level::fromFlat(2.4f, -1.1f);
+  advance(800);
+  CHECK(levelApp.view() == level::View::Flat);
+  capture("22-level-flat");
+  sim::accel = level::fromFlat(0.1f, -0.1f);
+  advance(800);
+  capture("23-level-flat-level");
+  sim::accel = level::fromEdge(12, 4);
+  advance(1200);
+  CHECK(levelApp.view() == level::View::Edge);
+  capture("24-level-edge");
+  const int32_t levelBarY = LCD_HEIGHT - 16 - 24;
+  tap(126 + 48, levelBarY);  // Hold
+  CHECK(levelApp.held());
+  sim::accel = level::fromFlat(0, 0);
+  advance(600);
+  CHECK(levelApp.view() == level::View::Edge);  // the held reading stays on screen
+  tap(126 + 48, levelBarY);
+  CHECK(!levelApp.held());
+  advance(600);
+  CHECK(levelApp.view() == level::View::Flat);
+  tap(22 + 48, levelBarY);  // Zero
+  CHECK(levelApp.zeroed());
+  tap(22 + 48, levelBarY);  // Reset
+  CHECK(!levelApp.zeroed());
+  apps::manager::back();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+
   // ---- system + wireless update
   drag(184, 380, 204);  // scroll to the end of the list
   tapIcon(&systemApp);
   CHECK(apps::manager::current() == &systemApp);
-  capture("22-system");
+  capture("25-system");
   tap(184, LCD_HEIGHT - 22 - 28);  // "Wireless update"
   CHECK(systemApp.powerPolicy() == power::Policy::KeepAwake);
   sim::otaState = core::ota::State::Receiving;
   sim::otaProgress = 42;
   advance(100);
-  capture("23-wireless-update");
+  capture("26-wireless-update");
   CHECK(systemApp.blocksNavigation());
   apps::manager::home();  // ignored mid-transfer
   advance(100);
@@ -335,7 +370,7 @@ int main() {
   static bool animDone;
   ui::power_anim::off([]() { animDone = true; });
   advance(450);
-  capture("24-power-off");
+  capture("27-power-off");
   advance(700);
   CHECK(animDone);
 

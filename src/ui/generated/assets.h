@@ -28,16 +28,16 @@ LV_FONT_DECLARE(font_list)         /* Inter-Regular.ttf, 17 px, 4 bpp, 0x20-0x7E
 LV_FONT_DECLARE(font_body)         /* Inter-Regular.ttf, 20 px, 4 bpp, 0x20-0x7E, 0xA0-0x17F, 0x2013, 0x2014, 0x2019, 0x2026, 0x2212, 0x2713, 0x2717 */
 LV_FONT_DECLARE(font_body_medium)  /* Inter-Medium.ttf, 20 px, 4 bpp, 0x20-0x7E, 0xA0-0x17F, 0x2013, 0x2014, 0x2019, 0x2026, 0x2212, 0x2713, 0x2717 */
 LV_FONT_DECLARE(font_title)        /* Inter-SemiBold.ttf, 28 px, 4 bpp, 0x20-0x7E, 0xA0-0x17F, 0x2013, 0x2014, 0x2019, 0x2026, 0x2212, 0x2713, 0x2717 */
-LV_FONT_DECLARE(font_digits_24)    /* RobotoMono-Medium.ttf, 24 px, 4 bpp, "0123456789? " */
-LV_FONT_DECLARE(font_digits_32)    /* RobotoMono-Medium.ttf, 32 px, 4 bpp, "0123456789? " */
+LV_FONT_DECLARE(font_digits_24)    /* RobotoMono-Medium.ttf, 24 px, 4 bpp, 0x2212, "0123456789?.%°+ " */
+LV_FONT_DECLARE(font_digits_32)    /* RobotoMono-Medium.ttf, 32 px, 4 bpp, 0x2212, "0123456789?.%°+ " */
 LV_FONT_DECLARE(font_digits_44)    /* RobotoMono-Medium.ttf, 44 px, 4 bpp, 0x2212, "0123456789:.-%? " */
 LV_FONT_DECLARE(font_digits_56)    /* RobotoMono-Medium.ttf, 56 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_80)    /* RobotoMono-Medium.ttf, 80 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_120)   /* RobotoMono-Medium.ttf, 120 px, 4 bpp, 0x2212, "0123456789:.-% " */
-LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 29 icons */
-LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 29 icons */
-LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 29 icons */
-LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 29 icons */
+LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 30 icons */
+LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 30 icons */
+LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 30 icons */
+LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 30 icons */
 
 /* ---- Images ---- */
 /* (none) */
@@ -76,6 +76,7 @@ LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,ops
 #define ICON_POWER_SETTINGS_NEW  "\xEF\xA3\x87"  /* U+F8C7 */
 #define ICON_SCHEDULE            "\xEE\xBF\x96"  /* U+EFD6 */
 #define ICON_CASINO              "\xEE\xAD\x80"  /* U+EB40 */
+#define ICON_STRAIGHTEN          "\xEE\x90\x9C"  /* U+E41C */
 
 #ifdef __cplusplus
 } /* extern "C" */

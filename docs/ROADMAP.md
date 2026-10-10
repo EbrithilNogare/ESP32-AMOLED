@@ -191,6 +191,16 @@ the stage's draw event; NVS keeps the last die/count/mode.
 **On device:** the checklist in the spec (smooth spins with 20 dice, every
 die lands face-on, controls don't roll, settings survive deep sleep).
 
+### M17 — Level ◐ — [spec](apps/level.md)
+
+Own QMI8658 driver (`core/imu`, accelerometer only, standby when unused),
+`lib/LevelCore` (angles, flat/edge switching, smoothing) with host tests, and
+`LevelApp`: bullseye vial flat, attitude horizon with lean on an edge, Zero /
+Hold / ° %.
+
+**On device:** the checklist in the spec — start with the IMU axis mapping
+(`IMU_SCREEN_*` in `config.h`), which hasn't been checked on the board.
+
 ## M15 — Polish & merge ◐
 
 Icons and fonts, menu fisheye effect (optional), README usage section,

@@ -10,6 +10,7 @@
 #include "apps/dice/dice_app.h"
 #include "apps/espresso/espresso_app.h"
 #include "apps/home_assistant/ha_app.h"
+#include "apps/level/level_app.h"
 #include "apps/menu/menu_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
 #include "apps/system/system_app.h"
@@ -18,6 +19,7 @@
 #include "core/buttons.h"
 #include "core/display.h"
 #include "core/events.h"
+#include "core/imu.h"
 #include "core/net.h"
 #include "core/ota.h"
 #include "core/pmu.h"
@@ -37,6 +39,7 @@ static apps::BotFaceApp botApp([]() { return core::power::stage() == power::Stag
 static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
 static apps::DiceApp diceApp;
+static apps::LevelApp levelApp;
 static apps::SystemApp systemApp;
 
 static void dispatch(const core::Event &e) {
@@ -73,6 +76,7 @@ void setup() {
   }
   core::pmu::begin();
   core::clock::begin();
+  core::imu::begin();
   core::net::begin();
   core::sound::begin();
 
@@ -87,6 +91,7 @@ void setup() {
   apps::manager::add(&pomodoroApp);
   apps::manager::add(&espressoApp);
   apps::manager::add(&diceApp);
+  apps::manager::add(&levelApp);
   apps::manager::add(&systemApp);
   apps::manager::begin();
   ui::power_anim::on();
