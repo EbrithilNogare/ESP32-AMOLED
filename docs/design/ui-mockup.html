@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<!-- Clickable design draft of the planned UI. Open this file in a browser.
-     Tokens, fonts and sizes follow docs/UI_DESIGN.md; it is a draft, not firmware. -->
+<!-- Clickable mock of the firmware UI: every app and the quick settings. Open this file in a
+     browser. Tokens, fonts and sizes follow docs/UI_DESIGN.md; the firmware renders the real thing
+     (docs/design/firmware-screens.png from the PC simulator). -->
 <title>ESP32-AMOLED Screens</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -212,6 +213,85 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 .minimal .m-dig { position: absolute; font: 500 44px/1 "Roboto Mono", monospace; text-align: center; width: 140px; }
 .minimal svg { position: absolute; }
 
+/* ---------- quick settings shade (menu) ---------- */
+.statusbar { touch-action: none; cursor: ns-resize; }
+.qs-scrim { position: absolute; inset: 0; background: #000; opacity: 0; z-index: 5; }
+.qs-shade { position: absolute; left: 0; right: 0; top: 0; height: 236px; transform: translateY(-236px); background: #141414;
+  border-radius: 0 0 28px 28px; z-index: 6; touch-action: none; }
+.qs-shade.anim, .qs-scrim.anim { transition: transform .22s ease-out, opacity .22s ease-out; }
+.qs-time { position: absolute; left: 24px; top: 18px; font: 600 28px Inter, sans-serif; font-variant-numeric: tabular-nums; }
+.qs-bat { position: absolute; right: 24px; top: 28px; font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+.scr .qs-row { position: absolute; left: 16px; right: 16px; height: 64px; border-radius: 20px; background: #242424; display: flex;
+  align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; font: 500 20px Inter, sans-serif; }
+.scr .qs-wifi { top: 72px; }
+.scr .qs-wifi:active { transform: scale(.97); }
+.qs-wifi .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qs-bar { top: 148px; overflow: hidden; touch-action: none; cursor: ew-resize; }
+.qs-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #2F5F96; }
+.qs-bar > :not(.qs-fill) { position: relative; }
+.qs-grip { position: absolute; left: 50%; bottom: 10px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: #3A3A3A; }
+
+/* ---------- Wi-Fi screen ---------- */
+.wf-head { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; justify-content: space-between;
+  font: 500 16px Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #9A9A9A; }
+.wf-head .mode { color: #4DA3FF; letter-spacing: .04em; text-transform: none; }
+.wf-list { position: absolute; top: 60px; left: 16px; right: 16px; bottom: 80px; overflow-y: auto; display: grid; align-content: start;
+  gap: 6px; scrollbar-width: none; }
+.scr .wf-net { height: 56px; border-radius: 16px; background: #141414; display: flex; align-items: center; gap: 12px; padding: 0 14px; text-align: left; }
+.scr .wf-net:active { background: #242424; }
+.wf-net .nm { flex: 1; min-width: 0; display: grid; font: 400 20px/1.15 Inter, sans-serif; }
+.wf-net .nm span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-net .nm small { font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+.wf-net.cur { color: #4DA3FF; }
+.wf-net .sig { color: #9A9A9A; }
+.wf-net.cur .sig { color: #4DA3FF; }
+.scr .wf-scan { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); height: 48px; padding: 0 22px; border-radius: 24px;
+  background: #141414; display: inline-flex; align-items: center; gap: 8px; font: 500 20px Inter, sans-serif; white-space: nowrap; }
+.wf-ssid { position: absolute; top: 44px; left: 24px; right: 24px; font: 400 17px Inter, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-field { position: absolute; left: 16px; right: 16px; top: 72px; height: 52px; border-radius: 14px; background: #242424; display: flex;
+  align-items: center; padding: 0 16px; font: 500 20px Inter, sans-serif; white-space: pre; overflow: hidden; }
+.wf-field .pend { color: #4DA3FF; box-shadow: inset 0 -2px 0 #4DA3FF; }
+.wf-field .caret { display: inline-block; flex: none; width: 2px; height: 24px; margin-left: 2px; background: #EDEDED; }
+.wf-field .ph { color: #5A5A5A; }
+.wf-keys { position: absolute; left: 16px; right: 16px; top: 136px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 8px; }
+.scr .wf-key { height: 54px; border-radius: 14px; background: #141414; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 14px; }
+.scr .wf-key:active { background: #242424; transform: scale(.96); }
+.wf-key b { font: 600 28px Inter, sans-serif; }
+.wf-key span { font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+.wf-bottom { position: absolute; left: 16px; right: 16px; bottom: 20px; display: grid; grid-template-columns: 106fr 222fr; gap: 8px; }
+.scr .wf-del { height: 48px; border-radius: 24px; background: #141414; display: grid; place-items: center; }
+.scr .wf-ok { height: 48px; border-radius: 24px; background: #4DA3FF; color: #0B1826; font: 500 20px Inter, sans-serif; }
+.scr .wf-del:active, .scr .wf-ok:active { transform: scale(.96); }
+.wf-hint { position: absolute; left: 50%; top: 132px; transform: translateX(-50%); background: #242424; padding: 8px 14px; border-radius: 12px;
+  font: 500 16px Inter, sans-serif; white-space: nowrap; z-index: 1; }
+.wf-ring { position: absolute; left: 118px; top: 92px; width: 132px; height: 132px; }
+.wf-ring.spinning { animation: spin 1s linear infinite; }
+.wf-icon { position: absolute; left: 0; right: 0; top: 130px; text-align: center; }
+.wf-title { position: absolute; left: 0; right: 0; top: 236px; text-align: center; font: 600 28px Inter, sans-serif; }
+.wf-sub { position: absolute; left: 24px; right: 24px; top: 280px; text-align: center; font: 400 20px/1.35 Inter, sans-serif; color: #9A9A9A; }
+.scr .wf-btn { position: absolute; left: 84px; right: 84px; bottom: 20px; height: 56px; border-radius: 28px; background: #141414; font: 500 20px Inter, sans-serif; }
+
+/* ---------- Dice ---------- */
+.dice-canvas, .lv-canvas { position: absolute; left: 0; top: 0; width: 368px; height: 448px; }
+.dice-strip { position: absolute; top: 9px; left: 24px; right: 24px; height: 56px; display: flex; justify-content: space-between; }
+.scr .dice-die { width: 42px; height: 56px; border-radius: 14px; display: grid; justify-items: center; align-content: center; gap: 1px;
+  color: #5A5A5A; font: 500 16px Inter, sans-serif; }
+.dice-die svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: .1; stroke-linejoin: round; }
+.scr .dice-die.on { background: #26170A; color: #FF8A1F; }
+.dice-hit { position: absolute; left: 0; right: 0; top: 70px; height: 306px; cursor: pointer; }
+.dice-step { position: absolute; left: 24px; bottom: 20px; width: 142px; height: 48px; border-radius: 24px; background: #141414; display: flex;
+  align-items: center; justify-content: space-between; font: 500 20px Inter, sans-serif; font-variant-numeric: tabular-nums; }
+.scr .dice-step button { width: 42px; height: 48px; font: 600 28px Inter, sans-serif; }
+.scr .dice-step button:disabled { color: #3A3A3A; cursor: default; }
+.seg2 { position: absolute; right: 24px; bottom: 20px; height: 48px; padding: 4px; gap: 2px; border-radius: 24px; background: #141414; display: flex; }
+.scr .seg2 button { padding: 0 14px; border-radius: 20px; font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+
+/* ---------- Level ---------- */
+.lv-hit { position: absolute; left: 0; right: 0; top: 70px; height: 300px; touch-action: none; cursor: grab; }
+.scr .lv-btn { position: absolute; bottom: 20px; width: 96px; height: 48px; border-radius: 24px; background: #141414; font: 500 20px Inter, sans-serif; }
+.scr .lv-btn.on { background: #FFD54F; color: #261F0C; }
+.scr .seg2.units button { width: 46px; padding: 0; font-size: 20px; }
+
 @media (prefers-reduced-motion: reduce) {
   .scr, .tile, .dimmer { transition: none; }
   .crt.off, .crt.on { animation-duration: .01s; }
@@ -221,9 +301,9 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow">Waveshare ESP32-S3-Touch-AMOLED-1.8 · 368 × 448 · design draft</span>
+    <span class="eyebrow">Waveshare ESP32-S3-Touch-AMOLED-1.8 · 368 × 448 · firmware mock</span>
     <h1>ESP32-AMOLED screens</h1>
-    <p class="lede">A clickable draft of the planned firmware UI, drawn at the panel's real pixel size with the planned tokens, fonts and icons. The side buttons work as planned: Back steps back, Home returns to the menu, and holding either for 1 s powers off. The battery idle timeline runs for real.</p>
+    <p class="lede">Every screen of the current firmware, clickable, at the panel's real pixel size with its tokens, fonts and icons: the seven apps, the quick settings you pull down from the menu's status bar, and the Wi-Fi setup with its phone keypad. The side buttons behave like the device: Back steps back, Home returns to the menu, holding either for 1 s powers off. The idle timeline runs for real.</p>
   </header>
 
   <section class="bench" aria-label="Interactive device">
@@ -256,6 +336,13 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
         </div>
         <label class="ctl"><input type="checkbox" id="pause"> Pause idle timer</label>
       </div>
+      <div class="row">
+        <span class="eyebrow">Sensor</span>
+        <div class="seg" role="group" aria-label="Level: board orientation">
+          <button id="sFlat" aria-pressed="true">Lying flat</button>
+          <button id="sEdge" aria-pressed="false">On an edge</button>
+        </div>
+      </div>
 
       <dl class="readout">
         <dt>Screen</dt><dd><span class="stage-pill" id="rStage">Active</span></dd>
@@ -271,12 +358,14 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 
       <ul class="howto">
         <li><b>Tap</b> an icon to open an app. Scroll the menu with the wheel or trackpad.</li>
+        <li><b>Pull the status bar down</b> (or tap it) for quick settings: slide the brightness bar, tap Wi-Fi to pick a network and type its password with multi-tap (2 2 2 = c, # = abc/ABC/123). In this mock any 8+ character password connects; "wrongpass" shows the failure.</li>
+        <li><b>Dice:</b> tap the middle to roll. <b>Level:</b> drag on the screen to tilt the board; switch flat / edge under Sensor.</li>
         <li><b>Back</b> (upper side button, or Esc): one step back. <b>Home</b> (lower, or H): menu.</li>
         <li><b>Hold</b> either button for 1 s: power-off animation, then deep sleep. Press again to wake.</li>
         <li>While dimmed or black, the first tap only wakes the screen.</li>
         <li>Start the Pomodoro and leave it alone: after 10 s it switches to its minimal view instead of sleeping.</li>
       </ul>
-      <p class="note">Draft only. Colours, sizes and fonts follow docs/UI_DESIGN.md; the real panel is far brighter and sharper than a monitor. Values like IP, battery and firmware version are examples.</p>
+      <p class="note">A mock of the firmware, not the firmware: colours, sizes and fonts follow docs/UI_DESIGN.md, but the real panel is far brighter and sharper than a monitor, so brightness is shown compressed here. Values like IP, battery, networks and firmware version are examples.</p>
     </div>
   </section>
 
@@ -304,14 +393,9 @@ const APPS = [
   { id: 'bot', name: 'Bot face', icon: 'sentiment_satisfied', accent: '#00E5FF' },
   { id: 'pomodoro', name: 'Pomodoro', icon: 'timer', accent: '#FF5A4E' },
   { id: 'espresso', name: 'Espresso', icon: 'coffee', accent: '#C8915A' },
+  { id: 'dice', name: 'Dice', icon: 'casino', accent: '#FF8A1F' },
+  { id: 'level', name: 'Level', icon: 'straighten', accent: '#FFD54F' },
   { id: 'system', name: 'System', icon: 'memory', accent: '#8FA3BF' },
-  { id: 'clock', name: 'Clock', icon: 'schedule', accent: '#B388FF', later: true },
-  { id: 'stopwatch', name: 'Stopwatch', icon: 'hourglass_empty', accent: '#64DD9B', later: true },
-  { id: 'level', name: 'Level', icon: 'straighten', accent: '#FFD54F', later: true },
-  { id: 'weather', name: 'Weather', icon: 'partly_cloudy_day', accent: '#4DA3FF', later: true },
-  { id: 'scenes', name: 'Scenes', icon: 'home', accent: '#FF8A65', later: true },
-  { id: 'dice', name: 'Dice', icon: 'casino', accent: '#F06292', later: true },
-  { id: 'settings', name: 'Settings', icon: 'settings', accent: '#A0A0A0', later: true },
 ];
 const appById = id => APPS.find(a => a.id === id);
 
@@ -356,7 +440,7 @@ function fisheye(list) {
   }
 }
 
-function buildMenu(live, onOpen) {
+function buildMenu(live, onOpen, opts) {
   const s = el('div', 'scr');
   const sb = statusBar();
   const list = el('div', 'menu-list');
@@ -377,12 +461,13 @@ function buildMenu(live, onOpen) {
   }
   list.addEventListener('scroll', () => fisheye(list), { passive: true });
   s.append(sb.el, list);
+  const qs = addQuickSettings(s, sb, live, opts);
   requestAnimationFrame(() => fisheye(list));
   return {
     el: s, list,
-    tick() { sb.upd(); },
-    home() { list.scrollTo({ top: 0, behavior: 'smooth' }); },
-    onBack() { if (list.scrollTop > 0) { list.scrollTo({ top: 0, behavior: 'smooth' }); } return true; },
+    tick() { sb.upd(); if (qs.isOpen()) qs.render(); },
+    home() { if (qs.isOpen()) qs.close(); else list.scrollTo({ top: 0, behavior: 'smooth' }); },
+    onBack() { if (qs.isOpen()) qs.close(); else if (list.scrollTop > 0) list.scrollTo({ top: 0, behavior: 'smooth' }); return true; },
   };
 }
 
@@ -676,12 +761,520 @@ function buildSystem(st, live, restart) {
   };
 }
 
-function buildLater(a) {
-  const s = el('div', 'scr later');
-  s.innerHTML = `<span class="app-disc" style="--acc:${a.accent};--accdim:${mix(a.accent, 0.15)};width:128px;height:128px;border-radius:50%;display:grid;place-items:center;background:${mix(a.accent, 0.15)};box-shadow:inset 0 0 0 2px ${a.accent};color:${a.accent}">${ic(a.icon, 64, 1)}</span>
-    <div style="font:600 28px Inter,sans-serif">${a.name}</div><p>Planned for later</p>`;
-  return { el: s };
+/* ---------------- Dice (code from docs/design/dice-wireframe.html, design D) ---------------- */
+const DiceKit = (() => {
+  const W = 368, H = 448, TOP = 70, BOT = 376;
+  const C = { bg:'#000', surface:'#141414', track:'#1E1E1E', outline:'#3A3A3A', text:'#EDEDED', dim:'#9A9A9A',
+              off:'#5A5A5A', ok:'#4CD07D', err:'#FF5A5F', accent:'#FF8A1F', accentFill:'#26170A', ghost:'#0C0C0C' };
+  const DICE = [4, 6, 8, 10, 12, 20, 100];
+  const MONO = '"Roboto Mono", ui-monospace, monospace', SANS = 'Inter, system-ui, sans-serif';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = ms => reduced ? Math.min(ms, 160) : ms;
+  let state = { die: 20, count: 1, mode: 'flat' };
+function rand(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n + 1; }
+const sum = a => a.reduce((x, y) => x + y, 0);
+const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outQuart = t => 1 - Math.pow(1 - t, 4);
+const outBack = t => { const c1 = 1.1, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const label = d => 'd' + d;
+
+function makeRoll(idle = false) {
+  const n = state.mode === 'flat' ? 1 : 2;
+  const sets = [];
+  for (let s = 0; s < n; s++) sets.push(Array.from({ length: state.count }, () => idle ? state.die : rand(state.die)));
+  const totals = sets.map(sum);
+  let kept = 0;
+  if (n === 2) kept = state.mode === 'adv' ? (totals[1] > totals[0] ? 1 : 0) : (totals[1] < totals[0] ? 1 : 0);
+  let crit = null;
+  if (!idle && state.die === 20 && state.count === 1) crit = sets[kept][0] === 20 ? 'nat20' : sets[kept][0] === 1 ? 'nat1' : null;
+  return { die: state.die, count: state.count, mode: state.mode, sets, totals, kept, crit, idle };
 }
+function pct(v) { return { tens: String(Math.floor((v % 100) / 10) * 10).padStart(2, '0'), ones: String(v % 10) }; }
+function face(die) { if (die !== 100) return rand(die); return rand(100); }
+const critColor = c => c === 'nat20' ? C.ok : c === 'nat1' ? C.err : null;
+const critText = c => c === 'nat20' ? 'NATURAL 20' : c === 'nat1' ? 'NATURAL 1' : '';
+const modeText = m => m === 'adv' ? 'Advantage · higher total kept' : m === 'dis' ? 'Disadvantage · lower total kept' : '';
+
+/* ===================== die silhouettes (2D, unit radius) ===================== */
+const D2R = Math.PI / 180, pol = (deg, r) => [Math.cos(deg * D2R) * r, Math.sin(deg * D2R) * r];
+const GEOM = {};
+function geom(die) {
+  if (GEOM[die]) return GEOM[die];
+  let g;
+  if (die === 4) {
+    const o = [-90, 30, 150].map(a => pol(a, 1.08)).map(([x, y]) => [x, y + .2]), c = [0, .2];
+    g = { o, l: o.map(p => [c, p]), round: .1, at: [0, .38], fs: .44 };
+  } else if (die === 6) {
+    g = { o: [45, 135, 225, 315].map(a => pol(a, 1)), l: [], round: .24, at: [0, 0], fs: .62 };
+  } else if (die === 8) {
+    const h = [0, 1, 2, 3, 4, 5].map(i => pol(-90 + 60 * i, 1));
+    g = { o: h, l: [[h[0], h[2]], [h[2], h[4]], [h[4], h[0]]], round: .07, at: [0, .1], fs: .4 };
+  } else if (die === 10) {
+    const T = [0, -1], R = [.92, .1], B = [0, 1], L = [-.92, .1], FR = [.56, 0], M = [0, .42], FL = [-.56, 0];
+    g = { o: [T, R, B, L], l: [[T, FR], [FR, M], [M, FL], [FL, T], [FR, R], [FL, L], [M, B]], round: .07, at: [0, -.06], fs: .38 };
+  } else if (die === 12) {
+    const out = [...Array(10)].map((_, i) => pol(-90 + 36 * i, 1)), inn = [...Array(5)].map((_, i) => pol(-90 + 72 * i, .6)), l = [];
+    for (let i = 0; i < 5; i++) { l.push([inn[i], inn[(i + 1) % 5]]); l.push([inn[i], out[2 * i]]); }
+    g = { o: out, l, round: .05, at: [0, .04], fs: .44 };
+  } else {
+    const hx = [...Array(6)].map((_, i) => pol(-90 + 60 * i, 1)), tr = [0, 1, 2].map(i => pol(-90 + 120 * i, .58)), l = [];
+    for (let i = 0; i < 3; i++) { l.push([tr[i], tr[(i + 1) % 3]]); [-1, 0, 1].forEach(k => l.push([tr[i], hx[(2 * i + k + 6) % 6]])); }
+    g = { o: hx, l, round: .06, at: [0, .08], fs: .34 };
+  }
+  return GEOM[die] = g;
+}
+function roundPoly(ctx, p, rad) {
+  const n = p.length;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = p[(i - 1 + n) % n], b = p[i], c = p[(i + 1) % n];
+    if (i === 0) ctx.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    ctx.arcTo(b[0], b[1], (b[0] + c[0]) / 2, (b[1] + c[1]) / 2, rad);
+  }
+  ctx.closePath();
+}
+/* st: stroke, fill, text, lw, value, alpha, glow, upright */
+function drawDie(ctx, die, x, y, r, rot, st) {
+  if (die === 100) {
+    const v = st.value == null || st.value === '' ? null : pct(+st.value);
+    drawDie(ctx, 10, x - r * .52, y, r * .58, rot, { ...st, value: v ? v.tens : '' });
+    drawDie(ctx, 10, x + r * .52, y, r * .58, -rot * .8, { ...st, value: v ? v.ones : '' });
+    return;
+  }
+  const g = geom(die), a = st.alpha ?? 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = a;
+  ctx.save();
+  ctx.rotate(rot);
+  roundPoly(ctx, g.o.map(([px, py]) => [px * r, py * r]), g.round * r);
+  ctx.fillStyle = st.fill; ctx.fill();
+  if (st.glow) { ctx.shadowColor = st.glow; ctx.shadowBlur = 16; }
+  ctx.lineWidth = st.lw; ctx.strokeStyle = st.stroke; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.shadowBlur = 0;
+  if (g.l.length) {
+    ctx.beginPath();
+    for (const [p, q] of g.l) { ctx.moveTo(p[0] * r, p[1] * r); ctx.lineTo(q[0] * r, q[1] * r); }
+    ctx.lineWidth = Math.max(1, st.lw * .5); ctx.globalAlpha = a * .5; ctx.stroke(); ctx.globalAlpha = a;
+  }
+  if (!st.upright) drawNum(ctx, g, r, st);
+  ctx.restore();
+  if (st.upright) drawNum(ctx, g, r, st);
+  ctx.restore();
+}
+function drawNum(ctx, g, r, st) {
+  if (st.value == null || st.value === '') return;
+  const s = String(st.value), k = s.length >= 3 ? .7 : s.length === 2 ? .86 : 1;
+  const fs = Math.max(8, r * g.fs * k * (st.fsMul || 1));
+  ctx.font = `500 ${fs}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = st.text; ctx.fillText(s, g.at[0] * r, g.at[1] * r + fs * .05);
+}
+function iconSVG(die) {
+  const pts = (p, s = 1, dx = 0) => p.map(([x, y]) => `${(x * s + dx).toFixed(3)},${(y * s).toFixed(3)}`).join(' ');
+  const one = (d, s = 1, dx = 0) => { const g = geom(d); return `<polygon points="${pts(g.o, s, dx)}"/>` + g.l.map(([a, b]) => `<line x1="${(a[0]*s+dx).toFixed(3)}" y1="${(a[1]*s).toFixed(3)}" x2="${(b[0]*s+dx).toFixed(3)}" y2="${(b[1]*s).toFixed(3)}" opacity=".55"/>`).join(''); };
+  const body = die === 100 ? one(10, .62, -.55) + one(10, .62, .55) : one(die);
+  return `<svg viewBox="-1.2 -1.2 2.4 2.4" aria-hidden="true">${body}</svg>`;
+}
+/* best grid for n dice inside a rect; aspect = cell width / height */
+function grid(n, x, y, w, h, maxR, aspect = 1) {
+  let best = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), ch = Math.min(w / (cols * aspect), h / rows);
+    if (!best || ch > best.ch) best = { cols, rows, ch };
+  }
+  const ch = best.ch, cw = ch * aspect, r = Math.min(maxR, ch * .42), out = [];
+  const y0 = y + (h - best.rows * ch) / 2;
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / best.cols), col = i % best.cols, inRow = Math.min(best.cols, n - row * best.cols);
+    const x0 = x + (w - inRow * cw) / 2;
+    out.push({ x: x0 + cw * (col + .5), y: y0 + ch * (row + .5), r });
+  }
+  return out;
+}
+function text(ctx, s, x, y, font, color, align = 'center', spacing = 0) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+  ctx.fillText(s, x, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function hint(ctx, s, y = BOT - 20) { text(ctx, s, W / 2, y, `500 15px ${SANS}`, C.dim); }
+
+/* shared layout + summary for the "dice on a stage" designs (A, D) */
+function stageSlots(roll, maxSingle) {
+  const sets = roll.sets.length, multi = roll.count > 1, aspect = roll.die === 100 ? 1.75 : 1, slots = [];
+  if (sets === 1) {
+    const y1 = multi ? BOT - 76 : BOT - 40;
+    grid(roll.count, 24, TOP + 8, W - 48, y1 - TOP - 8, multi ? 70 : maxSingle, aspect).forEach((p, i) => slots.push({ ...p, s: 0, i }));
+  } else {
+    const y0 = TOP + 34, y1 = multi ? BOT - 70 : BOT - 44;
+    [[16, 0], [W / 2 + 6, 1]].forEach(([x, s]) =>
+      grid(roll.count, x, y0, W / 2 - 22, y1 - y0, multi ? 60 : 74, aspect).forEach((p, i) => slots.push({ ...p, s, i })));
+  }
+  return slots;
+}
+function stageSummary(ctx, roll, finished) {
+  if (roll.idle) { hint(ctx, roll.sets.length === 2 ? 'Tap to roll twice' : 'Tap to roll'); return; }
+  const cc = critColor(roll.crit);
+  if (roll.sets.length === 1) {
+    if (roll.count > 1 && finished) {
+      text(ctx, 'TOTAL', W / 2, BOT - 62, `500 11px ${SANS}`, C.dim, 'center', 1.2);
+      text(ctx, String(roll.totals[0]), W / 2, BOT - 32, `500 38px ${MONO}`, C.text);
+    } else if (finished && cc) text(ctx, critText(roll.crit), W / 2, BOT - 20, `600 14px ${SANS}`, cc, 'center', 1.4);
+    return;
+  }
+  [W / 4 + 2, W * 3 / 4 - 2].forEach((x, s) => {
+    const kept = s === roll.kept;
+    const lab = !finished ? (s ? '2ND' : '1ST') : kept ? 'KEPT' : 'DROPPED';
+    text(ctx, lab, x, TOP + 16, `600 11px ${SANS}`, !finished ? C.dim : kept ? C.accent : C.off, 'center', 1.2);
+    if (roll.count > 1 && finished) {
+      const tx = String(roll.totals[s]);
+      text(ctx, tx, x, BOT - 46, `500 28px ${MONO}`, kept ? C.text : C.off);
+      if (!kept) { ctx.fillStyle = C.off; const w = tx.length * 17 + 8; ctx.fillRect(x - w / 2, BOT - 46, w, 2); }
+    }
+  });
+  if (finished) text(ctx, cc ? critText(roll.crit) : modeText(roll.mode), W / 2, BOT - 14, `${cc ? 600 : 500} 12px ${SANS}`, cc || C.dim, 'center', cc ? 1.4 : 0);
+}
+
+const PHI = (1 + Math.sqrt(5)) / 2, SOLIDS = {};
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], scale3 = (a, k) => a.map(c => c * k);
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = a => scale3(a, 1 / Math.hypot(...a));
+const mul = (M, v) => [dot(M[0], v), dot(M[1], v), dot(M[2], v)];
+const mulM = (A, B) => A.map(row => [0, 1, 2].map(j => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+function axisAngle(a, th) {                       // Rodrigues rotation matrix
+  const [x, y, z] = a, c = Math.cos(th), s = Math.sin(th), t = 1 - c;
+  return [[t * x * x + c, t * x * y - s * z, t * x * z + s * y], [t * x * y + s * z, t * y * y + c, t * y * z - s * x], [t * x * z - s * y, t * y * z + s * x, t * z * z + c]];
+}
+function solid(die) {
+  if (SOLIDS[die]) return SOLIDS[die];
+  let V = [], E = [];
+  if (die === 4) V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+  else if (die === 6) { for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) V.push([a, b, c]); }
+  else if (die === 8) V = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  else if (die === 12) {
+    for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) V.push([a, b, c]);
+    for (const a of [-1, 1]) for (const b of [-1, 1]) V.push([0, a / PHI, b * PHI], [a / PHI, b * PHI, 0], [a * PHI, 0, b / PHI]);
+  } else if (die === 20) { for (const a of [-1, 1]) for (const b of [-1, 1]) V.push([0, a, b * PHI], [a, b * PHI, 0], [a * PHI, 0, b]); }
+  else {                                           // d10: pentagonal trapezohedron, apexes on the y axis
+    V = [[0, -1.25, 0], [0, 1.25, 0]];
+    for (let i = 0; i < 5; i++) V.push([Math.cos(72 * i * D2R), -.13, Math.sin(72 * i * D2R)]);
+    for (let i = 0; i < 5; i++) V.push([Math.cos((72 * i + 36) * D2R), .13, Math.sin((72 * i + 36) * D2R)]);
+    for (let i = 0; i < 5; i++) E.push([0, 2 + i], [1, 7 + i], [2 + i, 7 + i], [2 + i, 7 + (i + 4) % 5]);
+  }
+  const m = Math.max(...V.map(v => Math.hypot(...v)));
+  V = V.map(v => scale3(v, 1 / m));
+  if (!E.length) {
+    const dist = (i, j) => Math.hypot(...sub(V[i], V[j]));
+    let min = Infinity;
+    for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) min = Math.min(min, dist(i, j));
+    for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) if (dist(i, j) < min * 1.01) E.push([i, j]);
+  }
+  return SOLIDS[die] = { V, E, pose: restPose(die, V) };
+}
+/* Rest pose: the rotation that turns one face straight at the viewer, upright
+   (a vertex up for triangles and pentagons, an edge up for the cube, the apex
+   up for the d10 kite). The roll always ends exactly on this matrix. */
+function restPose(die, V) {
+  let face, n, u;
+  if (die === 10) {
+    face = [0, 2, 7, 3];                           // top apex, ring vertex, lower ring vertex, next ring vertex
+    const P = face.map(i => V[i]);
+    n = unit(cross(sub(P[3], P[1]), sub(P[2], P[0])));
+    const c0 = scale3(P.reduce(add), 1 / 4);
+    if (dot(n, c0) < 0) n = scale3(n, -1);
+    u = sub(P[0], c0);                             // towards the apex
+  } else {
+    const dir = { 4: scale3(V[0], -1), 6: [0, 0, 1], 8: [1, 1, 1], 12: [0, PHI, 1], 20: [1, 1, 1] }[die];
+    n = unit(dir);
+    const best = Math.max(...V.map(v => dot(v, n)));
+    face = V.map((v, i) => i).filter(i => dot(V[i], n) > best - 1e-6);
+    const c0 = scale3(face.map(i => V[i]).reduce(add), 1 / face.length);
+    if (die === 6) u = [0, -1, 0];
+    else u = sub(V[face.reduce((b, i) => (dot(sub(V[i], c0), [0, -1, 0]) > dot(sub(V[b], c0), [0, -1, 0]) ? i : b), face[0])], c0);
+  }
+  u = unit(sub(u, scale3(n, dot(u, n))));
+  const w = cross(n, u), tn = [0, 0, -1], tu = [0, -1, 0], tw = [-1, 0, 0];
+  const M = [0, 1, 2].map(i => [0, 1, 2].map(j => tn[i] * n[j] + tu[i] * u[j] + tw[i] * w[j]));
+  // order the face vertices around the centre so the face can be filled
+  const fp = face.map(i => mul(M, V[i]));
+  face = face.map((i, k) => [i, Math.atan2(fp[k][1], fp[k][0])]).sort((a, b) => a[1] - b[1]).map(f => f[0]);
+  return { M, face };
+}
+const FACE_FS = { 4: .38, 6: .56, 8: .34, 10: .32, 12: .44, 20: .31 };
+function drawSolid(ctx, die, x, y, r, M, color, opts) {
+  const { V, E, pose } = solid(die);
+  const P = V.map(v => { const q = mul(M, v), k = 4 / (4 + q[2]); return [x + q[0] * r * k, y + q[1] * r * k, q[2]]; });
+  const edges = E.map(([i, j]) => ({ a: P[i], b: P[j], z: (P[i][2] + P[j][2]) / 2 })).sort((p, q) => q.z - p.z);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const e of edges) {
+    const front = e.z < 0, depth = clamp01((1 - e.z) / 2);
+    ctx.globalAlpha = (front ? .55 + .45 * depth : .14 + .2 * depth) * opts.bright;
+    ctx.lineWidth = front ? Math.max(1.6, r * .028) : Math.max(1, r * .016);
+    ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.moveTo(e.a[0], e.a[1]); ctx.lineTo(e.b[0], e.b[1]); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  if (opts.reveal > 0) {                           // landed: the face toward the viewer gets a solid fill and the number
+    ctx.beginPath();
+    pose.face.forEach((i, k) => k ? ctx.lineTo(P[i][0], P[i][1]) : ctx.moveTo(P[i][0], P[i][1]));
+    ctx.closePath();
+    ctx.globalAlpha = opts.reveal;
+    ctx.fillStyle = opts.fill; ctx.fill();
+    ctx.lineWidth = Math.max(1.8, r * .032); ctx.strokeStyle = color; ctx.stroke();
+    const s = String(opts.value), fs = Math.max(9, r * FACE_FS[die] * (s.length >= 3 ? .62 : s.length === 2 ? .8 : 1));
+    text(ctx, s, x, y + fs * .05, `500 ${fs}px ${MONO}`, opts.text);
+    ctx.globalAlpha = 1;
+  }
+}
+const randAxis = () => { const z = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - z * z); return [s * Math.cos(a), s * Math.sin(a), z]; };
+
+  const maxCount = d => d === 100 ? 4 : 10;
+  function build(live, preset) {
+    const st = preset ? { ...preset.state } : diceState;
+    const s = el('div', 'scr');
+    const cv = el('canvas', 'dice-canvas'); cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    const strip = el('div', 'dice-strip'), hit = el('div', 'dice-hit');
+    const step = el('div', 'dice-step'), modes = el('div', 'seg2');
+    s.append(cv, hit, strip, step, modes);
+    let roll, slots, t0 = 0, end = 0, busy = false;
+    const layout = r => {
+      roll = r;
+      slots = stageSlots(r, 112).map((sl, k) => ({ ...sl, delay: k * 80, len: dur(1100 + Math.random() * 300),
+        spins: [0, 1].map(() => ({ axis: randAxis(), turns: (2.2 + Math.random() * 1.6) * Math.PI * 2 })) }));
+      end = Math.max(...slots.map(x => x.delay + x.len)) + 260;
+    };
+    const withState = f => { const keep = state; state = st; try { return f(); } finally { state = keep; } };
+    const draw = t => {
+      ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+      const r = roll, finished = t >= end - 260;
+      for (const sl of slots) {
+        const lt = t - sl.delay, p = clamp01(lt / sl.len), e = outQuart(p);
+        const dropped = finished && r.sets.length > 1 && sl.s !== r.kept;
+        const cc = !r.idle && p >= 1 && sl.s === r.kept ? critColor(r.crit) : null;
+        const color = r.idle || dropped ? C.off : cc || C.accent;
+        const reveal = r.idle ? 1 : clamp01((lt - sl.len + 40) / 180);
+        const after = lt - sl.len, pop = p >= 1 && !r.idle ? 1 + .06 * Math.exp(-after / 80) * Math.sin(after / 30) : 1;
+        const v = r.sets[sl.s][sl.i];
+        const pieces = r.die === 100 ? [[-sl.r * .66, 10, pct(v).tens, .72], [sl.r * .66, 10, pct(v).ones, .72]] : [[0, r.die, String(v), 1]];
+        pieces.forEach(([dx, d, val, sc], j) => {
+          const sp = sl.spins[j], M = r.idle ? solid(d).pose.M : mulM(solid(d).pose.M, axisAngle(sp.axis, sp.turns * (1 - e)));
+          drawSolid(ctx, d, sl.x + dx, sl.y, sl.r * sc * 1.08 * pop, M, color, {
+            bright: r.idle ? .7 : 1, reveal, value: r.idle ? '?' : val,
+            fill: r.idle || dropped ? '#050505' : C.accentFill, text: r.idle || dropped ? C.off : cc || C.text });
+        });
+      }
+      stageSummary(ctx, r, finished);
+    };
+    const controls = () => {
+      strip.innerHTML = '';
+      DICE.forEach(d => {
+        const b = el('button', 'dice-die' + (d === st.die ? ' on' : ''), iconSVG(d) + '<span>d' + d + '</span>');
+        b.setAttribute('aria-label', 'd' + d);
+        if (live) b.addEventListener('click', () => { st.die = d; st.count = Math.min(st.count, maxCount(d)); reset(); }); else b.tabIndex = -1;
+        strip.append(b);
+      });
+      step.innerHTML = `<button aria-label="One die fewer" ${st.count <= 1 ? 'disabled' : ''}>−</button><span>${st.count}d${st.die}</span><button aria-label="One die more" ${st.count >= maxCount(st.die) ? 'disabled' : ''}>+</button>`;
+      const [minus, , plus] = step.children;
+      if (live) { minus.addEventListener('click', () => { st.count--; reset(); }); plus.addEventListener('click', () => { st.count++; reset(); }); }
+      modes.innerHTML = '';
+      [['flat', 'Flat', C.accent], ['adv', 'Adv', C.ok], ['dis', 'Dis', C.err]].forEach(([m, lab, col]) => {
+        const b = el('button', '', lab), on = st.mode === m;
+        if (on) { b.style.background = col; b.style.color = mix(col, .14); }
+        if (live) b.addEventListener('click', () => { st.mode = m; reset(); }); else b.tabIndex = -1;
+        modes.append(b);
+      });
+    };
+    const reset = () => { busy = false; layout(withState(() => makeRoll(true))); controls(); draw(1e9); };
+    if (live) hit.addEventListener('click', () => { layout(withState(() => makeRoll(false))); t0 = now(); busy = true; });
+    if (preset) { layout(withState(() => ({ ...makeRoll(false), ...preset.roll }))); controls(); draw(1e9); }
+    else reset();
+    return { el: s, frame(tm) { if (!busy) return; const t = tm - t0; draw(t); if (t > end) { busy = false; draw(1e9); } } };
+  }
+  return { build };
+})();
+const diceState = { die: 20, count: 1, mode: 'flat' };
+
+/* ---------------- Level (code from docs/design/level.html, designs A + B) ---------------- */
+const LevelKit = (() => {
+  const W = 368, H = 448;
+  const C = { bg:'#000', surface:'#141414', track:'#1E1E1E', outline:'#3A3A3A', text:'#EDEDED', dim:'#9A9A9A', off:'#5A5A5A',
+              ok:'#4CD07D', near:'#FFD54F', accent:'#FFD54F', err:'#FF5A5F' };
+  const MONO = '"Roboto Mono", ui-monospace, monospace', SANS = 'Inter, system-ui, sans-serif';
+  const D2R = Math.PI / 180, LEVEL = 0.3, NEAR = 2;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const fmt = (v, unit) => {
+  if (unit === '%') { const p = Math.tan(clamp(Math.abs(v), 0, 89.9) * D2R) * 100 * Math.sign(v); return (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(Math.abs(p) < 100 ? 1 : 0) + '%'; }
+  return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '°';
+};
+const fmtAbs = (v, unit) => unit === '%' ? (Math.tan(clamp(Math.abs(v), 0, 89.9) * D2R) * 100).toFixed(1) + '%' : Math.abs(v).toFixed(1) + '°';
+const stateColor = dev => Math.abs(dev) <= LEVEL ? C.ok : Math.abs(dev) <= NEAR ? C.near : C.text;
+// Edge mode: the nearest of level (0°/180°) or plumb (±90°), and how far from it.
+function edgeRef(a) {
+  let n = ((a % 360) + 540) % 360 - 180;              // -180..180
+  const refs = [0, 90, -90, 180, -180];
+  let best = 0, dev = 999;
+  for (const r of refs) { const d = n - r; if (Math.abs(d) < Math.abs(dev)) { dev = d; best = r; } }
+  return { norm: n, ref: best, dev, plumb: Math.abs(best) === 90 };
+}
+
+/* ---------- drawing helpers ---------- */
+function text(ctx, s, x, y, font, color, align = 'center', spacing = 0) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+  ctx.fillText(s, x, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function header(ctx, scr, r) {
+  const edge = r.mode === 'edge';
+  text(ctx, edge ? (edgeRef(r.a).plumb ? 'EDGE · PLUMB' : 'EDGE · LEVEL') : 'SURFACE', 24, 30, `600 12px ${SANS}`, C.dim, 'left', 1.2);
+  if (scr.zero) text(ctx, 'ZEROED', W - 24, 30, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+  else if (scr.hold) text(ctx, 'HELD', W - 24, 30, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+}
+function ticks(ctx, cx, cy, r0, r1, a0, a1, step, color, lw = 1) {
+  ctx.beginPath();
+  for (let a = a0; a <= a1 + 1e-6; a += step) { const c = Math.cos(a * D2R), s = Math.sin(a * D2R); ctx.moveTo(cx + c * r0, cy + s * r0); ctx.lineTo(cx + c * r1, cy + s * r1); }
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
+}
+
+
+  const rad = (deg, R) => R * Math.tanh(Math.abs(deg) / 7);
+  const scrObj = { unit: '°', rad };
+  const P = {
+    flat(ctx, r) {
+    const cx = W / 2, cy = 214, R = 118, mag = Math.hypot(r.x, r.y), col = stateColor(mag);
+    // vial
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#0B0A06'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#2E2A1C'; ctx.stroke();
+    for (const [deg, a] of [[1, .9], [3, .5], [6, .3]]) { ctx.beginPath(); ctx.arc(cx, cy, rad(deg, R), 0, Math.PI * 2); ctx.strokeStyle = `rgba(255,213,79,${a * .35})`; ctx.lineWidth = 1.2; ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
+    // target ring
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.strokeStyle = Math.abs(mag) <= LEVEL ? C.ok : '#6B5E2E'; ctx.lineWidth = 2; ctx.stroke();
+    // bubble: towards the high side
+    const d = rad(mag, R - 30), ang = Math.atan2(-r.y, -r.x);
+    const bx = cx + (mag > 1e-3 ? Math.cos(ang) * d : 0), by = cy + (mag > 1e-3 ? Math.sin(ang) * d : 0);
+    const g = ctx.createRadialGradient(bx - 8, by - 9, 3, bx, by, 26);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(.25, col); g.addColorStop(1, col);
+    ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(bx, by, 25, 0, Math.PI * 2); ctx.fillStyle = g;
+    ctx.shadowColor = col; ctx.shadowBlur = 18; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    // readouts
+    text(ctx, 'X', 24, 62, `600 11px ${SANS}`, C.dim, 'left', 1); text(ctx, fmt(r.x, scrObj.unit), 40, 62, `500 16px ${MONO}`, stateColor(r.x), 'left');
+    text(ctx, 'Y', W - 24, 62, `600 11px ${SANS}`, C.dim, 'right', 1); text(ctx, fmt(r.y, scrObj.unit), W - 40, 62, `500 16px ${MONO}`, stateColor(r.y), 'right');
+    text(ctx, fmtAbs(mag, scrObj.unit), cx, 356, `500 30px ${MONO}`, col);
+  }
+ ,
+  draw(ctx, pitch, roll, label1, v1, label2, v2, dev1 = pitch, dev2 = roll) {
+    const cx = W / 2, cy = 214, R = 132, ppd = 5;            // pixels per degree of pitch
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(cx, cy); ctx.rotate(-roll * D2R); ctx.translate(0, pitch * ppd);
+    ctx.fillStyle = '#1C1604'; ctx.fillRect(-400, 0, 800, 600);                  // ground
+    const gr = ctx.createLinearGradient(0, 0, 0, -220); gr.addColorStop(0, '#0B1420'); gr.addColorStop(1, '#000');
+    ctx.fillStyle = gr; ctx.fillRect(-400, -600, 800, 600);                      // sky
+    ctx.beginPath(); ctx.moveTo(-400, 0); ctx.lineTo(400, 0); ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.stroke();
+    for (let p = -60; p <= 60; p += 5) {
+      if (!p) continue;
+      const y = -p * ppd, w = p % 10 ? 22 : 46;
+      ctx.beginPath(); ctx.moveTo(-w, y); ctx.lineTo(w, y); ctx.strokeStyle = 'rgba(237,237,237,.55)'; ctx.lineWidth = p % 10 ? 1 : 1.5; ctx.stroke();
+      if (!(p % 10)) { text(ctx, String(Math.abs(p)), -w - 14, y, `500 11px ${MONO}`, C.dim); text(ctx, String(Math.abs(p)), w + 14, y, `500 11px ${MONO}`, C.dim); }
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = C.outline; ctx.lineWidth = 2; ctx.stroke();
+    // roll scale
+    for (const a of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+      const t = (a - 90) * D2R, len = a % 30 ? 7 : 12;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(t) * (R + 4), cy + Math.sin(t) * (R + 4)); ctx.lineTo(cx + Math.cos(t) * (R + 4 + len), cy + Math.sin(t) * (R + 4 + len));
+      ctx.strokeStyle = a ? C.dim : C.text; ctx.lineWidth = 2; ctx.stroke();
+    }
+    const t = (-roll - 90) * D2R, px = cx + Math.cos(t) * (R - 2), py = cy + Math.sin(t) * (R - 2);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(t + Math.PI / 2);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, 12); ctx.lineTo(8, 12); ctx.closePath(); ctx.fillStyle = stateColor(roll); ctx.fill(); ctx.restore();
+    // fixed aircraft symbol
+    const col = stateColor(Math.hypot(pitch, roll));
+    ctx.beginPath(); ctx.moveTo(cx - 62, cy); ctx.lineTo(cx - 22, cy); ctx.lineTo(cx - 10, cy + 10); ctx.moveTo(cx + 62, cy); ctx.lineTo(cx + 22, cy); ctx.lineTo(cx + 10, cy + 10);
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    // readouts
+    text(ctx, label1, 24, 360, `600 11px ${SANS}`, C.dim, 'left', 1); text(ctx, v1, 24, 340, `500 22px ${MONO}`, stateColor(dev1), 'left');
+    text(ctx, label2, W - 24, 360, `600 11px ${SANS}`, C.dim, 'right', 1); text(ctx, v2, W - 24, 340, `500 22px ${MONO}`, dev2 === null ? C.dim : stateColor(dev2), 'right');
+  }
+
+  };
+  function hdr(ctx, mode, a, tag) {
+    text(ctx, mode === 'edge' ? (edgeRef(a).plumb ? 'EDGE · PLUMB' : 'EDGE · LEVEL') : 'SURFACE', 24, 34, `600 12px ${SANS}`, C.dim, 'left', 1.2);
+    if (tag) text(ctx, tag, W - 24, 34, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+  }
+  function build(live, preset) {
+    const s = el('div', 'scr');
+    const cv = el('canvas', 'lv-canvas'); cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    const hit = el('div', 'lv-hit');
+    const zero = el('button', 'lv-btn', 'Zero'), hold = el('button', 'lv-btn', 'Hold'), units = el('div', 'seg2 units');
+    zero.style.left = '24px'; hold.style.left = '128px';
+    s.append(cv, hit, zero, hold, units);
+    const sim = preset ? { ...preset } : levelSensor;
+    const st = { zero: null, hold: null, unit: '°', sm: { x: sim.x, y: sim.y, a: sim.a, p: sim.p } };
+    const reading = t => {
+      if (st.hold) return st.hold;
+      const w = live && !reduced ? 1 : 0;
+      const n1 = w * (Math.sin(t / 830) * .12 + Math.sin(t / 211) * .03), n2 = w * (Math.sin(t / 1170 + 1) * .1 + Math.sin(t / 173) * .03);
+      const z = st.zero || { x: 0, y: 0, a: 0, p: 0 }, k = live && !reduced ? .14 : 1;
+      st.sm.x += (sim.x + n1 - z.x - st.sm.x) * k; st.sm.y += (sim.y + n2 - z.y - st.sm.y) * k; st.sm.p += (sim.p + n2 * .8 - z.p - st.sm.p) * k;
+      let da = sim.a + n1 - z.a - st.sm.a; da = ((da + 540) % 360) - 180; st.sm.a += da * k;
+      return { x: st.sm.x, y: st.sm.y, a: st.sm.a, p: st.sm.p };
+    };
+    const draw = t => {
+      const r = reading(t);
+      ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+      scrObj.unit = st.unit;
+      if (sim.mode === 'flat') P.flat(ctx, r);
+      else {
+        const e = edgeRef(r.a);
+        text(ctx, `rotation ${Math.abs(e.norm).toFixed(1)}°`, 24, 54, `500 12px ${MONO}`, C.off, 'left');
+        P.draw(ctx, r.p, e.dev, e.plumb ? 'PLUMB' : 'LEVEL', fmtAbs(e.dev, st.unit), r.p >= 0 ? 'LEAN UP' : 'LEAN DOWN', fmtAbs(r.p, st.unit), e.dev, r.p);
+      }
+      hdr(ctx, sim.mode, r.a, st.hold ? 'HELD' : st.zero ? 'ZEROED' : '');
+    };
+    const sync = () => {
+      zero.textContent = st.zero ? 'Reset' : 'Zero';
+      zero.classList.toggle('on', !!st.zero); hold.classList.toggle('on', !!st.hold);
+      units.innerHTML = '';
+      ['°', '%'].forEach(u => {
+        const b = el('button', '', u);
+        if (st.unit === u) { b.style.background = '#242424'; b.style.color = '#EDEDED'; }
+        if (live) b.addEventListener('click', () => { st.unit = u; sync(); }); else b.tabIndex = -1;
+        units.append(b);
+      });
+    };
+    if (live) {
+      zero.addEventListener('click', () => { st.zero = st.zero ? null : { x: sim.x, y: sim.y, a: sim.a, p: sim.p }; st.hold = null; sync(); });
+      hold.addEventListener('click', () => { st.hold = st.hold ? null : { ...st.sm }; sync(); });
+      // Drag on the screen to "tilt" the board: flat, the bubble follows the finger;
+      // on an edge, sideways turns it and up/down leans it.
+      let down = null;
+      hit.addEventListener('pointerdown', e => { hit.setPointerCapture(e.pointerId); down = { x: e.clientX, y: e.clientY, a: sim.a, p: sim.p }; });
+      hit.addEventListener('pointermove', e => {
+        if (!down) return;
+        const k = parseFloat(getComputedStyle(document.getElementById('device')).transform.split(',')[3]) || 1;
+        if (sim.mode === 'flat') {
+          const b = hit.getBoundingClientRect(), dx = (e.clientX - b.left) / k - 184, dy = (e.clientY - b.top) / k + 70 - 214;
+          const d = Math.min(.985, Math.hypot(dx, dy) / 88), mag = 7 * Math.atanh(d), ang = Math.atan2(dy, dx);
+          sim.x = -Math.cos(ang) * mag; sim.y = -Math.sin(ang) * mag;
+        } else {
+          sim.a = down.a + (e.clientX - down.x) / k / 4; sim.p = Math.max(-40, Math.min(40, down.p - (e.clientY - down.y) / k / 5));
+        }
+      });
+      hit.addEventListener('pointerup', () => { down = null; });
+    } else [zero, hold].forEach(b => b.tabIndex = -1);
+    sync(); draw(0);
+    return { el: s, frame: live ? draw : null };
+  }
+  return { build };
+})();
+const levelSensor = { mode: 'flat', x: 2.4, y: -1.1, a: 12, p: 4 };
 
 /* ---------------- device controller ---------------- */
 const D = { power: 'on', stage: 'active', lastInput: now(), frozenIdle: 0, paused: false, app: 'menu', scr: null, held: new Set(), consumed: false, holdT: null, waitRelease: false, minimal: null, bright: 1 };
@@ -694,7 +1287,10 @@ function make(id) {
   if (id === 'pomodoro') return buildPomodoro(pomo, true);
   if (id === 'espresso') return buildEspresso(esp, true);
   if (id === 'system') return buildSystem(sys, true, () => { powerOff(() => setTimeout(powerOn, 500)); });
-  return buildLater(appById(id));
+  if (id === 'dice') return DiceKit.build(true);
+  if (id === 'level') return LevelKit.build(true);
+  if (id === 'wifi') return buildWifi(true);
+  return buildMenu(true, open);
 }
 function show(id, animate = true) {
   const old = D.scr;
@@ -739,15 +1335,15 @@ function tick() {
   if (pomo.running && pomoRem(pomo) <= 0) pomoAdvance(false);
   if (D.power !== 'on') { updateReadout(); return; }
   const idle = idleSec(), pol = policy(), prof = env.charger ? 'charger' : 'battery';
-  const maxB = env.charger ? 0.8 : 1;
+  const ub = user.bright / 100;
   let stage = 'active';
   if (pol === 'low') stage = idle >= 10 ? 'minimal' : 'active';
   else if (pol === 'normal') for (const [st, at] of STAGES[prof]) if (idle >= at) stage = st;
   if (stage === 'sleep') { sleepNow(); return; }
   D.stage = stage;
-  const b = { active: maxB, dim: env.charger ? 0.4 : 0.25, black: 0, minimal: 0.35 }[stage];
+  const b = { active: ub, dim: Math.min(env.charger ? 0.4 : 0.25, ub / 2), black: 0, minimal: 0.15 }[stage];
   D.bright = b;
-  dimmer.style.opacity = 1 - b;
+  dimmer.style.opacity = 1 - vis(b);
   swallow.hidden = stage === 'active';
   if (stage === 'minimal' && !D.minimal) { D.minimal = buildPomoMinimal(pomo, true); content.append(D.minimal.el); }
   if (stage !== 'minimal' && D.minimal) { D.minimal.el.remove(); D.minimal = null; }
@@ -755,6 +1351,10 @@ function tick() {
   if (D.scr && D.scr.tick) D.scr.tick();
   updateReadout();
 }
+// A monitor is much dimmer than the AMOLED: brightness is shown compressed so
+// even 5 % stays visible here. The readout shows the device's real value.
+const vis = b => b <= 0 ? 0 : Math.min(1, 0.3 + b);
+function applyBrightness() { D.lastInput = now(); tick(); }
 function wakeScreen() { D.lastInput = now(); D.frozenIdle = 0; tick(); }
 
 function powerOff(after) {
@@ -783,7 +1383,7 @@ function powerOn() {
   if (D.minimal) { D.minimal.el.remove(); D.minimal = null; }
   content.innerHTML = ''; D.scr = null;
   show('menu', false);
-  dimmer.style.opacity = env.charger ? 0.2 : 0; swallow.hidden = true;
+  dimmer.style.opacity = 1 - vis(user.bright / 100); swallow.hidden = true;
   crt.classList.remove('dead', 'off'); void crt.offsetWidth; crt.classList.add('on');
   setTimeout(() => { crt.classList.remove('on'); D.power = 'on'; D.lastInput = now(); D.frozenIdle = 0; tick(); }, 600);
 }
@@ -841,6 +1441,12 @@ function setProfile(chg) {
 }
 $('#pBat').addEventListener('click', () => setProfile(false));
 $('#pChg').addEventListener('click', () => setProfile(true));
+function setOrientation(edge) {
+  levelSensor.mode = edge ? 'edge' : 'flat';
+  $('#sFlat').setAttribute('aria-pressed', String(!edge)); $('#sEdge').setAttribute('aria-pressed', String(edge));
+}
+$('#sFlat').addEventListener('click', () => setOrientation(false));
+$('#sEdge').addEventListener('click', () => setOrientation(true));
 $('#pause').addEventListener('change', e => {
   if (e.target.checked) { D.frozenIdle = (now() - D.lastInput) / 1000; D.paused = true; }
   else { D.paused = false; D.lastInput = now() - D.frozenIdle * 1000; }
@@ -853,7 +1459,7 @@ function updateReadout() {
   const idle = idleSec();
   $('#rIdle').textContent = D.power === 'on' ? idle.toFixed(1) + ' s' + (D.paused ? ' (paused)' : '') : '—';
   $('#rPolicy').textContent = { normal: 'Normal', keep: 'Keep awake', low: 'Low-power display (Pomodoro running)' }[pol];
-  $('#rBright').textContent = D.power === 'on' ? Math.round(D.bright * 100) + ' %' + (D.stage === 'minimal' ? ' (≈15 % on the device)' : '') : 'off';
+  $('#rBright').textContent = D.power === 'on' ? Math.round(D.bright * 100) + ' %' + (D.stage === 'active' ? ' (quick settings)' : '') : 'off';
   let next = '—';
   if (D.power === 'sleep') next = 'press a side button to wake';
   else if (D.power === 'on') {
@@ -866,13 +1472,200 @@ function updateReadout() {
   }
   $('#rNext').textContent = next;
   const tl = $('#tl');
-  const stg = pol === 'low' ? [['active', 'Full · 0 s'], ['minimal', 'Minimal · 10 s']] :
-    prof === 'battery' ? [['active', 'Full · 0 s'], ['dim', '25 % · 10 s'], ['black', 'Black · 15 s'], ['sleep', 'Sleep · 20 s']] :
-      [['active', '80 % · 0 s'], ['dim', '40 % · 60 s'], ['black', 'Black · 5 min']];
+  const ub = user.bright, dimP = Math.round(Math.min(prof === 'battery' ? 25 : 40, ub / 2));
+  const stg = pol === 'low' ? [['active', `${ub} % · 0 s`], ['minimal', 'Minimal · 10 s']] :
+    prof === 'battery' ? [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 10 s`], ['black', 'Black · 15 s'], ['sleep', 'Sleep · 20 s']] :
+      [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 60 s`], ['black', 'Black · 5 min']];
   const cur = D.power === 'sleep' ? 'sleep' : D.stage;
   tl.style.gridTemplateColumns = `repeat(${stg.length}, minmax(0,1fr))`;
   tl.innerHTML = stg.map(([k, l]) => `<span class="${k === cur ? 'now' : ''}">${l}</span>`).join('');
 }
+
+/* ---------------- user settings (quick settings, NVS on the device) ---------------- */
+const user = { bright: 60, wifi: 'HomeNet' };   // brightness 5–70 %
+const B_MIN = 5, B_MAX = 70;
+
+/* the shade inside the menu screen; `opts.open` draws it open (gallery) */
+function addQuickSettings(s, sb, live, opts = {}) {
+  const H = 236;
+  const scrim = el('div', 'qs-scrim'), shade = el('div', 'qs-shade');
+  shade.innerHTML = `<div class="qs-time"></div><div class="qs-bat"></div>
+    <button class="qs-row qs-wifi" aria-label="Wi-Fi settings"><span class="ic"></span><span class="nm"></span></button>
+    <div class="qs-row qs-bar" role="slider" aria-label="Brightness" tabindex="0" aria-valuemin="${B_MIN}" aria-valuemax="${B_MAX}">
+      <div class="qs-fill"></div>${ic('light_mode', 28, 1)}<span class="qs-pct"></span></div>
+    <div class="qs-grip"></div>`;
+  s.append(scrim, shade);
+  const wifiRow = shade.querySelector('.qs-wifi'), bar = shade.querySelector('.qs-bar');
+  let y = -H, open = false;
+  const setY = (v, anim) => {
+    y = Math.max(-H, Math.min(0, v));
+    shade.classList.toggle('anim', !!anim); scrim.classList.toggle('anim', !!anim);
+    shade.style.transform = `translateY(${y}px)`;
+    scrim.style.opacity = (0.63 * (y + H) / H).toFixed(3);
+    scrim.style.pointerEvents = y > -H ? 'auto' : 'none';
+  };
+  const render = () => {
+    const d = new Date();
+    shade.querySelector('.qs-time').textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    shade.querySelector('.qs-bat').textContent = env.charger ? `${env.battery} % · charging` : `${env.battery} %`;
+    wifiRow.querySelector('.ic').innerHTML = `<span style="color:#4DA3FF">${ic(user.wifi ? 'wifi' : 'wifi_off', 28, 1)}</span>`;
+    wifiRow.querySelector('.nm').textContent = user.wifi || 'Set up Wi-Fi';
+    const f = (user.bright - B_MIN) / (B_MAX - B_MIN);
+    shade.querySelector('.qs-fill').style.width = `${40 + (336 - 40) * f}px`;
+    shade.querySelector('.qs-pct').textContent = `${user.bright} %`;
+    bar.setAttribute('aria-valuenow', user.bright);
+  };
+  const doOpen = () => { open = true; render(); setY(0, true); };
+  const doClose = () => { open = false; setY(-H, true); };
+  render();
+  if (opts.open) { open = true; setY(0); }
+  else setY(-H);
+  if (!live) { wifiRow.tabIndex = -1; bar.tabIndex = -1; return { isOpen: () => open, close: doClose, render }; }
+
+  const scale = () => parseFloat(getComputedStyle($('#device')).transform.split(',')[3]) || 1;
+  // pull the status bar down (or tap it)
+  let p0 = null, moved = false;
+  sb.el.addEventListener('pointerdown', e => { if (open) return; sb.el.setPointerCapture(e.pointerId); p0 = e.clientY; moved = false; });
+  sb.el.addEventListener('pointermove', e => {
+    if (p0 == null) return;
+    const d = (e.clientY - p0) / scale();
+    if (d > 8) moved = true;
+    if (moved) setY(-H + d);
+  });
+  sb.el.addEventListener('pointerup', () => { if (p0 == null) return; p0 = null; (!moved || y > -H * 2 / 3) ? doOpen() : doClose(); });
+  // drag the shade back up
+  let q0 = null, y0 = 0, qm = false;
+  shade.addEventListener('pointerdown', e => { if (e.target.closest('.qs-row')) return; shade.setPointerCapture(e.pointerId); q0 = e.clientY; y0 = y; qm = false; });
+  shade.addEventListener('pointermove', e => { if (q0 == null) return; const d = (q0 - e.clientY) / scale(); if (d > 8) qm = true; if (qm) setY(y0 - d); });
+  shade.addEventListener('pointerup', () => { if (q0 == null) return; q0 = null; (qm && y < -H / 3) ? doClose() : doOpen(); });
+  scrim.addEventListener('click', doClose);
+  wifiRow.addEventListener('click', () => { open = false; setY(-H); show('wifi'); });
+  // brightness: live while touched, "saved" on release
+  const setFrom = e => {
+    const b = bar.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width));
+    user.bright = Math.round(B_MIN + x * (B_MAX - B_MIN)); render(); applyBrightness();
+  };
+  bar.addEventListener('pointerdown', e => { bar.setPointerCapture(e.pointerId); setFrom(e); bar.dataset.drag = 1; });
+  bar.addEventListener('pointermove', e => { if (bar.dataset.drag) setFrom(e); });
+  bar.addEventListener('pointerup', () => { delete bar.dataset.drag; });
+  bar.addEventListener('keydown', e => {
+    const k = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
+    if (k) { e.preventDefault(); e.stopPropagation(); user.bright = Math.max(B_MIN, Math.min(B_MAX, user.bright + k)); render(); applyBrightness(); }
+  });
+  return { isOpen: () => open, close: doClose, render };
+}
+
+/* ---------------- Wi-Fi settings (opened from the quick settings) ---------------- */
+const NETS = [{ ssid: 'HomeNet', rssi: -52, secure: true }, { ssid: 'Neighbour 5G', rssi: -68, secure: true }, { ssid: 'Cafe Guest', rssi: -80, secure: false }];
+const KEYS = '123456789*0#';
+const MT = { 0: ' 0', 1: '.,-_@!?1', 2: 'abc2', 3: 'def3', 4: 'ghi4', 5: 'jkl5', 6: 'mno6', 7: 'pqrs7', 8: 'tuv8', 9: 'wxyz9' };
+const SYMS = '#$%&*+=/\\:;\'"()[]{}<>^~`|';
+const sigIcon = r => r >= -60 ? 'network_wifi_3_bar' : r >= -72 ? 'network_wifi_2_bar' : 'network_wifi_1_bar';
+
+function buildWifi(live, preset) {
+  const s = el('div', 'scr');
+  const w = preset ? { ...preset } : { view: 'list', scanning: true, ssid: '', secure: true, text: '', pending: false, mode: 'abc', join: 'trying' };
+  let lastKey = null, lastT = 0, cycle = 0, commitT = null, joinT = null;
+  const chars = k => k === '*' ? SYMS : w.mode === '123' ? (k === '#' ? '' : k) : w.mode === 'ABC' ? MT[k].toUpperCase() : MT[k];
+  const render = () => {
+    clearTimeout(joinT);
+    if (w.view === 'list') {
+      s.innerHTML = `<div class="wf-head"><span>Wi-Fi</span><span>${w.scanning ? 'Scanning…' : ''}</span></div><div class="wf-list"></div>
+        <button class="wf-scan">${ic('refresh', 26, 1)}Scan again</button>`;
+      const list = s.querySelector('.wf-list');
+      if (!w.scanning) NETS.forEach(n => {
+        const cur = n.ssid === user.wifi;
+        const b = el('button', 'wf-net' + (cur ? ' cur' : ''), `<span class="sig">${ic(sigIcon(n.rssi), 28, 1)}</span>
+          <span class="nm"><span>${n.ssid}</span>${cur ? '<small>Connected</small>' : ''}</span>${n.secure ? `<span style="color:#5A5A5A">${ic('lock', 18, 1)}</span>` : ''}`);
+        if (live) b.addEventListener('click', () => {
+          w.ssid = n.ssid; w.secure = n.secure; w.text = ''; w.pending = false;
+          if (n.secure) { w.view = 'password'; render(); } else connect();
+        }); else b.tabIndex = -1;
+        list.append(b);
+      });
+      const scan = s.querySelector('.wf-scan');
+      if (live) { scan.addEventListener('click', () => { w.scanning = true; render(); }); if (w.scanning) joinT = setTimeout(() => { w.scanning = false; render(); }, 1300); }
+      else scan.tabIndex = -1;
+    } else if (w.view === 'password') {
+      s.innerHTML = `<div class="wf-head"><span>Password</span><span class="mode">${w.mode}</span></div><div class="wf-ssid">${w.ssid}</div>
+        <div class="wf-field"></div><div class="wf-keys"></div>
+        <div class="wf-bottom"><button class="wf-del" aria-label="Delete">${ic('backspace', 28, 1)}</button><button class="wf-ok">Connect</button></div>`;
+      const keys = s.querySelector('.wf-keys');
+      for (const k of KEYS) {
+        const lab = k === '*' ? '#$%' : k === '#' ? { abc: 'ABC', ABC: '123', 123: 'abc' }[w.mode] : k === '0' ? (w.mode === '123' ? '' : 'space')
+          : w.mode === '123' ? '' : chars(k).slice(0, -1).slice(0, 4);
+        const b = el('button', 'wf-key', `<b>${k}</b><span>${lab}</span>`);
+        if (live) b.addEventListener('click', () => press(k)); else b.tabIndex = -1;
+        keys.append(b);
+      }
+      field();
+      const [del, ok] = s.querySelectorAll('.wf-bottom button');
+      if (live) {
+        del.addEventListener('click', () => { w.text = w.text.slice(0, -1); w.pending = false; field(); });
+        ok.addEventListener('click', () => {
+          if (w.text.length < 8) { if (!s.querySelector('.wf-hint')) s.append(el('div', 'wf-hint', 'At least 8 characters')); return; }
+          connect();
+        });
+      } else [del, ok].forEach(b => b.tabIndex = -1);
+    } else {
+      const trying = w.join === 'trying', ok = w.join === 'joined';
+      s.innerHTML = `<div class="wf-head"><span>Wi-Fi</span><span></span></div>
+        <svg class="wf-ring${trying ? ' spinning' : ''}" viewBox="0 0 132 132" aria-hidden="true">${trying ? '<circle cx="66" cy="66" r="62" fill="none" stroke="#1E1E1E" stroke-width="6"/><circle cx="66" cy="66" r="62" fill="none" stroke="#4DA3FF" stroke-width="6" stroke-linecap="round" stroke-dasharray="290 400"/>' : ''}</svg>
+        <div class="wf-icon" style="color:${trying ? '#4DA3FF' : ok ? '#4CD07D' : '#FF5A5F'}">${ic(trying ? 'wifi' : ok ? 'check_circle' : 'error', 56, 1)}</div>
+        <div class="wf-title">${trying ? 'Connecting…' : ok ? 'Connected' : 'Couldn’t connect'}</div>
+        <div class="wf-sub">${trying ? w.ssid : ok ? `${w.ssid} · 192.168.1.57<br>Saved on this device` : 'Check the password, or move closer to the router'}</div>
+        ${trying ? '' : `<button class="wf-btn">${ok ? 'Done' : 'Try again'}</button>`}`;
+      const btn = s.querySelector('.wf-btn');
+      if (btn && live) btn.addEventListener('click', () => doBack());
+      if (trying && live) joinT = setTimeout(() => {
+        w.join = w.text === 'wrongpass' ? 'failed' : 'joined';
+        if (w.join === 'joined') user.wifi = w.ssid;
+        render();
+      }, 2200);
+    }
+  };
+  const field = () => {
+    const f = s.querySelector('.wf-field');
+    if (!f) return;
+    const t = w.text, esc = c => c.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    f.innerHTML = !t ? '<span class="ph">Type with the keys below</span>'
+      : `<span>${esc(w.pending ? t.slice(0, -1) : t)}</span>${w.pending ? `<span class="pend">${esc(t.slice(-1))}</span>` : ''}<span class="caret"></span>`;
+    f.scrollLeft = f.scrollWidth;
+    s.querySelector('.wf-hint')?.remove();
+  };
+  // Nokia multi-tap: the same key within 0.9 s cycles, a pause or another key commits
+  const press = k => {
+    const t = performance.now();
+    clearTimeout(commitT);
+    if (k === '#') { w.mode = { abc: 'ABC', ABC: '123', 123: 'abc' }[w.mode]; w.pending = false; lastKey = null; render(); return; }
+    const cs = chars(k);
+    if (w.pending && k === lastKey && t - lastT < 900) { cycle = (cycle + 1) % cs.length; w.text = w.text.slice(0, -1) + cs[cycle]; }
+    else if (w.text.length < 63) { cycle = 0; w.text += cs[0]; w.pending = cs.length > 1; }
+    lastKey = k; lastT = t;
+    if (w.pending) commitT = setTimeout(() => { w.pending = false; field(); }, 900);
+    field();
+  };
+  const connect = () => { w.view = 'join'; w.join = 'trying'; render(); };
+  render();
+  return {
+    el: s,
+    onBack() {
+      if (w.view === 'password') { w.view = 'list'; w.scanning = true; render(); return true; }
+      if (w.view === 'join') {
+        if (w.join === 'joined') return false;
+        if (w.join === 'failed') { w.view = 'password'; render(); return true; }
+        w.view = 'list'; render(); return true;
+      }
+      return false;
+    },
+  };
+}
+
+/* animation for the live Dice and Level screens */
+(function frameLoop(t) {
+  if (D.scr && D.scr.frame) D.scr.frame(t);
+  requestAnimationFrame(frameLoop);
+})(0);
 
 /* scale the device to fit */
 function fit() {
@@ -910,15 +1703,26 @@ thumb('Pomodoro', 'Focus phase, 2 of 4 done', () => buildPomodoro(gPomoStatic, f
 thumb('Pomodoro, minimal view', 'Shown at ≈15 % on the device; redraws once a minute', () => buildPomoMinimal(gPomoMin, false).el, 0.6);
 thumb('Espresso, running', '22.3 s: amber, close to target', () => buildEspresso({ mode: 'done', elapsed: 22.3, hist: [26.1, 31.8, 24.0] }, false).el);
 thumb('Espresso, done', '27.4 s in the 25–30 s window', () => buildEspresso({ mode: 'done', elapsed: 27.4, hist: [27.4, 26.1, 31.8, 24.0] }, false).el);
+thumb('Dice', '6d6 with advantage: the higher total is kept', () => DiceKit.build(false, {
+  state: { die: 6, count: 6, mode: 'adv' },
+  roll: { die: 6, count: 6, mode: 'adv', sets: [[5, 4, 5, 6, 5, 5], [1, 1, 2, 3, 3, 1]], totals: [30, 11], kept: 0, crit: null, idle: false } }).el);
+thumb('Dice, d20', 'Advantage: 19 kept, 18 dropped', () => DiceKit.build(false, {
+  state: { die: 20, count: 1, mode: 'adv' },
+  roll: { die: 20, count: 1, mode: 'adv', sets: [[19], [18]], totals: [19, 18], kept: 0, crit: null, idle: false } }).el);
+thumb('Level, lying flat', 'Bullseye: the bubble sits on the high side', () => LevelKit.build(false, { mode: 'flat', x: 2.4, y: -1.1, a: 0, p: 0 }).el);
+thumb('Level, on an edge', 'Horizon: rotation from level, plus the lean', () => LevelKit.build(false, { mode: 'edge', x: 0, y: 0, a: 12, p: 4 }).el);
 thumb('System', 'Info list with the update entry', () => buildSystem({ view: 'info' }, false).el);
 thumb('Wireless update', 'Receiving firmware, 42 %', () => buildSystem({ view: 'ota', phase: 'receiving', pct: 42 }, false).el);
-thumb('Menu, dimmed', 'Battery: 25 % after 10 s idle', () => buildMenu(false).el, 0.25);
+thumb('Quick settings', 'Pulled down from the status bar: Wi-Fi and brightness', () => buildMenu(false, null, { open: true }).el);
+thumb('Wi-Fi networks', 'Scan results, strongest first; the one in use is blue', () => buildWifi(false, { view: 'list', scanning: false }).el);
+thumb('Wi-Fi password', 'Nokia multi-tap: the blue letter is still cycling', () => buildWifi(false, { view: 'password', ssid: 'Neighbour 5G', text: 'pasr', pending: true, mode: 'abc' }).el);
+thumb('Wi-Fi, connected', 'Saved on the device only once it connects', () => buildWifi(false, { view: 'join', join: 'joined', ssid: 'Neighbour 5G' }).el);
+thumb('Menu, dimmed', 'Battery: half the brightness after 10 s idle', () => buildMenu(false).el, 0.5);
 thumb('Power-off animation', 'Long press: the picture collapses to a line, then a dot', () => {
   const s = el('div', 'scr');
   s.innerHTML = `<div style="position:absolute;left:24px;right:24px;top:222px;height:4px;border-radius:2px;background:#EDEDED;box-shadow:0 0 18px 4px rgba(237,237,237,.55)"></div>`;
   return s;
 });
-thumb('Planned app', 'Placeholder for apps not built yet', () => buildLater(appById('weather')).el);
 
 /* the "running" espresso thumb: fix label and colour after build */
 (function () {
