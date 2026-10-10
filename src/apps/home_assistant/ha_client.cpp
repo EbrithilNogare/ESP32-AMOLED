@@ -7,18 +7,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
+#include <atomic>
+
 #include "config.h"
 #include "core/events.h"
 #include "core/net.h"
-#if __has_include("secrets.h")
-#include "secrets.h"
-#else
-#include "secrets.example.h"
-#endif
+#include "secrets_or_example.h"
 
 namespace apps::ha_client {
 
-static const char *TAG = "ha";
+[[maybe_unused]] static const char *TAG = "ha";  // ESP_LOGD compiles out in release
 static const Light kLightTable[kLights] = HA_LIGHTS;
 static_assert(sizeof(kLightTable) / sizeof(kLightTable[0]) == kLights, "HA_LIGHTS must list exactly 4 lights");
 
@@ -29,24 +27,25 @@ struct Request {
 };
 
 static QueueHandle_t queue;
-static volatile bool working;
+static std::atomic<int> pending{0};  // queued or running; counted up before the send
 
 const Light &light(int i) { return kLightTable[i]; }
 
-static void report(int i, ha::LightState s, ha::Result r) {
-  core::events::post({core::Ev::HaResult, uint32_t(i), pack(s, r)});
+// `toggle`: the result answers a tap (also when a GET had to follow the POST).
+static void report(int i, ha::LightState s, ha::Result r, bool toggle) {
+  core::events::post({core::Ev::HaResult, uint32_t(i), pack(s, r, toggle)});
 }
 
-static void run(HTTPClient &http, WiFiClient &client, const Request &rq) {
+static void run(HTTPClient &http, WiFiClient &client, const Request &rq, bool toggle) {
   const Light &l = kLightTable[rq.index];
   if (!core::net::connected()) {
-    report(rq.index, ha::LightState::Unknown, ha::Result::NetworkError);
+    report(rq.index, ha::LightState::Unknown, ha::Result::NetworkError, toggle);
     return;
   }
   String url = String(HA_BASE_URL) + (rq.op == Op::Get ? "/api/states/" : "/api/services/light/toggle");
   if (rq.op == Op::Get) url += l.entity;
   if (!http.begin(client, url)) {
-    report(rq.index, ha::LightState::Unknown, ha::Result::NetworkError);
+    report(rq.index, ha::LightState::Unknown, ha::Result::NetworkError, toggle);
     return;
   }
   http.setReuse(true);  // keep-alive: the 4 refresh GETs share one connection
@@ -80,10 +79,10 @@ static void run(HTTPClient &http, WiFiClient &client, const Request &rq) {
 
   // The toggle response normally carries the new state; if not, ask.
   if (res == ha::Result::Ok && !found) {
-    run(http, client, {Op::Get, rq.index});
+    run(http, client, {Op::Get, rq.index}, toggle);
     return;
   }
-  report(rq.index, state, res);
+  report(rq.index, state, res, toggle);
 }
 
 static void task(void *) {
@@ -92,9 +91,8 @@ static void task(void *) {
   Request rq;
   for (;;) {
     if (xQueueReceive(queue, &rq, portMAX_DELAY) != pdTRUE) continue;
-    working = true;
-    run(http, client, rq);
-    working = uxQueueMessagesWaiting(queue) > 0;
+    run(http, client, rq, rq.op == Op::Toggle);
+    pending--;
   }
 }
 
@@ -103,23 +101,21 @@ void begin() {
   xTaskCreatePinnedToCore(task, "ha", 8192, nullptr, 3, nullptr, 0);
 }
 
+static bool enqueue(const Request &rq) {
+  pending++;
+  if (xQueueSend(queue, &rq, 0) == pdTRUE) return true;
+  pending--;
+  return false;
+}
+
 bool refreshAll() {
   if (!queue || uxQueueSpacesAvailable(queue) < kLights) return false;
-  for (int i = 0; i < kLights; i++) {
-    Request rq{Op::Get, uint8_t(i)};
-    xQueueSend(queue, &rq, 0);
-  }
-  working = true;
+  for (int i = 0; i < kLights; i++) enqueue({Op::Get, uint8_t(i)});
   return true;
 }
 
-bool toggle(int i) {
-  Request rq{Op::Toggle, uint8_t(i)};
-  if (!queue || xQueueSend(queue, &rq, 0) != pdTRUE) return false;
-  working = true;
-  return true;
-}
+bool toggle(int i) { return queue && enqueue({Op::Toggle, uint8_t(i)}); }
 
-bool busy() { return working; }
+bool busy() { return pending > 0; }
 
 }  // namespace apps::ha_client

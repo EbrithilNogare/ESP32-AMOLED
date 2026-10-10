@@ -68,10 +68,13 @@ ESP32-AMOLED/
    ```
    Fill in Wi-Fi, the Home Assistant URL + long-lived token, and an OTA
    password. The 4 light entities are `HA_LIGHTS` in `include/config.h`.
-   Without `secrets.h` the build falls back to the example values (that is
-   how CI builds).
-3. Check the label on the back of the board: V1 (SH8601/FT3168) or V2
-   (CO5300/CST820). Set `BOARD_REVISION` in `include/board.h` (default `2`).
+   Without `secrets.h` the build falls back to the example values through
+   `include/secrets_or_example.h` (that is how CI builds); their Wi-Fi SSID
+   is empty, so such a build never tries to connect.
+3. The board revision, V1 (SH8601/FT3168) or V2 (CO5300/CST820), is probed
+   at boot by its touch address (`src/core/board_init.cpp`).
+   `BOARD_REVISION` in `include/board.h` (default `2`) is only the fallback
+   when no touch controller answers.
 
 ## Build & flash
 
@@ -108,7 +111,7 @@ release BOOT, then flash.
 | Env | Purpose |
 | --- | --- |
 | `amoled` | release — core log level ERROR |
-| `amoled-debug` | debug build, core log level VERBOSE, `APP_DEBUG=1` |
+| `amoled-debug` | debug build, core log level VERBOSE, `APP_DEBUG=1` (LVGL warnings logged) |
 | `amoled-ota` | release build uploaded over Wi-Fi (espota) |
 | `native` | host unit tests for `lib/` |
 | `sim` | PC simulator + UI flow test (`.pio/build/sim/program`) |
@@ -137,7 +140,7 @@ python tools/assets.py --check                     # generated fonts match asset
 
 `.github/workflows/build.yml` on every push and PR:
 
-- builds `amoled` and `amoled-debug` (failing above the 3.5 MB OTA budget)
+- builds `amoled` and `amoled-debug` (failing above the 3.5 MiB OTA budget)
   and attaches `firmware.bin` / `firmware.factory.bin`;
 - runs the host unit tests and the simulator flow test, and attaches the
   simulator screenshots;

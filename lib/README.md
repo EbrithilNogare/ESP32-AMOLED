@@ -1,13 +1,26 @@
 # lib/
 
-Project-private libraries. Each library gets its own folder and PlatformIO
-compiles and links it automatically when `src/` includes one of its headers:
+Project-private libraries: Arduino-free logic that the firmware and the PC
+host tests share. PlatformIO compiles and links a library automatically when
+`src/` includes one of its headers.
+
+Every library has the same layout, and its Unity tests live in
+`test/test_<snake_case>/` (run with `pio test -e native`):
 
 ```
 lib/
-└── Display/
-    ├── Display.h
-    └── Display.cpp
+└── DiceCore/
+    ├── library.json          name, version, description
+    └── src/
+        ├── dice_core.h
+        └── dice_core.cpp
+test/
+└── test_dice_core/
+    └── test_main.cpp
 ```
+
+Current libraries: `BotFace`, `ButtonLogic`, `DiceCore`, `HaParse`,
+`LevelCore`, `PixelShift`, `PomodoroCore`, `PowerFsm`, `ShotTimer`.
+Adapters in `src/` connect them to hardware and LVGL.
 
 Third-party libraries go into `lib_deps` in `platformio.ini` instead.

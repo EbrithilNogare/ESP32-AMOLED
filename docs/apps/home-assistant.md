@@ -43,13 +43,15 @@ Home Assistant REST API, plain HTTP on the LAN, long-lived access token
 
 Headers: `Authorization: Bearer {HA_TOKEN}`, `Content-Type: application/json`.
 
-- `HaClient` runs in its own FreeRTOS task with request/result queues; the UI
-  never blocks on the network.
+- `ha_client` runs in its own FreeRTOS task: requests go in a queue, results
+  come back as `Ev::HaResult` events; the UI never blocks on the network.
 - On resume (and when Wi-Fi comes up): fetch all 4 states. While visible:
   poll every `HA_POLL_MS`.
 - Toggle → the POST returns the changed states; if the entity is missing from
-  the response, follow up with a GET. On failure the tile reverts and
-  flashes red.
+  the response, follow up with a GET. On failure the tile keeps its old state
+  and shakes. While a toggle is pending, poll results for that light are
+  ignored (they were queued before the tap); only the toggle's own result
+  ends the spinner.
 - Wi-Fi is requested from `Net` on resume and released on pause (on battery
   it is switched off when no app needs it).
 
@@ -91,9 +93,9 @@ BSSID plus an optional static IP.
 
 | Situation | Shown |
 | --- | --- |
-| No Wi-Fi within 8 s | banner "No Wi-Fi", tiles stale, retry in background |
+| No Wi-Fi | banner "Connecting…", tiles stale, retry in background |
 | HA unreachable / timeout | tiles stale, retry on next poll |
-| HTTP 401 | banner "HA token rejected — check secrets.h" |
+| HTTP 401 | banner "HA token rejected — check secrets.h" (until a request succeeds; network errors keep it) |
 | 404 / `unavailable` | that tile "n/a" |
 
 ## Security

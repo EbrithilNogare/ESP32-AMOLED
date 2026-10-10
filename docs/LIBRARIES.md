@@ -43,7 +43,7 @@ and `lv_animimg` sprites (no app needs files or sprite sheets so far).
 
 | Option | Why not |
 | --- | --- |
-| GFX Library for Arduino (what the vendor demos use) | its bitmap draw blocks until the transfer ends, so LVGL can't overlap rendering and DMA, and its drawing API is redundant next to LVGL. **Fallback** if the vendored esp_lcd driver gives trouble in M1. |
+| GFX Library for Arduino (what the vendor demos use) | its bitmap draw blocks until the transfer ends, so LVGL can't overlap rendering and DMA, and its drawing API is redundant next to LVGL. **Fallback** if the esp_lcd panel code in `src/core/display.cpp` gives trouble in M1. |
 | LovyanGFX, TFT_eSPI | no maintained support for these QSPI AMOLED controllers that we can rely on; drawing APIs redundant next to LVGL |
 | Adafruit XCA9554 (+ BusIO) | a dependency chain for 4 registers |
 | ESP-IDF BSP `waveshare/esp32_s3_touch_amoled_1_8` | needs the ESP-IDF component manager, not the Arduino/PlatformIO build; we reuse its init sequence and pin data instead |

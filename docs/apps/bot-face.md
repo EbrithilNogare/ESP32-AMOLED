@@ -31,7 +31,7 @@ implementation is a port, not a redesign.
 - Eyes: filled rounded rectangles. Mouth: an open curve (smile/flat) or, when
   surprised, a filled ellipse ("o").
 - All drawing uses LVGL primitives (rounded `lv_obj` rectangles for the eyes,
-  an `lv_canvas`/line or arc for the mouth). No bitmaps or sprites.
+  an `lv_line`, sized to its bounding box, for the mouth). No bitmaps or sprites.
 
 ## Parameters
 

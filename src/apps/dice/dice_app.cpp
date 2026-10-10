@@ -8,6 +8,7 @@
 #include "board.h"
 #include "config.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "ui/draw.h"
 #include "ui/theme.h"
 
@@ -20,8 +21,9 @@ static const AppInfo kInfo = {"dice", "Dice", ICON_CASINO, DICE_COLOR};
 
 // Roll area between the die strip and the bottom bar (screen coordinates).
 static constexpr int32_t kTop = 70, kBot = 376;
-static constexpr uint32_t kOff = 0x5A5A5A;    // idle and dropped dice
-static constexpr uint32_t kGhost = 0x050505;  // their face fill
+static constexpr uint32_t kOff = ui::col::textOff;  // idle and dropped dice
+static constexpr uint32_t kGhost = 0x050505;        // their face fill
+static constexpr uint32_t kSettleMs = 260;          // after the last die lands
 static constexpr float kPi = 3.14159265f;
 
 static uint32_t hwRandom() { return esp_random(); }
@@ -94,7 +96,7 @@ void DiceApp::startRoll() {
   layout();
   t0_ = millis();
   animating_ = true;
-  nextFrameMs_ = 0;
+  nextFrameMs_ = millis();
 }
 
 // Places every die (two pieces for a d100) and gives each its own spin.
@@ -147,7 +149,7 @@ void DiceApp::layout() {
       add(roll_.die, 0, 1, v);
     }
   }
-  endMs_ = end + 260;
+  endMs_ = end + kSettleMs;
   update(idle_ ? UINT32_MAX / 2 : 0);
   if (stage_) lv_obj_invalidate(stage_);
 }
@@ -200,7 +202,7 @@ void DiceApp::drawPiece(lv_layer_t *layer, const Piece &pc, bool dropped) {
   // Landed: fill the face toward the viewer (a fan; faces are convex),
   // outline it again on top and put the number in the middle.
   const lv_opa_t opa = lv_opa_t(pc.reveal * 255);
-  const uint32_t fillColor = idle_ || dropped ? kGhost : lv_color_to_u32(ui::mixBlack(DICE_COLOR, 15)) & 0xFFFFFF;
+  const uint32_t fillColor = idle_ || dropped ? kGhost : ui::mixBlack(DICE_COLOR, 15);
   float face[dice::kMaxFaceVerts][2];
   for (int k = 0; k < s.nface; k++) face[k][0] = pc.p[s.face[k]].x, face[k][1] = pc.p[s.face[k]].y;
   draw::polygon(layer, face, s.nface, fillColor, opa);
@@ -217,9 +219,7 @@ void DiceApp::drawPiece(lv_layer_t *layer, const Piece &pc, bool dropped) {
   draw::text(layer, digitFont(px, idle_), textColor, opa, pc.text, int32_t(pc.x), int32_t(pc.y + px * 0.05f));
 }
 
-void DiceApp::drawSummary(lv_layer_t *layer) {
-  const uint32_t elapsed = millis() - t0_;
-  const bool finished = !animating_ || elapsed + 260 >= endMs_;
+void DiceApp::drawSummary(lv_layer_t *layer, bool finished) {
   if (idle_) {
     draw::text(layer, &font_body, ui::col::textDim, LV_OPA_COVER, roll_.sets == 2 ? "Tap to roll twice" : "Tap to roll",
                LCD_WIDTH / 2, kBot - 20);
@@ -254,7 +254,8 @@ void DiceApp::drawSummary(lv_layer_t *layer) {
       snprintf(buf, sizeof buf, "%u", roll_.total[s]);
       draw::text(layer, &font_digits_32, kept ? ui::col::text : kOff, LV_OPA_COVER, buf, x, kBot - 46);
       if (!kept) {
-        const float w = strlen(buf) * 19.0f + 8;
+        // Roboto Mono: every digit has the same advance.
+        const float w = strlen(buf) * lv_font_get_glyph_width(&font_digits_32, '0', 0) + 8;
         draw::line(layer, x - w / 2, kBot - 45, x + w / 2, kBot - 45, kOff, 2, LV_OPA_COVER);
       }
     }
@@ -275,8 +276,7 @@ void DiceApp::draw(lv_layer_t *layer) {
   lv_area_t a;
   lv_obj_get_coords(stage_, &a);
   const float dx = float(a.x1), dy = float(a.y1 - kTop);
-  const uint32_t elapsed = millis() - t0_;
-  const bool finished = !animating_ || elapsed + 260 >= endMs_;
+  const bool finished = !animating_ || millis() - t0_ + kSettleMs >= endMs_;
   for (int k = 0; k < nPieces_; k++) {
     Piece pc = pieces_[k];
     pc.x += dx;
@@ -284,7 +284,7 @@ void DiceApp::draw(lv_layer_t *layer) {
     for (int i = 0; i < dice::solid(pc.die).nv; i++) pc.p[i].x += dx, pc.p[i].y += dy;
     drawPiece(layer, pc, finished && !idle_ && roll_.sets == 2 && pc.set != roll_.kept);
   }
-  drawSummary(layer);
+  drawSummary(layer, finished);
 }
 
 // ---------------------------------------------------------------- widgets
@@ -295,18 +295,13 @@ void DiceApp::syncControls() {
     const bool on = dice::kDice[i] == die_;
     lv_obj_set_style_bg_opa(dieBtn_[i], on ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
     lv_obj_set_style_text_color(dieBtn_[i], ui::c(on ? DICE_COLOR : kOff), 0);
-    lv_obj_invalidate(dieBtn_[i]);
   }
   ui::setTextFmt(countLabel_, "%ud%u", count_, die_);
   lv_obj_set_style_text_color(minus_, ui::c(count_ > 1 ? ui::col::text : ui::col::outline), 0);
   lv_obj_set_style_text_color(plus_, ui::c(count_ < dice::maxCount(die_) ? ui::col::text : ui::col::outline), 0);
   static const uint32_t kOn[3] = {DICE_COLOR, ui::col::success, ui::col::error};
-  for (int i = 0; i < 3; i++) {
-    const bool on = int(mode_) == i;
-    lv_obj_set_style_bg_color(modeBtn_[i], ui::c(kOn[i]), 0);
-    lv_obj_set_style_bg_opa(modeBtn_[i], on ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
-    lv_obj_set_style_text_color(modeBtn_[i], on ? ui::mixBlack(kOn[i], 14) : ui::c(ui::col::textDim), 0);
-  }
+  const uint32_t on = kOn[int(mode_)];
+  ui::setSegment(modes_, int(mode_), ui::c(on), ui::c(ui::mixBlack(on, 14)));
 }
 
 void DiceApp::onCreate(lv_obj_t *root) {
@@ -329,21 +324,21 @@ void DiceApp::onCreate(lv_obj_t *root) {
   lv_obj_add_event_cb(stage_, onStageClick, LV_EVENT_CLICKED, this);
 
   // Die strip: icon + name for each die type.
-  const float step = (LCD_WIDTH - 48 - 42) / float(dice::kTypes - 1);
+  const float step = (LCD_WIDTH - 2 * kEdge - 42) / float(dice::kTypes - 1);
   for (int i = 0; i < dice::kTypes; i++) {
     lv_obj_t *b = box(root);
     dieBtn_[i] = b;
     lv_obj_set_size(b, 42, 56);
-    lv_obj_set_pos(b, int32_t(24 + i * step + 0.5f), 9);
+    lv_obj_set_pos(b, int32_t(kEdge + i * step + 0.5f), 9);
     lv_obj_set_style_radius(b, 14, 0);
-    lv_obj_set_style_bg_color(b, mixBlack(DICE_COLOR, 15), 0);
+    lv_obj_set_style_bg_color(b, c(mixBlack(DICE_COLOR, 15)), 0);
     lv_obj_set_clickable(b, true);
+    pressable(b);
     lv_obj_set_user_data(b, reinterpret_cast<void *>(intptr_t(i)));
     lv_obj_add_event_cb(b, onDieClick, LV_EVENT_CLICKED, this);
     lv_obj_t *ic = box(b);
     lv_obj_set_size(ic, 28, 28);
     lv_obj_align(ic, LV_ALIGN_TOP_MID, 0, 5);
-    lv_obj_set_clickable(ic, false);  // taps go to the button
     lv_obj_set_user_data(ic, reinterpret_cast<void *>(intptr_t(dice::kDice[i])));
     lv_obj_add_event_cb(ic, onIconDraw, LV_EVENT_DRAW_MAIN, this);
     char name[5];
@@ -354,19 +349,19 @@ void DiceApp::onCreate(lv_obj_t *root) {
   }
 
   // Bottom bar: count stepper and Flat / Adv / Dis.
-  const int32_t barY = LCD_HEIGHT - 16 - 48;
   lv_obj_t *stepper = box(root);
-  lv_obj_set_size(stepper, 142, 48);
-  lv_obj_set_pos(stepper, 22, barY);
-  lv_obj_set_style_radius(stepper, 24, 0);
+  lv_obj_set_size(stepper, 142, kBtnSmall);
+  lv_obj_align(stepper, LV_ALIGN_BOTTOM_LEFT, kEdge, -kBarBottom);
+  lv_obj_set_style_radius(stepper, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_style_bg_color(stepper, c(col::surface), 0);
   lv_obj_set_style_bg_opa(stepper, LV_OPA_COVER, 0);
   auto stepButton = [&](const char *txt, int delta, lv_align_t align) {
     lv_obj_t *b = box(stepper);
-    lv_obj_set_size(b, 42, 48);
+    lv_obj_set_size(b, 42, kBtnSmall);
     lv_obj_align(b, align, 0, 0);
-    lv_obj_set_style_radius(b, 24, 0);
+    lv_obj_set_style_radius(b, LV_RADIUS_CIRCLE, 0);
     lv_obj_set_clickable(b, true);
+    pressable(b);
     lv_obj_set_user_data(b, reinterpret_cast<void *>(intptr_t(delta)));
     lv_obj_add_event_cb(b, onStep, LV_EVENT_CLICKED, this);
     lv_obj_center(label(b, &font_title, col::text, txt));
@@ -377,29 +372,9 @@ void DiceApp::onCreate(lv_obj_t *root) {
   countLabel_ = label(stepper, &font_body_medium, col::text, "");
   lv_obj_center(countLabel_);
 
-  lv_obj_t *modes = box(root);
-  lv_obj_set_size(modes, LV_SIZE_CONTENT, 48);
-  lv_obj_set_style_pad_all(modes, 4, 0);
-  lv_obj_set_style_pad_column(modes, 2, 0);
-  lv_obj_set_style_radius(modes, 24, 0);
-  lv_obj_set_style_bg_color(modes, c(col::surface), 0);
-  lv_obj_set_style_bg_opa(modes, LV_OPA_COVER, 0);
-  lv_obj_set_flex_flow(modes, LV_FLEX_FLOW_ROW);
   static const char *const kModes[3] = {"Flat", "Adv", "Dis"};
-  for (int i = 0; i < 3; i++) {
-    lv_obj_t *b = box(modes);
-    modeBtn_[i] = b;
-    lv_obj_set_size(b, LV_SIZE_CONTENT, LV_PCT(100));
-    lv_obj_set_style_pad_hor(b, 13, 0);
-    lv_obj_set_style_radius(b, 20, 0);
-    lv_obj_set_clickable(b, true);
-    lv_obj_set_user_data(b, reinterpret_cast<void *>(intptr_t(i)));
-    lv_obj_add_event_cb(b, onModeClick, LV_EVENT_CLICKED, this);
-    lv_obj_t *l = label(b, &font_caption, col::textDim, kModes[i]);
-    lv_obj_remove_local_style_prop(l, LV_STYLE_TEXT_COLOR, 0);
-    lv_obj_center(l);
-  }
-  lv_obj_align(modes, LV_ALIGN_BOTTOM_RIGHT, -22, -16);
+  modes_ = segmented(root, kModes, 3, &font_caption, 0, onModeClick, this);
+  lv_obj_align(modes_, LV_ALIGN_BOTTOM_RIGHT, -kEdge, -kBarBottom);
 
   roll_ = dice::idle(die_, count_, mode_);
   idle_ = true;
@@ -409,14 +384,13 @@ void DiceApp::onCreate(lv_obj_t *root) {
 }
 
 void DiceApp::onDestroy() {
-  stage_ = countLabel_ = minus_ = plus_ = nullptr;
+  stage_ = countLabel_ = minus_ = plus_ = modes_ = nullptr;
   for (auto &b : dieBtn_) b = nullptr;
-  for (auto &b : modeBtn_) b = nullptr;
   animating_ = false;
 }
 
 void DiceApp::onTick(uint32_t nowMs) {
-  if (!stage_ || !animating_ || nowMs < nextFrameMs_) return;
+  if (!stage_ || !animating_ || !core::reached(nowMs, nextFrameMs_)) return;
   nextFrameMs_ = nowMs + 1000 / DICE_FPS;
   const uint32_t elapsed = nowMs - t0_;
   if (elapsed >= endMs_) {
@@ -437,28 +411,23 @@ void DiceApp::onStageDraw(lv_event_t *e) {
 void DiceApp::onStageClick(lv_event_t *e) { static_cast<DiceApp *>(lv_event_get_user_data(e))->startRoll(); }
 
 void DiceApp::onDieClick(lv_event_t *e) {
-  auto *self = static_cast<DiceApp *>(lv_event_get_user_data(e));
-  const int i = int(intptr_t(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e)))));
-  self->setDie(dice::kDice[i]);
+  static_cast<DiceApp *>(lv_event_get_user_data(e))->setDie(dice::kDice[ui::eventIndex(e)]);
 }
 
 void DiceApp::onStep(lv_event_t *e) {
   auto *self = static_cast<DiceApp *>(lv_event_get_user_data(e));
-  const int d = int(intptr_t(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e)))));
-  self->setCount(self->count_ + d);
+  self->setCount(self->count_ + ui::eventIndex(e));
 }
 
 void DiceApp::onModeClick(lv_event_t *e) {
-  auto *self = static_cast<DiceApp *>(lv_event_get_user_data(e));
-  const int i = int(intptr_t(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e)))));
-  self->setMode(Mode(i));
+  static_cast<DiceApp *>(lv_event_get_user_data(e))->setMode(Mode(ui::eventIndex(e)));
 }
 
 // Flat die icon for the strip, in the button's current text colour.
 void DiceApp::onIconDraw(lv_event_t *e) {
   lv_obj_t *obj = static_cast<lv_obj_t *>(lv_event_get_current_target(e));
   const uint8_t die = uint8_t(intptr_t(lv_obj_get_user_data(obj)));
-  const uint32_t color = lv_color_to_u32(lv_obj_get_style_text_color(lv_obj_get_parent(obj), LV_PART_MAIN)) & 0xFFFFFF;
+  const uint32_t color = ui::hex(lv_obj_get_style_text_color(lv_obj_get_parent(obj), LV_PART_MAIN));
   lv_area_t a;
   lv_obj_get_coords(obj, &a);
   const float cx = (a.x1 + a.x2) / 2.0f, cy = (a.y1 + a.y2) / 2.0f, k = 12.5f;

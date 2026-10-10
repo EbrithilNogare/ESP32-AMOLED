@@ -82,6 +82,23 @@ static void test_nearest_ref() {
   TEST_ASSERT_FLOAT_WITHIN(1e-4f, -170, wrap180(190));
 }
 
+static void test_nearest_ref_hysteresis() {
+  Ref r = nearestRef(44);
+  TEST_ASSERT_FALSE(r.plumb);
+  r = nearestRef(45.5f, &r);  // just past 45°: stays on level
+  TEST_ASSERT_FALSE(r.plumb);
+  TEST_ASSERT_FLOAT_WITHIN(1e-4f, 45.5f, r.dev);
+  r = nearestRef(47.5f, &r);  // closer to plumb by more than the hysteresis
+  TEST_ASSERT_TRUE(r.plumb);
+  TEST_ASSERT_FLOAT_WITHIN(1e-4f, -42.5f, r.dev);
+  r = nearestRef(45, &r);  // and back to 45°: stays on plumb
+  TEST_ASSERT_TRUE(r.plumb);
+  Ref top = nearestRef(-136);  // across ±180: dev stays small and signed
+  top = nearestRef(-134.5f, &top);
+  TEST_ASSERT_FLOAT_WITHIN(1e-4f, 180, top.ref);
+  TEST_ASSERT_FLOAT_WITHIN(1e-4f, 45.5f, top.dev);
+}
+
 static void test_state_thresholds() {
   TEST_ASSERT_EQUAL(State::Level, stateOf(0.3f));
   TEST_ASSERT_EQUAL(State::Near, stateOf(-0.31f));
@@ -120,6 +137,7 @@ int main() {
   RUN_TEST(test_edge_upright_and_signs);
   RUN_TEST(test_view_hysteresis);
   RUN_TEST(test_nearest_ref);
+  RUN_TEST(test_nearest_ref_hysteresis);
   RUN_TEST(test_state_thresholds);
   RUN_TEST(test_percent_and_bubble);
   RUN_TEST(test_smoother);

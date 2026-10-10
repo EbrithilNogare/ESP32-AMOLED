@@ -1,14 +1,17 @@
 # UI design & assets
 
-> **Status: plan.** The design system all apps share, and where images, fonts
-> and sprites live and how they get onto the device. Tokens defined here are
-> implemented once in `src/ui/theme.{h,cpp}`. Apps never hard-code colours,
-> sizes or durations.
+> **Status: implemented** (`src/ui/theme.{h,cpp}`, `src/ui/generated/`), not
+> yet verified on hardware. The design system all apps share, and where
+> images, fonts and sprites live and how they get onto the device. Tokens
+> defined here are implemented once in `src/ui/theme.{h,cpp}`. Apps never
+> hard-code colours, sizes or durations.
 
 ## 0. Mockup
 
 [`docs/design/ui-mockup.html`](design/ui-mockup.html) is a clickable draft of
-every planned screen, at the panel's real 368 × 448 size, using these tokens,
+the launcher and the first apps (Dice and Level are in
+[`dice-wireframe.html`](design/dice-wireframe.html) and
+[`level.html`](design/level.html)), at the panel's real 368 × 448 size, using these tokens,
 fonts and icons. Open it in a browser (it loads fonts from Google Fonts). It
 simulates the side buttons, the long-press power-off animation and the
 battery/charger idle timelines.
@@ -57,32 +60,50 @@ Per-app **accent** (icon glyph + ring, in-app highlights):
 | Bot face | `#00E5FF` cyan |
 | Pomodoro | `#FF5A4E` tomato |
 | Espresso | `#C8915A` crema |
+| Dice | `#FF8A1F` orange (`DICE_COLOR`) |
+| Level | `#FFD54F` yellow (`LEVEL_COLOR`) |
+| System | `#8FA3BF` slate |
 
 New apps pick a hue not already in use. The accent at ~15 % brightness on black
 is the "tinted surface" (`accent_dim`, computed by the theme).
 
 ## 3. Typography
 
-| Token | Font | Size | Use |
+The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
+
+| Font | Family | Size | Use |
 | --- | --- | --- | --- |
 | `caption` | Inter Medium | 16 | status bar, small labels |
+| `list` | Inter Regular | 17 | list rows (System) |
 | `body` | Inter Regular | 20 | normal text, menu labels |
+| `body_medium` | Inter Medium | 20 | emphasised body text |
 | `title` | Inter SemiBold | 28 | screen titles, tile labels |
-| `display` | Inter SemiBold | 48 | big single values |
-| `digits_l` | Roboto Mono Medium | 96 | pomodoro full view |
-| `digits_xl` | Roboto Mono Medium | 128 | espresso timer |
-| `icon_s` | Material Symbols Rounded | 32 | status bar, inline icons |
-| `icon_l` | Material Symbols Rounded | 64 | app icons, light tiles |
+| `digits_24`, `digits_32` | Roboto Mono Medium | 24, 32 | dice faces, Level readouts |
+| `digits_44` | Roboto Mono Medium | 44 | dice faces, pomodoro minimal view |
+| `digits_56` | Roboto Mono Medium | 56 | dice, System update progress |
+| `digits_80` | Roboto Mono Medium | 80 | pomodoro full view, dice |
+| `digits_120` | Roboto Mono Medium | 120 | espresso timer |
+| `icon_18`, `icon_28` | Material Symbols Rounded | 18, 28 | status bar, inline icons |
+| `icon_56`, `icon_64` | Material Symbols Rounded | 56, 64 | light tiles and System; app icons |
 
 - All fonts are rendered at **4 bpp** (anti-aliased).
 - Text fonts include **Latin-1 + Latin Extended-A** (U+0020–007E,
-  U+00A0–017F), so Czech labels (ě š č ř ž ý á í é ů ú) render.
-- Digit fonts contain only `0123456789:.- `, which keeps the 128 px font
-  small. Icon fonts contain only the codepoints listed in `assets.toml`.
+  U+00A0–017F), so Czech labels (ě š č ř ž ý á í é ů ú) render, plus a few
+  punctuation marks (– — ’ … − ✓ ✗).
+- Digit fonts contain only what their users need, which keeps the big sizes
+  small: `digits_24`/`_32` have `0123456789?.%°+ `, `digits_44` has
+  `0123456789:.-%? `, `digits_56`/`_80`/`_120` have `0123456789:.-% `; all
+  of them also have − (U+2212).
+- Every icon font carries the same icon set (the `icons` lists in
+  `assets.toml`), so any `ICON_*` macro works at any size.
 
 ## 4. Spacing, shape, motion
 
 - **Spacing:** 4 px grid: `4, 8, 12, 16, 24, 32`. Default content padding 16.
+  Headers and bottom bars sit 24 px from the side and top edges
+  (`ui::kEdge`); bottom bars 20 px from the bottom edge (`ui::kBarBottom`).
+  Buttons are 56 px tall, 48 px when a bar holds three controls
+  (`ui::kBtn` / `ui::kBtnSmall`).
 - **Radius:** tiles 24, cards 16, buttons pill (`LV_RADIUS_CIRCLE`), app
   icons full circle.
 - **Motion:**
@@ -109,15 +130,15 @@ Drawn by LVGL, no bitmap needed:
       ╭───────────╮         128 px circle
     ╱   accent_dim  ╲       fill: accent at ~15 % (accent_dim)
    │                 │      ring: 2 px accent
-   │       💡        │      glyph: icon_l (64 px) in accent,
+   │       💡        │      glyph: icon_64 in accent,     
    │                 │             from the Material Symbols subset
     ╲               ╱
       ╰───────────╯
          Lights              label: body, text_dim, centred, 1 line
 ```
 
-`AppInfo` gives either an icon-font codepoint (default) or an image (a custom
-PNG through the asset pipeline, 128 × 128, RGB565A8) when a glyph doesn't fit.
+`AppInfo` gives an icon-font glyph (`ICON_<NAME>`). Custom image icons (a
+128 × 128 RGB565A8 PNG through the asset pipeline) aren't supported yet.
 
 ## 6. Burn-in rules for designers
 
@@ -135,24 +156,24 @@ PNG through the asset pipeline, 128 × 128, RGB565A8) when a glyph doesn't fit.
 assets/                       SOURCES — committed, the only place you edit
 ├── assets.toml               manifest: every asset, its format and destination
 ├── fonts/                    .ttf/.otf + LICENSE per family
-├── images/                   .png (sRGB, exported at 1:1 pixel size)
-├── icons/                    custom app icons, 128×128 .png (optional)
-├── sprites/<name>/           sheet.png (grid of frames)
-└── sounds/                   .wav, 16 kHz mono (later)
+├── images/                   .png (sRGB, exported at 1:1 pixel size) (none yet)
+├── icons/                    custom app icons, 128×128 .png (none yet)
+├── sprites/<name>/           sheet.png (grid of frames) (none yet)
+└── sounds/                   .wav, 16 kHz mono (none yet)
 
 tools/
 ├── assets.py                 builds everything from assets.toml
-├── requirements.txt          pypng, lz4 (+ fonttools if instancing is needed)
+├── requirements.txt          fonttools, pypng, lz4
 ├── package.json              lv_font_conv 1.5.3
 └── lvgl/LVGLImage.py         copied from LVGL v9.6.0 scripts/ (same tag as the firmware)
 
 src/ui/generated/             OUTPUT — committed, never hand-edited
 ├── assets.h                  one header declaring every font / image / sprite
 ├── fonts/*.c
-├── images/*.c
-└── sprites/*.c
+├── images/*.c                (none yet)
+└── sprites/*.c               (none yet)
 
-data/                         OUTPUT for LittleFS (big or optional assets as LVGL .bin)
+data/                         OUTPUT for LittleFS (big or optional assets as LVGL .bin) (none yet)
 ```
 
 ### Manifest example
@@ -166,18 +187,19 @@ bpp    = 4
 range  = ["0x20-0x7E", "0xA0-0x17F"]
 
 [[font]]
-name    = "digits_xl"
+name    = "digits_120"
 file    = "fonts/RobotoMono-Medium.ttf"
-size    = 128
+size    = 120
 bpp     = 4
-symbols = "0123456789:.- "
+symbols = "0123456789:.-% "
 
 [[font]]
-name    = "icon_l"
-file    = "fonts/MaterialSymbolsRounded.ttf"
-size    = 64
-bpp     = 4
-icons   = ["lightbulb", "sentiment_satisfied", "timer", "coffee", "settings"]  # names → codepoints
+name       = "icon_64"
+source     = "material_symbols_rounded"  # pinned download, see [source.*]
+size       = 64
+bpp        = 4
+variations = { FILL = 1, wght = 500, GRAD = 0, opsz = 48 }
+icons      = ["lightbulb", "sentiment_satisfied", "timer", "coffee"]  # names → codepoints
 
 [[image]]
 name   = "ha_bulb_on"
@@ -196,8 +218,9 @@ format = "RGB565A8"
 ```
 
 `python tools/assets.py` regenerates everything. Asset changes go in one
-commit: source + manifest + generated output. CI later runs the generator
-and fails on any diff, so outputs can't drift from sources.
+commit: source + manifest + generated output. CI runs
+`python tools/assets.py --check` and fails on any diff, so outputs can't
+drift from sources.
 
 ### Choosing a format
 
@@ -229,7 +252,7 @@ sources stay plain RGB565.
   extern const SpriteInfo sprite_steam;   // {frames, count, fps, w, h, loop}
   ```
 
-- Playback goes through a small `ui::Sprite` helper (an `lv_image` + `lv_anim`
+- *Planned (no sprites yet):* playback goes through a small `ui::Sprite` helper (an `lv_image` + `lv_anim`
   stepping the source), which supports loop/once/ping-pong, a callback on the
   last frame, and pause when the app pauses. `lv_animimg` is enough for simple
   loops.
@@ -246,7 +269,8 @@ sources stay plain RGB565.
 | Rounder | x1/y1 even, x2/y2 odd | CO5300/SH8601 requirement |
 | Refresh period | 16 ms active (≈ 60 fps cap), 100 ms when dimmed | power |
 | LVGL heap | custom malloc → PSRAM (`heap_caps_malloc(MALLOC_CAP_SPIRAM)`) | widgets/styles off internal RAM |
-| Image cache | ~1 MB in PSRAM | decoded LittleFS images |
+| Image cache | ~1 MB in PSRAM | decoded LittleFS images (*planned*) |
+| Widgets | only the ones in use; `LV_USE_IMAGE`, `ANIMIMG`, `BAR` and `GRID` are off | size; turn `IMAGE` / `ANIMIMG` on in `include/lv_conf.h` before adding images or sprites |
 | OS integration | `LV_OS_NONE`; only the UI task calls `lv_*` | simple and deterministic (ARCHITECTURE §6) |
 
 The draw buffers are a deliberate exception to the "big buffers in PSRAM"

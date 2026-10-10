@@ -6,6 +6,7 @@
 #include "config.h"
 #include "core/net.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "ui/theme.h"
 
 namespace apps {
@@ -14,7 +15,7 @@ using ha::LightState;
 using ha::Result;
 
 static const AppInfo kInfo = {"home_assistant", "Lights", ICON_LIGHTBULB, 0xFFB300};
-static constexpr uint32_t kOnFill = 0xFFB300, kOnText = 0x1E1500;
+static constexpr uint32_t kOnText = 0x1E1500;  // on the accent fill
 static constexpr int32_t kGap = 8;
 static constexpr int32_t kTileW = (LCD_WIDTH - 2 * ui::kMargin - kGap) / 2;
 static constexpr int32_t kTileH = (LCD_HEIGHT - 2 * ui::kMargin - kGap) / 2;
@@ -27,8 +28,7 @@ void HomeAssistantApp::onCreate(lv_obj_t *root) {
     ha_client::begin();
     clientStarted_ = true;
   }
-  // Last known states from before deep sleep, shown as stale until refreshed.
-  // States kept from the last visit are shown the same way until refreshed.
+  // States from the last visit, or from before deep sleep, show as stale until refreshed.
   for (int i = 0; i < ha_client::kLights; i++) {
     Tile &t = tiles_[i];
     if (t.value == LightState::Unknown && core::store::rtcValid()) t.value = LightState(core::store::rtc().haStates[i]);
@@ -46,6 +46,7 @@ void HomeAssistantApp::onCreate(lv_obj_t *root) {
     lv_obj_set_style_pad_bottom(t.obj, 18, 0);
     lv_obj_set_style_shadow_width(t.obj, 0, 0);
     lv_obj_set_style_border_width(t.obj, 0, 0);
+    lv_obj_set_style_border_color(t.obj, c(col::outline), 0);
     lv_obj_set_style_bg_opa(t.obj, LV_OPA_COVER, 0);
     lv_obj_set_flex_flow(t.obj, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(t.obj, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
@@ -74,17 +75,12 @@ void HomeAssistantApp::onCreate(lv_obj_t *root) {
     renderTile(i);
   }
 
-  banner_ = label(root, &font_caption, col::text, "");
-  lv_obj_set_style_bg_color(banner_, c(col::surfaceHi), 0);
-  lv_obj_set_style_bg_opa(banner_, LV_OPA_COVER, 0);
-  lv_obj_set_style_radius(banner_, 12, 0);
-  lv_obj_set_style_pad_hor(banner_, 14, 0);
-  lv_obj_set_style_pad_ver(banner_, 8, 0);
+  banner_ = toast(root, "");
   lv_obj_align(banner_, LV_ALIGN_CENTER, 0, 0);
 
   open_ = true;
   core::net::acquire();
-  nextPollMs_ = 0;
+  nextPollMs_ = millis();
   updateBanner();
 }
 
@@ -101,13 +97,13 @@ void HomeAssistantApp::onSleep() {
 }
 
 void HomeAssistantApp::onTick(uint32_t nowMs) {
-  if (!open_ || !core::net::connected() || nowMs < nextPollMs_ || ha_client::busy()) return;
+  if (!open_ || !core::net::connected() || !core::reached(nowMs, nextPollMs_) || ha_client::busy()) return;
   if (ha_client::refreshAll()) nextPollMs_ = nowMs + HA_POLL_MS;
 }
 
 void HomeAssistantApp::onWifiChanged() {
   if (!open_) return;
-  nextPollMs_ = 0;  // refresh right after (re)connecting
+  nextPollMs_ = millis();  // refresh right after (re)connecting
   updateBanner();
 }
 
@@ -118,7 +114,7 @@ void HomeAssistantApp::renderTile(int i) {
   const bool lit = t.value == LightState::On;
   uint32_t fill = ui::col::surface, text = ui::col::text, iconColor = ui::col::textOff;
   if (lit) {
-    fill = kOnFill;
+    fill = kInfo.accent;
     text = iconColor = kOnText;
   } else if (unavailable && !t.pending) {
     fill = ui::col::bg;
@@ -126,7 +122,6 @@ void HomeAssistantApp::renderTile(int i) {
   }
   lv_obj_set_style_bg_color(t.obj, ui::c(fill), 0);
   lv_obj_set_style_text_color(t.name, ui::c(text), 0);
-  lv_obj_set_style_border_color(t.obj, ui::c(ui::col::outline), 0);
   lv_obj_set_style_border_width(t.obj, unavailable && !t.pending ? 2 : 0, 0);
   lv_obj_set_style_text_color(t.icon, ui::c(iconColor), 0);
   lv_obj_set_style_text_color(t.state, ui::c(text), 0);
@@ -139,18 +134,21 @@ void HomeAssistantApp::renderTile(int i) {
     ui::setTextFmt(t.state, "%s …", s);
   else
     ui::setText(t.state, s);
-  if (t.pending)
-    lv_obj_set_hidden(t.spinner, false);
-  else
-    lv_obj_set_hidden(t.spinner, true);
+  lv_obj_set_hidden(t.spinner, !t.pending);
 }
 
-void HomeAssistantApp::onResult(int i, LightState state, Result result) {
+void HomeAssistantApp::onResult(int i, LightState state, Result result, bool toggle) {
   if (i < 0 || i >= ha_client::kLights) return;
   Tile &t = tiles_[i];
+  // A poll queued before the tap would show the old state and end the
+  // spinner early; the toggle's own result follows.
+  if (t.pending && !toggle) return;
   const bool wasPending = t.pending;
   t.pending = false;
-  unauthorized_ = result == Result::Unauthorized;
+  if (result == Result::Unauthorized)
+    unauthorized_ = true;
+  else if (result == Result::Ok || result == Result::NotFound)
+    unauthorized_ = false;  // network errors say nothing about the token
   if (result == Result::Ok) {
     t.value = state;
     t.stale = false;
@@ -164,24 +162,15 @@ void HomeAssistantApp::onResult(int i, LightState state, Result result) {
   updateBanner();
 }
 
-void HomeAssistantApp::setBanner(const char *text, uint32_t color) {
-  if (!banner_) return;
-  if (!text) {
-    lv_obj_set_hidden(banner_, true);
-    return;
-  }
-  ui::setText(banner_, text);
-  lv_obj_set_style_text_color(banner_, ui::c(color), 0);
-  lv_obj_set_hidden(banner_, false);
-}
-
 void HomeAssistantApp::updateBanner() {
-  if (unauthorized_)
-    setBanner("HA token rejected — check secrets.h", ui::col::error);
-  else if (!core::net::connected())
-    setBanner("Connecting…", ui::col::textDim);
-  else
-    setBanner(nullptr, 0);
+  if (!banner_) return;
+  const char *text = unauthorized_             ? "HA token rejected — check secrets.h"
+                     : !core::net::connected() ? "Connecting…"
+                                               : nullptr;
+  lv_obj_set_hidden(banner_, !text);
+  if (!text) return;
+  ui::setText(banner_, text);
+  lv_obj_set_style_text_color(banner_, ui::c(unauthorized_ ? ui::col::error : ui::col::textDim), 0);
 }
 
 void HomeAssistantApp::shake(lv_obj_t *obj) {
@@ -200,15 +189,12 @@ void HomeAssistantApp::shake(lv_obj_t *obj) {
 void HomeAssistantApp::onTileClicked(lv_event_t *e) {
   auto *self = static_cast<HomeAssistantApp *>(lv_event_get_user_data(e));
   lv_obj_t *obj = static_cast<lv_obj_t *>(lv_event_get_current_target(e));
-  const int i = int(intptr_t(lv_obj_get_user_data(obj)));
+  const int i = ui::eventIndex(e);
   Tile &t = self->tiles_[i];
   if (t.pending) return;
-  if (t.value != LightState::On && t.value != LightState::Off) {
-    self->shake(obj);
-    return;
-  }
-  if (!core::net::connected() || !ha_client::toggle(i)) {
-    self->shake(obj);
+  const bool known = t.value == LightState::On || t.value == LightState::Off;
+  if (!known || !core::net::connected() || !ha_client::toggle(i)) {
+    shake(obj);
     return;
   }
   t.pending = true;

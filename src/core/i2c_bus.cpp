@@ -10,14 +10,20 @@ namespace core::i2c {
 
 static SemaphoreHandle_t mutex;
 
-Lock::Lock() { xSemaphoreTakeRecursive(mutex, portMAX_DELAY); }
-Lock::~Lock() { xSemaphoreGiveRecursive(mutex); }
+// Holds the bus for one transaction (recursive: helpers may nest).
+class Lock {
+ public:
+  Lock() { xSemaphoreTakeRecursive(mutex, portMAX_DELAY); }
+  ~Lock() { xSemaphoreGiveRecursive(mutex); }
+  Lock(const Lock &) = delete;
+  Lock &operator=(const Lock &) = delete;
+};
 
 bool begin() {
   if (!mutex) mutex = xSemaphoreCreateRecursiveMutex();
   Lock lock;
-  bool ok = Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, 400000);
-  Wire.setTimeOut(20);
+  bool ok = Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL, I2C_FREQ_HZ);
+  Wire.setTimeOut(I2C_TIMEOUT_MS);
   return ok;
 }
 

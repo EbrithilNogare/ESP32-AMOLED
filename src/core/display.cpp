@@ -17,7 +17,7 @@
 
 namespace core::display {
 
-static const char *TAG = "display";
+[[maybe_unused]] static const char *TAG = "display";
 
 // QSPI framing: one opcode byte, then the DCS command in the address phase.
 static constexpr uint32_t OPCODE_WRITE_CMD = 0x02;
@@ -34,6 +34,7 @@ struct InitCmd {
 // doesn't light up showing whatever its RAM held before the first frame.
 // clang-format off
 static const InitCmd kInit[] = {
+    {0x36, {0x00}, 1, 0},    // MADCTL: portrait, RGB order
     {0xFE, {0x00}, 1, 0},
     {0xC4, {0x80}, 1, 0},
     {0x3A, {0x55}, 1, 0},    // RGB565
@@ -56,7 +57,11 @@ static esp_err_t txParam(uint8_t cmd, const void *data, size_t len) {
   return esp_lcd_panel_io_tx_param(io, (int)((OPCODE_WRITE_CMD << 24) | (uint32_t(cmd) << 8)), data, len);
 }
 
-static bool IRAM_ATTR onColorDone(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_data_t *, void *) {
+// Runs in the SPI ISR. Not IRAM_ATTR: the Arduino libs build the SPI master
+// ISR without CONFIG_SPI_MASTER_ISR_IN_IRAM, so it is held off during flash
+// writes and never runs with the cache disabled; and lv_display_flush_ready()
+// lives in flash anyway.
+static bool onColorDone(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_data_t *, void *) {
   flushing = false;
   lv_display_flush_ready(disp);
   return false;
@@ -122,8 +127,6 @@ bool begin(uint16_t columnOffset) {
     return false;
   }
 
-  const uint8_t madctl = 0x00;  // portrait, RGB order
-  txParam(0x36, &madctl, 1);
   for (const InitCmd &c : kInit) {
     txParam(c.cmd, c.len ? c.data : nullptr, c.len);
     if (c.delayMs) delay(c.delayMs);
@@ -132,8 +135,7 @@ bool begin(uint16_t columnOffset) {
   lv_init();
   lv_tick_set_cb([]() -> uint32_t { return millis(); });
 
-  disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);
-  lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
+  disp = lv_display_create(LCD_WIDTH, LCD_HEIGHT);  // RGB565_SWAPPED: LV_COLOR_FORMAT_DEFAULT in lv_conf.h
   // Draw buffers stay in internal DMA RAM: small, on the hot path, and
   // rendering into PSRAM is noticeably slower.
   void *b1 = heap_caps_malloc(bufBytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);

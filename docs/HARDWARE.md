@@ -26,8 +26,9 @@ Waveshare switched shipments to V2 on 2026-05-30.
 
 Pins are identical between revisions. Firmware can detect the revision at
 runtime by probing the touch address on I2C (`0x15` → V2, `0x38` → V1) — the
-vendor ESP-IDF BSP does exactly that. This repo selects it at compile time with
-`BOARD_REVISION` in `board.h` (default `2`).
+vendor ESP-IDF BSP does exactly that, and so does this repo at boot
+(`src/core/board_init.cpp`). `BOARD_REVISION` in `board.h` (default `2`) is
+only the fallback when no touch controller answers.
 
 > The vendor's V2 Arduino code still calls the touch chip `CST816x`/`CST816T`
 > (same register interface as the CST820).
@@ -120,7 +121,7 @@ From the vendor examples (no board schematic is published yet):
 | --- | --- |
 | 0, 1, 2 | outputs — LCD and touch reset. Vendor init: set LOW, wait ~20 ms, set HIGH. An ESP restart alone does **not** reset the panel/touch. |
 | 4 | input — HIGH while the PWR button is pressed (vendor `12_LVGL_AXP2101_ADC_Data`) |
-| 5 | input — AXP2101 IRQ |
+| 5 | input — AXP2101 IRQ. It reaches only the expander, not an ESP GPIO, so a PWR press can't wake the chip from light or deep sleep (the firmware polls the PMU). |
 | 7 | output — microSD D3/CS; drive HIGH before `SD_MMC.begin()` |
 
 ### Audio — ES8311 over I2S
@@ -132,7 +133,7 @@ From the vendor examples (no board schematic is published yet):
 | WS (LRCK) | 45 |
 | DOUT (ESP → codec, speaker) | 8 |
 | DIN (codec → ESP, mic) | 10 |
-| Speaker amp enable (PA) | 46, HIGH = on |
+| Speaker amp enable (PA) | 46, HIGH = on. Not an RTC pin: held low through deep sleep with `gpio_hold_en` + `gpio_deep_sleep_hold_en`, released in `sound::begin()`. |
 
 ### microSD — SDMMC 1-bit
 
@@ -205,8 +206,8 @@ The vendor CI builds with core **esp32 3.3.11** and FQBN
 
 ### Libraries
 
-Versions bundled with the vendor Arduino examples (commented out in
-`platformio.ini` `lib_deps`):
+Versions bundled with the vendor Arduino examples (for reference; this repo
+uses its own drivers, see [LIBRARIES.md](LIBRARIES.md)):
 
 | Library | Version | For |
 | --- | --- | --- |
@@ -246,7 +247,7 @@ Display (V2):
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(PIN_LCD_CS, PIN_LCD_SCLK,
     PIN_LCD_SDIO0, PIN_LCD_SDIO1, PIN_LCD_SDIO2, PIN_LCD_SDIO3);
 Arduino_CO5300 *gfx = new Arduino_CO5300(bus, GFX_NOT_DEFINED, 0,
-    LCD_WIDTH, LCD_HEIGHT, LCD_COL_OFFSET, 0, 0, 0);
+    LCD_WIDTH, LCD_HEIGHT, LCD_COL_OFFSET_CO5300, 0, 0, 0);
 // V1: new Arduino_SH8601(bus, GFX_NOT_DEFINED, 0, LCD_WIDTH, LCD_HEIGHT);
 gfx->begin();
 gfx->setBrightness(255);
@@ -283,7 +284,9 @@ qmi.begin(Wire, I2C_ADDR_QMI8658, PIN_I2C_SDA, PIN_I2C_SCL);
 ```
 
 Speaker: `pinMode(PIN_PA_EN, OUTPUT); digitalWrite(PIN_PA_EN, HIGH);` then
-configure the ES8311 over I2C and stream PCM over I2S.
+configure the ES8311 over I2C and stream PCM over I2S. DAC volume register
+`0x32`: 0.5 dB per step, `0xBF` = 0 dB, `0xFF` = +32 dB (clips), `0x00` =
+mute; `SOUND_VOLUME` 0–100 maps linearly onto `0x00`–`0xBF`.
 
 ## Vendor demo index
 

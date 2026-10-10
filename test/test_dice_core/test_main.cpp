@@ -35,6 +35,11 @@ static void test_uniform_rejects_biased_tail() {
   TEST_ASSERT_EQUAL_UINT8(2, uniform(fromSeq, 6));
 }
 
+static void test_uniform_degenerate_sizes() {
+  TEST_ASSERT_EQUAL_UINT8(1, uniform(lcg, 0));  // no division by zero
+  TEST_ASSERT_EQUAL_UINT8(1, uniform(lcg, 1));
+}
+
 static void test_advantage_keeps_higher_total() {
   seqPos = 0;
   seq[0] = 4, seq[1] = 16;  // d20: 5, then 17
@@ -144,7 +149,7 @@ static void test_rest_pose_is_a_rotation() {
 // viewer, all its vertices sit at one depth (flat towards the camera) and its
 // centre projects onto the die's centre.
 static void test_rest_pose_faces_viewer() {
-  for (uint8_t die : {4, 6, 8, 12, 20}) {
+  for (uint8_t die : {4, 6, 8, 10, 12, 20}) {
     const Solid &s = solid(die);
     float z0 = 0, cx = 0, cy = 0, minZ = 1e9f;
     for (int i = 0; i < s.nv; i++) minZ = fminf(minZ, mul(s.rest, s.v[i]).z);
@@ -158,7 +163,9 @@ static void test_rest_pose_faces_viewer() {
     TEST_ASSERT_TRUE(z0 < 0);
     TEST_ASSERT_FLOAT_WITHIN(1e-4f, minZ, z0);
     TEST_ASSERT_FLOAT_WITHIN(1e-4f, 0, cx);
-    TEST_ASSERT_FLOAT_WITHIN(1e-4f, 0, cy);
+    // A kite's vertex mean is not where the normal through the centre meets
+    // it, so the d10 face is only centred left-right.
+    if (die != 10) TEST_ASSERT_FLOAT_WITHIN(1e-4f, 0, cy);
   }
 }
 
@@ -200,7 +207,7 @@ static void test_spin_lands_exactly_on_rest() {
 
 static void test_face_vertices_are_ordered() {
   // Drawing order goes around the face: consecutive vertices are edges.
-  for (uint8_t die : {4, 6, 8, 12, 20}) {
+  for (uint8_t die : {4, 6, 8, 10, 12, 20}) {
     const Solid &s = solid(die);
     for (int k = 0; k < s.nface; k++) {
       const int a = s.face[k], b = s.face[(k + 1) % s.nface];
@@ -256,6 +263,7 @@ int main() {
   UNITY_BEGIN();
   RUN_TEST(test_uniform_range_and_coverage);
   RUN_TEST(test_uniform_rejects_biased_tail);
+  RUN_TEST(test_uniform_degenerate_sizes);
   RUN_TEST(test_advantage_keeps_higher_total);
   RUN_TEST(test_tie_keeps_first_set);
   RUN_TEST(test_multi_dice_totals);

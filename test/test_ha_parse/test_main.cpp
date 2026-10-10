@@ -84,6 +84,24 @@ static void test_parse_huge_attributes() {
   TEST_ASSERT_EQUAL(LightState::Off, parseState(body, n));
 }
 
+// Top-level object around `arrays` nested arrays, then the state.
+static LightState parseNested(int arrays) {
+  static char body[256];
+  size_t n = snprintf(body, sizeof(body), R"({"attributes":)");
+  for (int i = 0; i < arrays; i++) body[n++] = '[';
+  body[n++] = '1';
+  for (int i = 0; i < arrays; i++) body[n++] = ']';
+  n += snprintf(body + n, sizeof(body) - n, R"(,"state":"on"})");
+  return parseState(body, n);
+}
+
+static void test_parse_nesting_limit() {
+  // kNesting = 32 levels, the root object included: 31 arrays inside it is
+  // the deepest body that parses, one more is rejected.
+  TEST_ASSERT_EQUAL(LightState::On, parseNested(31));
+  TEST_ASSERT_EQUAL(LightState::Unknown, parseNested(32));
+}
+
 // ---- findInStateArray ----
 
 static const char *TOGGLE_RESPONSE =
@@ -184,8 +202,12 @@ static void test_names() {
   TEST_ASSERT_EQUAL_STRING("off", lightStateName(LightState::Off));
   TEST_ASSERT_EQUAL_STRING("unavailable", lightStateName(LightState::Unavailable));
   TEST_ASSERT_EQUAL_STRING("unknown", lightStateName(LightState::Unknown));
-  TEST_ASSERT_EQUAL_STRING("unauthorized", resultName(Result::Unauthorized));
   TEST_ASSERT_EQUAL_STRING("ok", resultName(Result::Ok));
+  TEST_ASSERT_EQUAL_STRING("unauthorized", resultName(Result::Unauthorized));
+  TEST_ASSERT_EQUAL_STRING("not found", resultName(Result::NotFound));
+  TEST_ASSERT_EQUAL_STRING("network error", resultName(Result::NetworkError));
+  TEST_ASSERT_EQUAL_STRING("server error", resultName(Result::ServerError));
+  TEST_ASSERT_EQUAL_STRING("bad response", resultName(Result::BadResponse));
 }
 
 int main() {
@@ -197,6 +219,7 @@ int main() {
   RUN_TEST(test_parse_invalid_json);
   RUN_TEST(test_parse_respects_length);
   RUN_TEST(test_parse_huge_attributes);
+  RUN_TEST(test_parse_nesting_limit);
   RUN_TEST(test_find_in_array);
   RUN_TEST(test_find_missing_entity_leaves_out_untouched);
   RUN_TEST(test_find_entity_without_state);

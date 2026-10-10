@@ -29,6 +29,7 @@ class SystemApp : public App {
   // update view
   lv_obj_t *arc_ = nullptr, *icon_ = nullptr, *pct_ = nullptr, *status_ = nullptr, *line1_ = nullptr;
   uint32_t doneAtMs_ = 0;
+  uint32_t otaColor_ = 0;  // style setters redraw even when unchanged
   bool restarting_ = false;
   bool openUpdate_ = false;  // deferred: the click handler's button gets deleted
 };

@@ -65,6 +65,19 @@ static void test_long_press_exact_threshold_no_short() {
   TEST_ASSERT_FALSE(b.held());
 }
 
+static void test_release_debouncing_at_long_threshold_is_short() {
+  Button b(C);
+  b.update(false, 0);
+  b.update(true, 100);
+  TEST_ASSERT_EQUAL(Event::Pressed, b.update(true, 130));
+  // Released 10 ms before the long threshold; the threshold passes while the
+  // release is still debouncing.
+  const Hit h = feed(b, false, 130 + 1000 - 10, 1400);
+  TEST_ASSERT_EQUAL(Event::Short, h.ev);
+  TEST_ASSERT_EQUAL_UINT32(1150, h.at);
+  TEST_ASSERT_FALSE(b.held());
+}
+
 static void test_glitches_are_ignored() {
   Button b(C);
   b.update(false, 0);
@@ -174,6 +187,7 @@ int main() {
   RUN_TEST(test_pressed_after_exact_debounce);
   RUN_TEST(test_short_press);
   RUN_TEST(test_long_press_exact_threshold_no_short);
+  RUN_TEST(test_release_debouncing_at_long_threshold_is_short);
   RUN_TEST(test_glitches_are_ignored);
   RUN_TEST(test_bouncy_press_and_release_give_one_short);
   RUN_TEST(test_suppress_cancels_short);

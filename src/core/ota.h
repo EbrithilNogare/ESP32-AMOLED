@@ -11,7 +11,10 @@ enum class State : uint8_t { Off, WaitingForWifi, Waiting, Receiving, Done, Erro
 
 void begin();       // rollback bookkeeping at boot
 void healthTick();  // call every loop; confirms a pending image once healthy
-bool start();       // false (and error() says why) if OTA can't run now
+// Confirm a pending image now (before deep sleep: the wake is a reboot, and
+// an unconfirmed image would be rolled back).
+void confirmIfPending();
+bool start();  // false (and error() says why) if OTA can't run now
 void stop();
 void loop();
 // ArduinoOTA receives the whole image inside one loop() call; this hook is

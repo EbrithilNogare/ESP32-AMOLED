@@ -188,23 +188,27 @@ int main() {
   capture("02-lights-loading");
   advance(100);
   CHECK(sim::haRefreshes >= 1);
-  haApp.onResult(0, ha::LightState::On, ha::Result::Ok);
-  haApp.onResult(1, ha::LightState::Off, ha::Result::Ok);
-  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok);
-  haApp.onResult(3, ha::LightState::Unknown, ha::Result::NotFound);
+  haApp.onResult(0, ha::LightState::On, ha::Result::Ok, false);
+  haApp.onResult(1, ha::LightState::Off, ha::Result::Ok, false);
+  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok, false);
+  haApp.onResult(3, ha::LightState::Unknown, ha::Result::NotFound, false);
   advance(50);
   tap(4 + 176 + 8 + 88, 4 + 216 + 8 + 108);  // bottom-left is index 2; this is bottom-right (n/a): no request
   CHECK(sim::haToggles.empty());
   tap(4 + 88, 4 + 216 + 8 + 108);  // bottom-left: Bedroom
   CHECK(sim::haToggles.size() == 1 && sim::haToggles[0] == 2);
   capture("03-lights-toggling");
-  haApp.onResult(2, ha::LightState::On, ha::Result::Ok);
+  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok, false);  // a poll queued before the tap
+  CHECK(haApp.pending(2));
+  haApp.onResult(2, ha::LightState::On, ha::Result::Ok, true);
+  CHECK(!haApp.pending(2));
   advance(300);
   capture("04-lights");
-  haApp.onResult(0, ha::LightState::On, ha::Result::Unauthorized);
+  haApp.onResult(0, ha::LightState::On, ha::Result::Unauthorized, false);
+  haApp.onResult(1, ha::LightState::Off, ha::Result::NetworkError, false);  // keeps the banner
   advance(50);
   capture("05-lights-unauthorized");
-  haApp.onResult(0, ha::LightState::On, ha::Result::Ok);
+  haApp.onResult(0, ha::LightState::On, ha::Result::Ok, false);
   apps::manager::back();
   advance(400);
   CHECK(apps::manager::inMenu());
@@ -262,9 +266,17 @@ int main() {
   tap(184, 200);
   capture("15-espresso-done");
   CHECK(espressoApp.powerPolicy() == power::Policy::Normal);
-  apps::manager::back();  // Done → Ready
-  advance(100);
-  CHECK(apps::manager::current() == &espressoApp);
+  CHECK(espressoApp.timer().lastShotDs() == 274 && espressoApp.timer().historyCount() == 1);
+  // Taps on the history strip count as "anywhere"; a long press discards.
+  const int32_t stripY = LCD_HEIGHT - 20 - 20;
+  tap(184, stripY);  // Done → Ready
+  tap(184, stripY);  // Ready → Running
+  CHECK(espressoApp.timer().mode() == shot::Mode::Running);
+  advance(3000);
+  tap(184, stripY);  // stop: a 3 s shot
+  CHECK(espressoApp.timer().historyCount() == 2);
+  longPress(184, 200);
+  CHECK(espressoApp.timer().mode() == shot::Mode::Ready && espressoApp.timer().historyCount() == 1);
   apps::manager::back();  // Ready → menu
   advance(400);
   CHECK(apps::manager::inMenu());

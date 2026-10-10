@@ -88,8 +88,30 @@ static void test_visits_every_spot() {
 }
 
 static void test_deterministic_and_large_steps() {
-  TEST_ASSERT_EQUAL_INT8(pixelShift(123456, 4).x, pixelShift(123456, 4).x);
-  TEST_ASSERT_EQUAL_INT8(pixelShift(123456, 4).y, pixelShift(123456, 4).y);
+  // Pinned values (from the implementation at the time of writing): the path
+  // must not change between builds, or a restored step would jump.
+  struct Case {
+    uint32_t step;
+    int8_t maxPx, x, y;
+  };
+  const Case cases[] = {
+      {1, 4, 1, 1},
+      {2, 4, 2, 1},
+      {7, 4, 3, 4},
+      {100, 4, -4, -1},
+      {123456, 4, -2, 1},
+      {1000000, 4, 0, -1},
+      {4000000000u, 4, -4, 4},
+      {7, 10, 7, 5},
+      {100, 10, -5, 9},
+      {123456, 10, -9, 10},
+      {4000000000u, 10, -9, -7},
+  };
+  for (const Case &c : cases) {
+    const Offset o = pixelShift(c.step, c.maxPx);
+    TEST_ASSERT_EQUAL_INT8(c.x, o.x);
+    TEST_ASSERT_EQUAL_INT8(c.y, o.y);
+  }
   Offset prev = pixelShift(UINT32_MAX - 100, 4);
   for (uint32_t s = UINT32_MAX - 99; s != 0; s++) {  // up to the wrap
     const Offset o = pixelShift(s, 4);

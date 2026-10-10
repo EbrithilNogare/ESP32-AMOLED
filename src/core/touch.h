@@ -1,5 +1,4 @@
 #pragma once
-#include <lvgl.h>
 #include <stdint.h>
 
 // Capacitive touch: CST820 (V2) or FT3168 (V1). Both report the first touch
@@ -12,7 +11,6 @@ namespace core::touch {
 // swallows that touch until the finger lifts (used when a touch only wakes
 // the screen). `onActivity` is called on every read while a finger is down.
 bool begin(uint8_t i2cAddress, bool (*onPress)(), void (*onActivity)());
-lv_indev_t *indev();
 void sleep();  // controller deep sleep before ESP deep sleep
 void kick();   // read on the next poll (after light sleep the INT edge may be missed)
 

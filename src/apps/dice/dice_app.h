@@ -47,7 +47,7 @@ class DiceApp : public App {
   void save();
   void draw(lv_layer_t *layer);
   void drawPiece(lv_layer_t *layer, const Piece &pc, bool dropped);
-  void drawSummary(lv_layer_t *layer);
+  void drawSummary(lv_layer_t *layer, bool finished);
 
   static void onStageDraw(lv_event_t *e);
   static void onStageClick(lv_event_t *e);
@@ -68,8 +68,7 @@ class DiceApp : public App {
 
   lv_obj_t *stage_ = nullptr;
   lv_obj_t *dieBtn_[dice::kTypes] = {};
-  lv_obj_t *countLabel_ = nullptr, *minus_ = nullptr, *plus_ = nullptr;
-  lv_obj_t *modeBtn_[3] = {};
+  lv_obj_t *countLabel_ = nullptr, *minus_ = nullptr, *plus_ = nullptr, *modes_ = nullptr;
 };
 
 }  // namespace apps

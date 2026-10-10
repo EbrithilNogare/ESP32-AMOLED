@@ -1,5 +1,6 @@
 #include "draw.h"
 
+#include "board.h"
 #include "theme.h"
 
 namespace ui::draw {
@@ -15,10 +16,12 @@ void text(lv_layer_t *layer, const lv_font_t *font, uint32_t color, lv_opa_t opa
   d.text_local = 1;  // the draw task runs later; let LVGL copy the text
   d.align = align;
   d.letter_space = letterSpace;
+  // One line in a box as wide as the screen; cx is its centre, or the left /
+  // right edge for left / right alignment.
+  constexpr int32_t w = LCD_WIDTH;
   const int32_t h = lv_font_get_line_height(font);
-  // cx is the centre, or the left / right edge for left / right alignment.
-  const int32_t x1 = align == LV_TEXT_ALIGN_LEFT ? cx : align == LV_TEXT_ALIGN_RIGHT ? cx - 340 : cx - 170;
-  const lv_area_t a = {x1, cy - h / 2, x1 + 340, cy + h - h / 2};
+  const int32_t x1 = align == LV_TEXT_ALIGN_LEFT ? cx : align == LV_TEXT_ALIGN_RIGHT ? cx - w : cx - w / 2;
+  const lv_area_t a = {x1, cy - h / 2, x1 + w - 1, cy + h - h / 2};
   lv_draw_label(layer, &d, &a);
 }
 

@@ -8,21 +8,27 @@
 #include "core/power.h"
 #include "core/sound.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "ui/theme.h"
 
 namespace apps {
 
 using pomo::Phase;
 
-static const AppInfo kInfo = {"pomodoro", "Pomodoro", ICON_TIMER, 0xFF5A4E};
-static constexpr int kMinDots = 40;
+static const AppInfo kInfo = {"pomodoro", "Pomodoro", ICON_TIMER, 0xFF5A4E};  // tomato
 static constexpr int32_t kMinRadius = 62;
+static constexpr uint32_t kConfirmResetMs = 2000;
+static_assert(POMO_SET_SIZE >= 1 && POMO_SET_SIZE <= 8, "the set dots fit up to 8 sessions");
+
+// PomodoroCore keeps absolute timestamps, so it gets a clock that doesn't wrap.
+static uint64_t now64(uint32_t ms) { return core::extend(ms); }
+static uint64_t now64() { return core::extend(millis()); }
 
 static uint32_t phaseColor(Phase p) {
   switch (p) {
     case Phase::ShortBreak: return ui::col::success;
     case Phase::LongBreak: return ui::col::info;
-    default: return 0xFF5A4E;  // focus / idle: tomato
+    default: return kInfo.accent;  // focus / idle
   }
 }
 
@@ -48,10 +54,10 @@ power::Policy PomodoroApp::backgroundPolicy() const { return powerPolicy(); }
 void PomodoroApp::service(uint32_t nowMs) {
   if (!loaded_) {  // NVS is ready by the first loop, not at static construction
     pomo::Saved s;
-    if (core::store::load("pomo", &s, sizeof s)) timer_.restore(s, nowMs);
+    if (core::store::load("pomo", &s, sizeof s)) timer_.restore(s, now64(nowMs));
     loaded_ = true;
   }
-  if (timer_.update(nowMs)) {
+  if (timer_.update(now64(nowMs))) {
     // Phase end: beep and show the full view for a while (it wakes the
     // screen like a touch would, which also ends the minimal view).
     if (POMO_SOUND) core::sound::play(core::sound::Pattern::PhaseEnd);
@@ -62,7 +68,7 @@ void PomodoroApp::service(uint32_t nowMs) {
 }
 
 void PomodoroApp::onSleep() {
-  const uint32_t now = millis();
+  const uint64_t now = now64();
   if (timer_.running()) timer_.pause(now);  // a long-press sleep pauses the timer
   pomo::Saved s = timer_.save(now);
   core::store::save("pomo", &s, sizeof s);
@@ -74,30 +80,17 @@ void PomodoroApp::onCreate(lv_obj_t *root) {
   using namespace ui;
   root_ = root;
 
-  phase_ = label(root, &font_caption, phaseColor(timer_.phase()), "");
-  lv_obj_set_style_text_letter_space(phase_, 1, 0);
-  lv_obj_set_pos(phase_, 24, 24);
-  for (int i = 0; i < 4; i++) {
+  phase_ = header(root, "", phaseColor(timer_.phase()));
+  for (int i = 0; i < POMO_SET_SIZE; i++) {
     dots_[i] = box(root);
     lv_obj_set_size(dots_[i], 10, 10);
-    lv_obj_set_pos(dots_[i], LCD_WIDTH - 24 - 10 - (3 - i) * 18, 28);
+    lv_obj_set_pos(dots_[i], LCD_WIDTH - kEdge - 10 - (POMO_SET_SIZE - 1 - i) * 18, kEdge + 4);
     lv_obj_set_style_radius(dots_[i], LV_RADIUS_CIRCLE, 0);
     lv_obj_set_style_border_width(dots_[i], 2, 0);
   }
 
-  arc_ = lv_arc_create(root);
-  lv_obj_set_size(arc_, 300, 300);
+  arc_ = progressRing(root, 300, 6);  // not clickable: the centre area handles taps
   lv_obj_set_pos(arc_, 34, 66);
-  lv_arc_set_rotation(arc_, 270);
-  lv_arc_set_bg_angles(arc_, 0, 360);
-  lv_arc_set_range(arc_, 0, 1000);
-  lv_obj_set_style_arc_width(arc_, 6, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(arc_, c(col::track), LV_PART_MAIN);
-  lv_obj_set_style_arc_width(arc_, 6, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_rounded(arc_, true, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(arc_, LV_OPA_TRANSP, LV_PART_KNOB);
-  lv_obj_set_style_pad_all(arc_, 0, LV_PART_KNOB);
-  lv_obj_set_clickable(arc_, false);  // the centre area handles taps
 
   lv_obj_t *centre = box(root);
   lv_obj_set_size(centre, 260, 260);
@@ -111,8 +104,8 @@ void PomodoroApp::onCreate(lv_obj_t *root) {
   lv_obj_align(sub_, LV_ALIGN_CENTER, 0, 44);
 
   lv_obj_t *row = box(root);
-  lv_obj_set_size(row, LCD_WIDTH, 56);
-  lv_obj_set_pos(row, 0, LCD_HEIGHT - 22 - 56);
+  lv_obj_set_size(row, LCD_WIDTH, kBtn);
+  lv_obj_set_pos(row, 0, LCD_HEIGHT - kBarBottom - kBtn);
   lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
   lv_obj_set_flex_align(row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_column(row, 16, 0);
@@ -121,14 +114,10 @@ void PomodoroApp::onCreate(lv_obj_t *root) {
   lv_obj_t *reset = roundButton(row, ICON_RESTART_ALT, col::textDim);
   lv_obj_add_event_cb(reset, onReset, LV_EVENT_CLICKED, this);
 
-  toast_ = label(root, &font_caption, col::text, "Tap again to reset");
-  lv_obj_set_style_bg_color(toast_, c(col::surfaceHi), 0);
-  lv_obj_set_style_bg_opa(toast_, LV_OPA_COVER, 0);
-  lv_obj_set_style_radius(toast_, 12, 0);
-  lv_obj_set_style_pad_hor(toast_, 14, 0);
-  lv_obj_set_style_pad_ver(toast_, 8, 0);
-  lv_obj_align(toast_, LV_ALIGN_BOTTOM_MID, 0, -92);
+  toast_ = toast(root, "Tap again to reset");
+  lv_obj_align(toast_, LV_ALIGN_BOTTOM_MID, 0, -(kBarBottom + kBtn + 14));
   lv_obj_set_hidden(toast_, true);
+  confirmResetUntil_ = 0;
 
   lastRenderSec_ = UINT32_MAX;
   render(millis());
@@ -141,7 +130,7 @@ void PomodoroApp::onDestroy() {
 
 void PomodoroApp::onTick(uint32_t nowMs) {
   if (!root_) return;
-  if (confirmResetUntil_ && nowMs > confirmResetUntil_) {
+  if (confirmResetUntil_ && core::reached(nowMs, confirmResetUntil_)) {
     confirmResetUntil_ = 0;
     lv_obj_set_hidden(toast_, true);
   }
@@ -149,7 +138,7 @@ void PomodoroApp::onTick(uint32_t nowMs) {
 }
 
 void PomodoroApp::render(uint32_t nowMs) {
-  const uint32_t rem = timer_.remainingMs(nowMs);
+  const uint32_t rem = timer_.remainingMs(now64(nowMs));
   const uint32_t sec = (rem + 999) / 1000;
   if (sec == lastRenderSec_) return;  // the display only changes once a second
   lastRenderSec_ = sec;
@@ -158,8 +147,8 @@ void PomodoroApp::render(uint32_t nowMs) {
   const uint32_t color = phaseColor(ph);
   ui::setText(phase_, phaseName(ph));
   lv_obj_set_style_text_color(phase_, ui::c(color), 0);
-  const int filled = timer_.completed() < 4 ? timer_.completed() : 4;  // focus sessions done in this set
-  for (int i = 0; i < 4; i++) {
+  const int filled = timer_.completed();  // focus sessions done in this set
+  for (int i = 0; i < POMO_SET_SIZE; i++) {
     lv_obj_set_style_border_color(dots_[i], ui::c(color), 0);
     lv_obj_set_style_bg_color(dots_[i], ui::c(color), 0);
     lv_obj_set_style_bg_opa(dots_[i], i < filled ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
@@ -188,10 +177,9 @@ void PomodoroApp::render(uint32_t nowMs) {
 
 void PomodoroApp::flash() {
   if (!root_) return;
-  lv_obj_t *f = ui::box(root_);
+  lv_obj_t *f = ui::box(root_);  // not clickable: taps go through
   lv_obj_set_size(f, LCD_WIDTH, LCD_HEIGHT);
   lv_obj_set_style_bg_color(f, ui::c(phaseColor(timer_.phase())), 0);
-  lv_obj_set_clickable(f, false);
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, f);
@@ -205,19 +193,19 @@ void PomodoroApp::flash() {
 
 void PomodoroApp::onToggle(lv_event_t *e) {
   auto *self = static_cast<PomodoroApp *>(lv_event_get_user_data(e));
-  self->timer_.toggle(millis());
+  self->timer_.toggle(now64());
   self->lastRenderSec_ = UINT32_MAX;
 }
 
 void PomodoroApp::onReset(lv_event_t *e) {
   auto *self = static_cast<PomodoroApp *>(lv_event_get_user_data(e));
   const uint32_t now = millis();
-  if (self->confirmResetUntil_ && now <= self->confirmResetUntil_) {
-    self->timer_.reset(now);
+  if (self->confirmResetUntil_ && !core::reached(now, self->confirmResetUntil_)) {
+    self->timer_.reset(now64(now));
     self->confirmResetUntil_ = 0;
     lv_obj_set_hidden(self->toast_, true);
   } else {
-    self->confirmResetUntil_ = now + 2000;
+    self->confirmResetUntil_ = now + kConfirmResetMs;
     lv_obj_set_hidden(self->toast_, false);
   }
   self->lastRenderSec_ = UINT32_MAX;
@@ -226,9 +214,9 @@ void PomodoroApp::onReset(lv_event_t *e) {
 void PomodoroApp::onRing(lv_event_t *e) {
   auto *self = static_cast<PomodoroApp *>(lv_event_get_user_data(e));
   if (lv_event_get_code(e) == LV_EVENT_LONG_PRESSED)
-    self->timer_.skip(millis());
+    self->timer_.skip(now64());
   else
-    self->timer_.toggle(millis());
+    self->timer_.toggle(now64());
   self->lastRenderSec_ = UINT32_MAX;
 }
 
@@ -261,7 +249,7 @@ void PomodoroApp::minimalTick(uint32_t nowMs) {
 
 uint32_t PomodoroApp::minimalRefreshMs(uint32_t nowMs) const {
   // Wake at the next minute boundary of the countdown (or the phase end).
-  const uint32_t rem = timer_.remainingMs(nowMs);
+  const uint32_t rem = timer_.remainingMs(now64(nowMs));
   const uint32_t toBoundary = rem % 60000;
   return toBoundary ? toBoundary + 50 : 60000;
 }
@@ -269,7 +257,7 @@ uint32_t PomodoroApp::minimalRefreshMs(uint32_t nowMs) const {
 // Sparse view: minutes plus a dotted ring of the remaining time, drifting a
 // few pixels every refresh against burn-in (UI_DESIGN §6).
 void PomodoroApp::renderMinimal(uint32_t nowMs) {
-  const uint32_t rem = timer_.remainingMs(nowMs);
+  const uint32_t rem = timer_.remainingMs(now64(nowMs));
   const uint32_t dur = timer_.phaseDurationMs();
   const uint32_t minutes = (rem + 59999) / 60000;
   const uint32_t color = phaseColor(timer_.phase());
@@ -281,10 +269,7 @@ void PomodoroApp::renderMinimal(uint32_t nowMs) {
     const float a = -float(M_PI) / 2 + i * 2 * float(M_PI) / kMinDots;
     lv_obj_set_pos(minDots_[i], cx + lroundf(kMinRadius * cosf(a)) - 2, cy + lroundf(kMinRadius * sinf(a)) - 2);
     lv_obj_set_style_bg_color(minDots_[i], ui::c(color), 0);
-    if (i < lit)
-      lv_obj_set_hidden(minDots_[i], false);
-    else
-      lv_obj_set_hidden(minDots_[i], true);
+    lv_obj_set_hidden(minDots_[i], i >= lit);
   }
   ui::setTextFmt(minDigits_, "%lu", (unsigned long)minutes);
   lv_obj_set_style_text_color(minDigits_, ui::c(color), 0);

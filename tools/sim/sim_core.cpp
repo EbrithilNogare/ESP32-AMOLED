@@ -22,7 +22,8 @@
 #include "sim.h"
 
 namespace sim {
-uint32_t nowMs = 1000;
+// Starts 30 s before millis() wraps, so the flow test runs across the wrap.
+uint32_t nowMs = UINT32_MAX - 30000;
 bool wifi = true;
 int batteryPct = 82;
 bool charger = false;

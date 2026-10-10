@@ -14,13 +14,4 @@ bool writeReg(uint8_t addr, uint8_t reg, uint8_t value);
 bool read(uint8_t addr, uint8_t reg, uint8_t *data, size_t len);
 int readReg(uint8_t addr, uint8_t reg);  // -1 on error
 
-// For code that talks to Wire directly (rare): hold the bus while doing it.
-class Lock {
- public:
-  Lock();
-  ~Lock();
-  Lock(const Lock &) = delete;
-  Lock &operator=(const Lock &) = delete;
-};
-
 }  // namespace core::i2c

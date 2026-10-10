@@ -11,7 +11,7 @@ namespace core::power {
 struct Hooks {
   ::power::Policy (*policy)();
   uint32_t (*idleDimMs)();  // app override of the dim delay, 0 = default
-  bool (*enterMinimal)();
+  bool (*enterMinimal)();   // false: no app has a minimal view (Black is shown instead)
   void (*exitMinimal)();
   void (*minimalTick)(uint32_t nowMs);
   uint32_t (*minimalRefreshMs)(uint32_t nowMs);
@@ -28,7 +28,5 @@ void activity();      // ongoing input (e.g. a finger still moving)
 void requestSleep();  // long press: animation, wait for release, deep sleep
 
 ::power::Stage stage();
-::power::Profile profile();
-uint32_t idleMs();
 
 }  // namespace core::power

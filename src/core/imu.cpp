@@ -13,12 +13,12 @@
 
 namespace core::imu {
 
-static const char *TAG = "imu";
+[[maybe_unused]] static const char *TAG = "imu";
 
 static constexpr uint8_t REG_WHO_AM_I = 0x00, REG_CTRL1 = 0x02, REG_CTRL2 = 0x03, REG_CTRL5 = 0x06, REG_CTRL7 = 0x08,
                          REG_AX_L = 0x35, REG_RST_RESULT = 0x4D, REG_RESET = 0x60;
 static constexpr uint8_t kWhoAmI = 0x05;
-static constexpr uint8_t kCtrl2 = (0 << 4) | 0x06;  // ±2 g, 112 Hz
+static constexpr uint8_t kCtrl2 = (0 << 4) | 0x06;  // ±2 g, aODR 6: ≈ 112–125 Hz (depends on mode)
 static constexpr uint8_t kCtrl5 = (0x01 << 1) | 1;  // accel LPF on, 3.63 % of ODR
 static constexpr float kLsbPerG = 16384.0f;         // ±2 g
 

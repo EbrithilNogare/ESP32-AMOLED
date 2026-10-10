@@ -8,15 +8,18 @@
 
 namespace core::board {
 
-static const char *TAG = "board";
+[[maybe_unused]] static const char *TAG = "board";
 
 // TCA9554 registers
-static constexpr uint8_t REG_INPUT = 0x00;
 static constexpr uint8_t REG_OUTPUT = 0x01;
 static constexpr uint8_t REG_CONFIG = 0x03;  // 1 = input
 
+static constexpr uint32_t kResetPulseMs = 20;  // LCD/touch reset LOW time (vendor init)
+static constexpr uint32_t kTouchBootMs = 60;   // touch controller boot time after reset
+
 static uint8_t outShadow = 0xFF;
 static uint8_t cfgShadow = 0xFF;
+enum class Revision : uint8_t { V1, V2 };
 static Revision rev = BOARD_REVISION >= 2 ? Revision::V2 : Revision::V1;
 static uint8_t touchAddr = 0;
 
@@ -28,11 +31,6 @@ static void expanderOutput(uint8_t pin, bool level) {
     outShadow &= ~(1u << pin);
   i2c::writeReg(I2C_ADDR_TCA9554, REG_OUTPUT, outShadow);
   i2c::writeReg(I2C_ADDR_TCA9554, REG_CONFIG, cfgShadow);
-}
-
-bool expanderRead(uint8_t pin) {
-  int v = i2c::readReg(I2C_ADDR_TCA9554, REG_INPUT);
-  return v >= 0 && (v & (1u << pin));
 }
 
 bool begin() {
@@ -51,11 +49,11 @@ bool begin() {
   expanderOutput(EXIO_LCD_TOUCH_RST0, false);
   expanderOutput(EXIO_LCD_TOUCH_RST1, false);
   expanderOutput(EXIO_LCD_TOUCH_RST2, false);
-  delay(20);
+  delay(kResetPulseMs);
   expanderOutput(EXIO_LCD_TOUCH_RST0, true);
   expanderOutput(EXIO_LCD_TOUCH_RST1, true);
   expanderOutput(EXIO_LCD_TOUCH_RST2, true);
-  delay(60);  // touch controller boot time
+  delay(kTouchBootMs);
 
   // Same detection as the vendor BSP: CST820 (V2) or FT3168 (V1).
   if (i2c::probe(I2C_ADDR_TOUCH_CST820)) {
@@ -71,9 +69,8 @@ bool begin() {
   return true;
 }
 
-Revision revision() { return rev; }
 const char *revisionName() { return rev == Revision::V2 ? "V2" : "V1"; }
 uint8_t touchAddress() { return touchAddr; }
-uint16_t lcdColumnOffset() { return rev == Revision::V2 ? 16 : 0; }
+uint16_t lcdColumnOffset() { return rev == Revision::V2 ? LCD_COL_OFFSET_CO5300 : LCD_COL_OFFSET_SH8601; }
 
 }  // namespace core::board

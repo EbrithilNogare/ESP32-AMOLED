@@ -17,7 +17,7 @@ Waveshare ESP32-S3-Touch-AMOLED-1.8 (ESP32-S3R8, 16 MB flash, 8 MB OPI PSRAM,
 | `docs/ARCHITECTURE.md` | system design: app framework, power/sleep, Home Assistant integration |
 | `docs/LIBRARIES.md` | every dependency with version, licence, and rejected alternatives — check before adding one |
 | `docs/UI_DESIGN.md` | design tokens (colour, type, spacing, motion), icons, assets pipeline (images, fonts, sprites), LVGL setup |
-| `docs/design/ui-mockup.html` | clickable mockup of every screen — the visual reference when building UI |
+| `docs/design/ui-mockup.html` | clickable mockup of the launcher and first apps; Dice and Level designs are `docs/design/dice-wireframe.html` and `docs/design/level.html` |
 | `docs/design/firmware-screens.png` | what the firmware actually renders (PC simulator, `tools/sim/`) |
 | `docs/apps/` | one spec per app + how to add an app — write/agree the spec before coding an app |
 | `docs/ROADMAP.md` | milestones with on-device acceptance checklists — find the current one before coding |

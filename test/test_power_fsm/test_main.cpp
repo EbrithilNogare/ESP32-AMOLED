@@ -130,6 +130,24 @@ static void test_zero_timings() {
   TEST_ASSERT_EQUAL_UINT32(UINT32_MAX, msUntilNextStage(0, Profile::Battery, Policy::Normal, z));
 }
 
+static void test_out_of_order_thresholds_are_clamped() {
+  // Black below dim: black waits for the dim threshold, nothing before it.
+  const Timings b = {20000, 10000, 30000, 5000, 1000};
+  TEST_ASSERT_EQUAL(Stage::Active, stageFor(10000, Profile::Battery, Policy::Normal, b));
+  TEST_ASSERT_EQUAL(Stage::Active, stageFor(19999, Profile::Battery, Policy::Normal, b));
+  TEST_ASSERT_EQUAL(Stage::Black, stageFor(20000, Profile::Battery, Policy::Normal, b));
+  TEST_ASSERT_EQUAL(Stage::Sleep, stageFor(30000, Profile::Battery, Policy::Normal, b));
+  TEST_ASSERT_EQUAL_UINT32(20000, msUntilNextStage(0, Profile::Battery, Policy::Normal, b));
+  TEST_ASSERT_EQUAL_UINT32(10000, msUntilNextStage(20000, Profile::Battery, Policy::Normal, b));
+  TEST_ASSERT_EQUAL(Stage::Active, stageFor(1000, Profile::Charger, Policy::Normal, b));
+  TEST_ASSERT_EQUAL(Stage::Black, stageFor(5000, Profile::Charger, Policy::Normal, b));
+  // Sleep below both: it comes at the black threshold.
+  const Timings s = {20000, 25000, 5000, 60000, 300000};
+  TEST_ASSERT_EQUAL(Stage::Active, stageFor(5000, Profile::Battery, Policy::Normal, s));
+  TEST_ASSERT_EQUAL(Stage::Dimmed, stageFor(20000, Profile::Battery, Policy::Normal, s));
+  TEST_ASSERT_EQUAL(Stage::Sleep, stageFor(25000, Profile::Battery, Policy::Normal, s));
+}
+
 static void test_stage_names() {
   TEST_ASSERT_EQUAL_STRING("Active", stageName(Stage::Active));
   TEST_ASSERT_EQUAL_STRING("Dimmed", stageName(Stage::Dimmed));
@@ -151,6 +169,7 @@ int main() {
   RUN_TEST(test_ms_until_next_stage_charger_and_keep_awake);
   RUN_TEST(test_ms_until_matches_stage_change);
   RUN_TEST(test_zero_timings);
+  RUN_TEST(test_out_of_order_thresholds_are_clamped);
   RUN_TEST(test_stage_names);
   return UNITY_END();
 }

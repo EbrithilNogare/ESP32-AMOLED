@@ -10,6 +10,7 @@
 #include "core/imu.h"
 #include "core/sound.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "ui/draw.h"
 #include "ui/theme.h"
 
@@ -21,7 +22,8 @@ using level::View;
 
 static const AppInfo kInfo = {"level", "Level", ICON_STRAIGHTEN, LEVEL_COLOR};
 
-static constexpr int32_t kStageH = 376;  // everything above the bottom bar
+static constexpr int32_t kStageH = 376;   // everything above the bottom bar
+static constexpr uint32_t kFrameMs = 33;  // at most 30 redraws a second
 static constexpr float kD2R = 0.01745329f;
 static constexpr uint32_t kVial = 0x0B0A06, kVialRim = 0x2E2A1C, kRings = 0x6B5E2E;
 static constexpr uint32_t kSky = 0x08101A, kGround = 0x1C1604;
@@ -69,24 +71,26 @@ void LevelApp::sample() {
     shown_.edge.rotation = level::wrap180(shown_.edge.rotation - saved_.rot);
     shown_.edge.lean -= saved_.lean;
   }
+  shown_.ref = level::nearestRef(shown_.edge.rotation, &shown_.ref);
   if (shown_.view == View::Flat)
     beepIfLevel(hypotf(shown_.flat.x, shown_.flat.y));
   else
-    beepIfLevel(fmaxf(fabsf(level::nearestRef(shown_.edge.rotation).dev), fabsf(shown_.edge.lean)));
+    beepIfLevel(fmaxf(fabsf(shown_.ref.dev), fabsf(shown_.edge.lean)));
 }
 
 // One short beep when the reading becomes level (with a little hysteresis so
 // noise at the threshold doesn't chirp).
 void LevelApp::beepIfLevel(float dev) {
   const bool isLevel = wasLevel_ ? dev <= level::kLevelDeg * 1.5f : dev <= level::kLevelDeg;
-  if (LEVEL_BEEP && isLevel && !wasLevel_ && millis() - lastBeepMs_ > 1500) {
+  const uint32_t now = millis();
+  if (LEVEL_BEEP && isLevel && !wasLevel_ && now - lastBeepMs_ > 1500) {
     core::sound::play(core::sound::Pattern::Confirm);
-    lastBeepMs_ = millis();
+    lastBeepMs_ = now;
   }
   wasLevel_ = isLevel;
 }
 
-// Redraw only when something visible changed: bubble pixel / 0.1° steps.
+// Redraw only when something visible changed (0.05° steps, view, buttons).
 void LevelApp::render() {
   int32_t key[4];
   if (shown_.view == View::Flat) {
@@ -108,14 +112,14 @@ void LevelApp::render() {
 
 void LevelApp::drawHeader(lv_layer_t *layer, float ox, float oy) {
   const bool edge = shown_.view == View::Edge;
-  const char *title = !edge                                           ? "SURFACE"
-                      : level::nearestRef(shown_.edge.rotation).plumb ? "EDGE \xC2\xB7 PLUMB"
-                                                                      : "EDGE \xC2\xB7 LEVEL";
-  draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, title, int32_t(ox + 24), int32_t(oy + 30), 1,
+  const char *title = !edge ? "SURFACE" : shown_.ref.plumb ? "EDGE \xC2\xB7 PLUMB" : "EDGE \xC2\xB7 LEVEL";
+  // Same place as ui::header(): top-left corner at (kEdge, kEdge).
+  const int32_t y = int32_t(oy) + ui::kEdge + lv_font_get_line_height(&font_caption) / 2;
+  draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, title, int32_t(ox) + ui::kEdge, y, 1,
              LV_TEXT_ALIGN_LEFT);
   const char *tag = hold_ ? "HELD" : zeroed() ? "ZEROED" : nullptr;
   if (tag)
-    draw::text(layer, &font_caption, LEVEL_COLOR, LV_OPA_COVER, tag, int32_t(ox + LCD_WIDTH - 24), int32_t(oy + 30), 1,
+    draw::text(layer, &font_caption, LEVEL_COLOR, LV_OPA_COVER, tag, int32_t(ox) + LCD_WIDTH - ui::kEdge, y, 1,
                LV_TEXT_ALIGN_RIGHT);
 }
 
@@ -159,7 +163,7 @@ void LevelApp::drawFlat(lv_layer_t *layer, float ox, float oy) {
 // normal (5 px per degree), like an aircraft's artificial horizon.
 void LevelApp::drawEdge(lv_layer_t *layer, float ox, float oy) {
   const float cx = ox + LCD_WIDTH / 2.0f, cy = oy + 214, R = 132, ppd = 5;
-  const level::Ref ref = level::nearestRef(shown_.edge.rotation);
+  const level::Ref ref = shown_.ref;
   const float lean = shown_.edge.lean, phi = -ref.dev * kD2R;
   const float dx = cosf(phi), dy = sinf(phi);  // along the horizon
   const float nx = -dy, ny = dx;               // toward the ground
@@ -231,7 +235,7 @@ void LevelApp::drawEdge(lv_layer_t *layer, float ox, float oy) {
   draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, lean >= 0 ? "LEAN UP" : "LEAN DOWN",
              int32_t(ox + LCD_WIDTH - 24), int32_t(oy + 362), 1, LV_TEXT_ALIGN_RIGHT);
   snprintf(buf, sizeof buf, "rotation %.1f\xC2\xB0", fabsf(level::wrap180(shown_.edge.rotation)));
-  draw::text(layer, &font_caption, 0x5A5A5A, LV_OPA_COVER, buf, int32_t(ox + 24), int32_t(oy + 52), 0,
+  draw::text(layer, &font_caption, ui::col::textOff, LV_OPA_COVER, buf, int32_t(ox + 24), int32_t(oy + 52), 0,
              LV_TEXT_ALIGN_LEFT);
 }
 
@@ -252,17 +256,15 @@ void LevelApp::draw(lv_layer_t *layer) {
 
 void LevelApp::syncButtons() {
   if (!stage_) return;
-  lv_label_set_text(zeroLabel_, zeroed() ? "Reset" : "Zero");
   const bool z = zeroed();
-  lv_obj_set_style_bg_color(zeroBtn_, ui::c(z ? LEVEL_COLOR : ui::col::surface), 0);
-  lv_obj_set_style_text_color(zeroBtn_, z ? ui::mixBlack(LEVEL_COLOR, 15) : ui::c(ui::col::text), 0);
-  lv_obj_set_style_bg_color(holdBtn_, ui::c(hold_ ? LEVEL_COLOR : ui::col::surface), 0);
-  lv_obj_set_style_text_color(holdBtn_, hold_ ? ui::mixBlack(LEVEL_COLOR, 15) : ui::c(ui::col::text), 0);
-  for (int i = 0; i < 2; i++) {
-    const bool on = saved_.percent == i;
-    lv_obj_set_style_bg_opa(unitBtn_[i], on ? LV_OPA_COVER : LV_OPA_TRANSP, 0);
-    lv_obj_set_style_text_color(unitBtn_[i], ui::c(on ? ui::col::text : ui::col::textDim), 0);
-  }
+  ui::setText(lv_obj_get_child(zeroBtn_, 0), z ? "Reset" : "Zero");
+  auto toggleColors = [](lv_obj_t *b, bool on) {
+    lv_obj_set_style_bg_color(b, ui::c(on ? LEVEL_COLOR : ui::col::surface), 0);
+    lv_obj_set_style_text_color(b, ui::c(on ? ui::mixBlack(LEVEL_COLOR, 15) : ui::col::text), 0);
+  };
+  toggleColors(zeroBtn_, z);
+  toggleColors(holdBtn_, hold_);
+  ui::setSegment(units_, saved_.percent, ui::c(ui::col::surfaceHi), ui::c(ui::col::text));
 }
 
 void LevelApp::onCreate(lv_obj_t *root) {
@@ -276,73 +278,43 @@ void LevelApp::onCreate(lv_obj_t *root) {
   lv_obj_set_size(stage_, LCD_WIDTH, kStageH);
   lv_obj_add_event_cb(stage_, onStageDraw, LV_EVENT_DRAW_MAIN, this);
 
-  const int32_t barY = LCD_HEIGHT - 16 - 48;
-  auto pillButton = [&](const char *txt, int32_t x, lv_event_cb_t cb, lv_obj_t **lab) {
-    lv_obj_t *b = box(root);
-    lv_obj_set_size(b, 96, 48);
-    lv_obj_set_pos(b, x, barY);
-    lv_obj_set_style_radius(b, 24, 0);
-    lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
-    lv_obj_set_clickable(b, true);
-    pressable(b);
+  auto toggleButton = [&](const char *txt, int32_t x, lv_event_cb_t cb) {
+    lv_obj_t *b = textButton(root, txt, col::text, kBtnSmall);
+    lv_obj_set_width(b, 96);
+    lv_obj_align(b, LV_ALIGN_BOTTOM_LEFT, x, -kBarBottom);
     lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, this);
-    lv_obj_t *l = label(b, &font_body_medium, col::text, txt);
-    lv_obj_remove_local_style_prop(l, LV_STYLE_TEXT_COLOR, 0);  // follows the button
-    lv_obj_center(l);
-    if (lab) *lab = l;
     return b;
   };
-  zeroBtn_ = pillButton("Zero", 22, onZero, &zeroLabel_);
-  holdBtn_ = pillButton("Hold", 126, onHold, nullptr);
+  zeroBtn_ = toggleButton("Zero", kEdge, onZero);
+  holdBtn_ = toggleButton("Hold", kEdge + 96 + 8, onHold);
 
-  lv_obj_t *units = box(root);
-  lv_obj_set_size(units, LV_SIZE_CONTENT, 48);
-  lv_obj_set_style_pad_all(units, 4, 0);
-  lv_obj_set_style_pad_column(units, 2, 0);
-  lv_obj_set_style_radius(units, 24, 0);
-  lv_obj_set_style_bg_color(units, c(col::surface), 0);
-  lv_obj_set_style_bg_opa(units, LV_OPA_COVER, 0);
-  lv_obj_set_flex_flow(units, LV_FLEX_FLOW_ROW);
   static const char *const kUnits[2] = {"\xC2\xB0", "%"};
-  for (int i = 0; i < 2; i++) {
-    lv_obj_t *b = box(units);
-    unitBtn_[i] = b;
-    lv_obj_set_size(b, 46, LV_PCT(100));
-    lv_obj_set_style_radius(b, 20, 0);
-    lv_obj_set_style_bg_color(b, c(col::surfaceHi), 0);
-    lv_obj_set_clickable(b, true);
-    lv_obj_set_user_data(b, reinterpret_cast<void *>(intptr_t(i)));
-    lv_obj_add_event_cb(b, onUnit, LV_EVENT_CLICKED, this);
-    lv_obj_t *l = label(b, &font_body_medium, col::textDim, kUnits[i]);
-    lv_obj_remove_local_style_prop(l, LV_STYLE_TEXT_COLOR, 0);
-    lv_obj_center(l);
-  }
-  lv_obj_align(units, LV_ALIGN_BOTTOM_RIGHT, -22, -16);
+  units_ = segmented(root, kUnits, 2, &font_body_medium, 46, onUnit, this);
+  lv_obj_align(units_, LV_ALIGN_BOTTOM_RIGHT, -kEdge, -kBarBottom);
 
   core::imu::enable(true);
   filter_.reset();
   hold_ = false;
   wasLevel_ = false;
   memset(drawnKey_, 0xFF, sizeof drawnKey_);
-  nextSampleMs_ = 0;
+  nextSampleMs_ = nextFrameMs_ = millis();
   sample();
   syncButtons();
 }
 
 void LevelApp::onDestroy() {
   core::imu::enable(false);
-  stage_ = zeroBtn_ = zeroLabel_ = holdBtn_ = nullptr;
-  for (auto &b : unitBtn_) b = nullptr;
+  stage_ = zeroBtn_ = holdBtn_ = units_ = nullptr;
 }
 
 void LevelApp::onTick(uint32_t nowMs) {
   if (!stage_) return;
-  if (nowMs >= nextSampleMs_) {
+  if (core::reached(nowMs, nextSampleMs_)) {
     nextSampleMs_ = nowMs + LEVEL_SAMPLE_MS;
     sample();
   }
-  if (nowMs >= nextFrameMs_) {  // at most 30 redraws a second
-    nextFrameMs_ = nowMs + 33;
+  if (core::reached(nowMs, nextFrameMs_)) {
+    nextFrameMs_ = nowMs + kFrameMs;
     render();
   }
 }
@@ -388,8 +360,7 @@ void LevelApp::onHold(lv_event_t *e) {
 
 void LevelApp::onUnit(lv_event_t *e) {
   auto *self = static_cast<LevelApp *>(lv_event_get_user_data(e));
-  self->saved_.percent =
-      uint8_t(intptr_t(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e)))));
+  self->saved_.percent = uint8_t(ui::eventIndex(e));
   self->save();
   self->syncButtons();
 }

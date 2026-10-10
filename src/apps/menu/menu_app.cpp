@@ -8,6 +8,7 @@
 #include "core/net.h"
 #include "core/pmu.h"
 #include "core/rtc_clock.h"
+#include "core/ticks.h"
 #include "ui/theme.h"
 
 namespace apps {
@@ -53,7 +54,8 @@ void MenuApp::onCreate(lv_obj_t *root) {
   batIcon_ = label(right, &font_icon_18, col::textDim, "");
   batText_ = label(right, &font_caption, col::textDim, "");
 
-  // Scrolling list of rows, two apps per row.
+  // Scrolling list of rows, two apps per row. Not a ui::box: it has to stay
+  // clickable so a drag that starts between the discs still scrolls it.
   list_ = lv_obj_create(root);
   lv_obj_set_style_bg_opa(list_, LV_OPA_TRANSP, 0);
   lv_obj_set_style_border_width(list_, 0, 0);
@@ -90,12 +92,12 @@ void MenuApp::onCreate(lv_obj_t *root) {
     lv_obj_t *disc = box(cell);
     lv_obj_set_size(disc, kDisc, kDisc);
     lv_obj_set_style_radius(disc, LV_RADIUS_CIRCLE, 0);
-    lv_obj_set_style_bg_color(disc, mixBlack(ai.accent, 15), 0);
+    lv_obj_set_style_bg_color(disc, c(mixBlack(ai.accent, 15)), 0);
     lv_obj_set_style_bg_opa(disc, LV_OPA_COVER, 0);
     lv_obj_set_style_border_color(disc, c(ai.accent), 0);
     lv_obj_set_style_border_width(disc, 2, 0);
     pressable(disc);
-    lv_obj_set_style_bg_color(disc, mixBlack(ai.accent, 30), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(disc, c(mixBlack(ai.accent, 30)), LV_STATE_PRESSED);
     lv_obj_set_clickable(disc, true);
     lv_obj_add_event_cb(disc, onAppClicked, LV_EVENT_CLICKED, app);
     lv_obj_t *icon = label(disc, &font_icon_64, ai.accent, ai.icon);
@@ -104,7 +106,7 @@ void MenuApp::onCreate(lv_obj_t *root) {
     label(cell, &font_body, col::textDim, ai.name);
   }
 
-  nextStatusMs_ = 0;
+  nextStatusMs_ = millis();
   lv_obj_update_layout(list_);
   applyFocus(list_);
 }
@@ -119,10 +121,7 @@ void MenuApp::updateStatus() {
   } else {
     ui::setText(time_, "--:--");
   }
-  if (core::net::connected())
-    lv_obj_set_hidden(wifi_, false);
-  else
-    lv_obj_set_hidden(wifi_, true);
+  lv_obj_set_hidden(wifi_, !core::net::connected());
   const int pct = core::pmu::batteryPercent();
   ui::setText(batIcon_, batteryIcon(pct, core::pmu::onCharger()));
   if (pct >= 0)
@@ -132,7 +131,7 @@ void MenuApp::updateStatus() {
 }
 
 void MenuApp::onTick(uint32_t nowMs) {
-  if (nowMs >= nextStatusMs_) {
+  if (core::reached(nowMs, nextStatusMs_)) {
     nextStatusMs_ = nowMs + 1000;
     updateStatus();
   }
@@ -156,6 +155,9 @@ static void applyFocus(lv_obj_t *list) {
     if (d < 0) d = -d;
     const int32_t k = d > 240 ? 240 : d;
     const lv_opa_t opa = lv_opa_t(255 - k * 100 / 240);  // 100 % → ~60 %
+    // Style setters redraw even when nothing changes; most rows don't.
+    lv_obj_t *first = lv_obj_get_child(lv_obj_get_child(row, 0), 0);
+    if (lv_obj_get_style_bg_opa(first, LV_PART_MAIN) == opa) continue;
     for (uint32_t i = 0; i < lv_obj_get_child_count(row); i++) {
       lv_obj_t *cell = lv_obj_get_child(row, i);
       lv_obj_t *disc = lv_obj_get_child(cell, 0);

@@ -113,8 +113,9 @@ awake. Measure and record in HARDWARE.md.
 
 ## Persistence
 
-`saveState()`: phase, paused flag, remaining ms (when paused) or end time,
-pomodoros completed. Today's completed count goes to NVS (stats).
+`onSleep()` pauses a running timer and saves `pomo::Saved` (phase, running
+flag, pomodoros completed, remaining ms) to NVS (key `pomo`); it is restored
+when the app next runs. Daily stats come later.
 
 ## Config
 
@@ -126,8 +127,10 @@ pomodoros completed. Today's completed count goes to NVS (stats).
 #define POMO_SET_SIZE           4
 #define POMO_AUTO_START_NEXT    1
 #define POMO_SOUND              1
-#define POMO_MINIMAL_BRIGHTNESS 38      // ~15 %
 ```
+
+The minimal view's brightness is `BRIGHTNESS_MINIMAL` (38, ~15 %) in the
+power-profile block of `config.h`.
 
 ## Acceptance (on device)
 

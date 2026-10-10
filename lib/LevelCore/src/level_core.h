@@ -1,16 +1,18 @@
-#pragma once
-#include <stdint.h>
-
 // Spirit-level maths for the Level app (docs/apps/level.md), free of Arduino
 // and LVGL so it runs in the host tests.
 //
 // Device frame: x points to the right edge of the screen, y to its top edge,
 // z out of the screen toward the viewer. The accelerometer reports the
 // "up" direction: about (0, 0, +1 g) with the board lying face up.
+#pragma once
+
+#include <stdint.h>
+
 namespace level {
 
 constexpr float kLevelDeg = 0.3f;  // green
 constexpr float kNearDeg = 2.0f;   // yellow
+constexpr float kRefHysteresisDeg = 2.0f;
 
 struct Accel {
   float x, y, z;
@@ -41,13 +43,15 @@ struct Edge {
 };
 Edge edgeAngles(const Accel &a);
 
-// The nearest reference for a rotation: level (0 / ±180) or plumb (±90), and
-// the signed deviation from it.
+// The nearest reference for a rotation: level (0 / 180) or plumb (±90), and
+// the signed deviation from it. With `prev` (the last result) the reference
+// only changes once another one is closer by kRefHysteresisDeg, so the
+// readout doesn't flip between level and plumb around ±45°.
 struct Ref {
   float ref, dev;
   bool plumb;
 };
-Ref nearestRef(float rotationDeg);
+Ref nearestRef(float rotationDeg, const Ref *prev = nullptr);
 
 float wrap180(float deg);
 float percentSlope(float deg);  // tan(deg) × 100, clamped to ±9999

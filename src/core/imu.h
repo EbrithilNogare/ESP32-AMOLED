@@ -2,7 +2,7 @@
 #include <level_core.h>
 
 // QMI8658 accelerometer (ARCHITECTURE §6). Only the accelerometer is used so
-// far: ±2 g, 112 Hz with the on-chip low-pass filter. It stays in standby
+// far: ±2 g, ≈ 112–125 Hz (the datasheet ODR depends on the mode) with the on-chip low-pass filter. It stays in standby
 // until an app enables it, so it costs nothing while the Level app is closed.
 namespace core::imu {
 

@@ -5,6 +5,24 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-10 — Review pass: wrap-safe time, shared widgets, warnings on
+
+**Context:** A full review of the PR before merging found the same few
+patterns in many places: `now >= deadline` comparisons that break when
+`millis()` wraps (49.7 days, reachable on the charger), hand-built copies of
+the same toast / ring / segmented control / small button in several apps,
+and no compiler warnings enabled for `src/`.
+**Decision:** Deadlines go through `core::reached()` and PomodoroCore gets a
+64-bit clock from `core::extend()` (`src/core/ticks.h`); the simulator starts
+30 s before the wrap so the flow test crosses it. Shared widgets and layout
+constants live in `src/ui/theme.h` (`header`, `textButton`, `segmented`,
+`toast`, `progressRing`, `kEdge`, `kBarBottom`, `kBtn`, `kBtnSmall`), and
+`ui::box()` is non-clickable. `-Wall -Wextra` applies to `src/` in the device
+envs and to the apps and simulator in `[env:sim]` (not to libraries).
+**Consequences:** New apps get consistent headers and bars for free; a
+deadline reset must use the current time, not 0 (LESSONS). Warnings show up
+in CI builds, which must stay at zero.
+
 ## 2026-10-10 — Level: bullseye flat, horizon on an edge; own IMU driver
 
 **Context:** Five Level drafts (bullseye, horizon, carpenter tubes,
@@ -49,7 +67,8 @@ driver, which conflicts with `Wire`.
 was ported. XPowersLib stays (the AXP2101 has many registers).
 **Consequences:** Two fewer dependencies and all I2C goes through one locked
 bus. The QMI8658 IMU has no driver yet; SensorLib is the first candidate
-when an app needs it.
+when an app needs it. (Superseded 2026-10-10: own `core/imu` driver, see the
+Level entry.)
 
 ## 2026-10-09 — PC simulator as the UI test
 
@@ -99,7 +118,7 @@ limits. The partition table already has two 4 MB OTA slots.
 **Decision:** v1 is push OTA from the PC (ArduinoOTA/espota), started from a
 System app screen that keeps the device awake. App rollback uses the core's
 bootloader (rollback enabled) plus a health check before the new image is
-marked valid. Firmware budget ≤ 3.0 MB target, 3.5 MB hard limit, checked
+marked valid. Firmware budget ≤ 3.0 MiB target, 3.5 MiB hard limit, checked
 in CI. Version from `git describe`. Pulling from GitHub Releases comes later.
 **Consequences:** Every milestone keeps the image inside the budget; big
 assets go to LittleFS. The listener never runs without a password, and only
@@ -130,6 +149,8 @@ LIBRARIES.md, UI_DESIGN.md, ARCHITECTURE.md §5–6.
 - Pure logic in Arduino-free `lib/` modules with host Unity tests.
 **Consequences:** Developers need Node (fonts) and Python (images) only when
 changing assets; regular builds just compile the generated files.
+(Partly superseded 2026-10-09 — own drivers instead of SensorLib and vendored
+libraries.)
 
 ## 2026-10-09 — Charger behaviour and power-policy precedence
 
@@ -194,7 +215,10 @@ APIs; switching to pure ESP-IDF would use the vendor BSP component
 ## 2026-10-09 — Secrets fall back to the example file
 
 **Context:** CI and fresh clones have no `include/secrets.h`.
-**Decision:** `main.cpp` includes `secrets.h` if present, else
-`secrets.example.h` (`__has_include`).
+**Decision:** The modules that need credentials (`core/net`, `core/ota`,
+`ha_client`) include `secrets_or_example.h`, which picks `secrets.h` if
+present, else `secrets.example.h` (`__has_include`). The example SSID is
+empty and `net` never starts the radio without one.
 **Consequences:** Builds never fail on missing secrets; every new secret must
-get a placeholder in `secrets.example.h`.
+get a placeholder in `secrets.example.h`. A build without secrets stays
+offline instead of retrying a fake network.

@@ -3,5 +3,11 @@
   "version": "0.1.0",
   "description": "Home Assistant REST helpers: parse light states, build request bodies, map HTTP status",
   "platforms": "*",
-  "frameworks": "*"
+  "frameworks": "*",
+  "dependencies": [
+    {
+      "name": "ArduinoJson",
+      "version": "https://github.com/bblanchon/ArduinoJson.git#v7.4.3"
+    }
+  ]
 }

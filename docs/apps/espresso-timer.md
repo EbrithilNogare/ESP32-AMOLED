@@ -59,14 +59,14 @@ a second tap marks the main extraction; both times are shown.
 ## Power
 
 - Running → `KeepAwake`: the screen stays at full brightness, no dimming.
-- Ready / Done → `Normal`. On battery: dim at 10 s, sleep at 20 s, so Done
-  stays readable for 10 s. Consider a longer dim delay for this app
-  (`ESPRESSO_IDLE_DIM_MS`) so the result can be read while handling the cup.
+- Ready / Done → `Normal`, with a longer dim delay for this app
+  (`ESPRESSO_IDLE_DIM_MS`, 30 s) so the result can be read while handling the
+  cup.
 - Wi-Fi not used.
 
 ## Persistence
 
-Last 20 shots (duration, timestamp from the RTC) in NVS; written once per
+The durations of the last 20 shots in NVS (key `shots`); written once per
 saved shot.
 
 ## Config
@@ -75,9 +75,11 @@ saved shot.
 // ---- espresso ----
 #define ESPRESSO_TARGET_MIN_S   25
 #define ESPRESSO_TARGET_MAX_S   30
-#define ESPRESSO_HISTORY        20
 #define ESPRESSO_IDLE_DIM_MS    30000   // overrides the battery dim delay in this app
 ```
+
+The history size is `shot::kHistory` (20) in
+`lib/ShotTimer/src/shot_timer.h`.
 
 ## Acceptance (on device)
 

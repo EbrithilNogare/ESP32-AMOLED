@@ -2,6 +2,7 @@
 #include <pomodoro_core.h>
 
 #include "apps/app.h"
+#include "config.h"
 
 namespace apps {
 
@@ -34,17 +35,19 @@ class PomodoroApp : public App {
   static void onReset(lv_event_t *e);
   static void onRing(lv_event_t *e);
 
+  static constexpr int kMinDots = 40;  // minimal view: dotted ring of the remaining time
+
   pomo::Pomodoro timer_;
   bool loaded_ = false;
   uint32_t confirmResetUntil_ = 0;
 
   lv_obj_t *root_ = nullptr;
-  lv_obj_t *phase_ = nullptr, *dots_[4] = {}, *arc_ = nullptr, *digits_ = nullptr, *sub_ = nullptr;
+  lv_obj_t *phase_ = nullptr, *dots_[POMO_SET_SIZE] = {}, *arc_ = nullptr, *digits_ = nullptr, *sub_ = nullptr;
   lv_obj_t *toggle_ = nullptr, *toast_ = nullptr;
   uint32_t lastRenderSec_ = UINT32_MAX;
 
   lv_obj_t *minLayer_ = nullptr, *minDigits_ = nullptr;
-  lv_obj_t *minDots_[40] = {};
+  lv_obj_t *minDots_[kMinDots] = {};
 };
 
 }  // namespace apps

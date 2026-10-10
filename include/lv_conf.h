@@ -1,9 +1,10 @@
 // LVGL 9.6 configuration. Only settings that differ from LVGL's defaults are
 // listed; everything else comes from lv_conf_internal.h. Rationale for the
 // rendering setup: docs/UI_DESIGN.md §8.
-#if 1
 #ifndef LV_CONF_H
 #define LV_CONF_H
+
+#include "config.h"  // plain #defines, C-safe: UI_FRAME_MS, APP_DEBUG
 
 /* ---- colour & memory ---- */
 #define LV_COLOR_FORMAT_DEFAULT LV_COLOR_FORMAT_RGB565_SWAPPED  // what the QSPI panel takes
@@ -18,8 +19,8 @@
 #define LV_USE_STDLIB_SPRINTF LV_STDLIB_CLIB
 
 /* ---- timing ---- */
-#define LV_DEF_REFR_PERIOD 16
-#define LV_DPI_DEF 330  // ~330 ppi panel
+#define LV_DEF_REFR_PERIOD UI_FRAME_MS  // core::display::setRefreshPeriod() changes it per power stage
+#define LV_DPI_DEF 330                  // ~330 ppi panel
 
 /* ---- OS ---- */
 #define LV_USE_OS LV_OS_NONE  // only the UI task calls lv_* (ARCHITECTURE §6.3)
@@ -59,19 +60,20 @@
 
 /* ---- layouts ---- */
 #define LV_USE_FLEX 1
-#define LV_USE_GRID 1
+#define LV_USE_GRID 0
 
 /* ---- widgets we use ---- */
 #define LV_USE_ARC 1
-#define LV_USE_BAR 1
 #define LV_USE_BUTTON 1
-#define LV_USE_IMAGE 1
-#define LV_USE_ANIMIMG 1
 #define LV_USE_LABEL 1
 #define LV_USE_LINE 1
-#define LV_USE_SPINNER 1
+#define LV_USE_SPINNER 1  // needs ARC
 
-/* ---- widgets we don't (saves flash) ---- */
+/* ---- widgets we don't (saves flash) ----
+ * Turn IMAGE back on when assets/ gains images, ANIMIMG for sprites. */
+#define LV_USE_ANIMIMG 0
+#define LV_USE_BAR 0
+#define LV_USE_IMAGE 0
 #define LV_USE_ARCLABEL 0
 #define LV_USE_BUTTONMATRIX 0
 #define LV_USE_CALENDAR 0
@@ -99,4 +101,3 @@
 #define LV_USE_OBSERVER 0
 
 #endif /*LV_CONF_H*/
-#endif

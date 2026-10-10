@@ -5,6 +5,47 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## A deadline of 0 never fires once `millis()` passes 2³¹
+
+Deadlines are compared wrap-safe with `core::reached(now, deadline)`
+(`src/core/ticks.h`, a signed difference), because `millis()` wraps after
+49.7 days and a board on the charger gets there. With that compare, `0` no
+longer means "fire now": from 24.8 days of uptime on, `now - 0` is negative
+and the poll / frame / status refresh waits another 24.8 days. Reset
+deadlines to the current time, never to 0. The simulator clock starts 30 s
+before the wrap, so the flow test runs across it and caught this.
+
+## `gpio_wakeup_enable()` turns a live edge ISR into an interrupt storm
+
+Arming the touch INT pin as a light-sleep wake source
+(`gpio_wakeup_enable(pin, GPIO_INTR_LOW_LEVEL)`) switches the pin's live
+`attachInterrupt` handler to level mode too, so while the line is low the
+ISR fires continuously until the edge trigger is restored. Disable the pin's
+interrupt (`gpio_intr_disable`) before arming the wake and re-enable it after
+setting `GPIO_INTR_NEGEDGE` again.
+
+## Sleeping right after an OTA rolled the update back
+
+The new image confirms itself after a 10 s health check. A long press within
+those 10 s went into deep sleep with the image still `PENDING_VERIFY`; the
+wake is a reboot through the bootloader, which counts it as a failed boot
+and rolls back. `goDeepSleep()` now confirms a pending image first.
+
+## `SOUND_VOLUME` 0 was the loudest setting
+
+The ported ES8311 code wrote `SOUND_VOLUME * 256 / 100 - 1` to register
+`0x32`: 0 wrapped to `0xFF` (+32 dB, the loudest) and 100 also gave `0xFF`,
+which clips. Espressif's driver special-cases 0. Now 0 is mute and 100 is
+`0xBF` (0 dB); the default 93 is about the old loudness.
+
+## Every `lv_obj_set_style_*` call redraws the object
+
+Style setters invalidate the object even when the value is unchanged
+(`lv_obj_refresh_style`). Code that runs every loop pass or every scroll
+event (OTA screen, menu focus fade) must compare first and set only on
+change. `lv_obj_set_hidden()` and `lv_arc_set_value()` already skip
+unchanged values; labels go through `ui::setText()`.
+
 ## Faint lines across a shape filled as a triangle fan
 
 LVGL anti-aliases every triangle edge, so a polygon filled as a fan of many
@@ -16,12 +57,14 @@ the stroke grows inward by `width`.
 
 ## Taps on a button do nothing when they hit its child
 
-`lv_obj_create()` children (and `ui::box()`) are clickable by default, so a
-tap on a decorative child (the die icon in a strip button) is taken by the
-child and never reaches the button's `CLICKED` handler. Labels aren't
-clickable, which is why it only shows up with plain objects. Call
-`lv_obj_set_clickable(child, false)` on decoration inside a button. The
-simulator flow test caught it.
+`lv_obj_create()` children are clickable by default, so a tap on a
+decorative child (the die icon in a strip button) is taken by the child and
+never reaches the button's `CLICKED` handler. Labels aren't clickable, which
+is why it only shows up with plain objects. The simulator flow test caught
+it. `ui::box()` is now created non-clickable (the Espresso history strip had
+the same problem); widgets that take taps opt in with
+`lv_obj_set_clickable(obj, true)`. The menu's list stays an `lv_obj_create()`
+so a drag that starts between the discs still scrolls it.
 
 ## A dodecahedron "face direction" that is really a vertex
 

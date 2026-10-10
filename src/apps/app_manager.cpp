@@ -1,15 +1,17 @@
 #include "app_manager.h"
 
+#include <Arduino.h>
 #include <esp_log.h>
 #include <pixel_shift.h>
 
 #include "board.h"
 #include "config.h"
+#include "core/ticks.h"
 #include "ui/theme.h"
 
 namespace apps::manager {
 
-static const char *TAG = "apps";
+[[maybe_unused]] static const char *TAG = "apps";
 static constexpr size_t kMaxApps = 16;
 
 static App *list[kMaxApps];
@@ -45,7 +47,7 @@ void begin() {
   menu->onCreate(menuRoot);
   cur = menu;
   lv_screen_load(menuScreen);
-  nextShiftMs = PIXEL_SHIFT_PERIOD_MS;
+  nextShiftMs = millis() + PIXEL_SHIFT_PERIOD_MS;
 }
 
 void open(App *app) {
@@ -90,33 +92,35 @@ static void applyShift() {
 
 void tick(uint32_t nowMs) {
   for (size_t i = 0; i < n; i++) list[i]->service(nowMs);
-  if (minimalApp) return;  // the minimal view is ticked by the power manager
+  // The minimal view is ticked by the power manager, and does its own burn-in
+  // drift (e.g. PomodoroApp::renderMinimal moves its content every redraw),
+  // so the root shift pauses meanwhile.
+  if (minimalApp) return;
   cur->onTick(nowMs);
-  if (nowMs >= nextShiftMs) {
+  if (core::reached(nowMs, nextShiftMs)) {
     nextShiftMs = nowMs + PIXEL_SHIFT_PERIOD_MS;
     shift = burnin::pixelShift(++shiftStep, PIXEL_SHIFT_MAX_PX);
     applyShift();
   }
 }
 
-power::Policy effectivePolicy() {
-  power::Policy p = cur->powerPolicy();
-  if (p == power::Policy::KeepAwake) return p;
-  for (size_t i = 0; i < n; i++) {
-    if (list[i] != cur && list[i]->backgroundPolicy() == power::Policy::LowPowerDisplay)
-      return power::Policy::LowPowerDisplay;
-  }
-  return p;
-}
-
-uint32_t idleDimMs() { return cur->idleDimMs(); }
-
+// The app that would show the minimal view: the open app if it asks for one,
+// else the first closed app that does in the background. effectivePolicy()
+// and enterMinimal() both use this, so they never disagree.
 static App *minimalCandidate() {
   if (cur->powerPolicy() == power::Policy::LowPowerDisplay) return cur;
   for (size_t i = 0; i < n; i++)
-    if (list[i]->backgroundPolicy() == power::Policy::LowPowerDisplay) return list[i];
+    if (list[i] != cur && list[i]->backgroundPolicy() == power::Policy::LowPowerDisplay) return list[i];
   return nullptr;
 }
+
+power::Policy effectivePolicy() {
+  const power::Policy p = cur->powerPolicy();
+  if (p == power::Policy::KeepAwake) return p;
+  return minimalCandidate() ? power::Policy::LowPowerDisplay : p;
+}
+
+uint32_t idleDimMs() { return cur->idleDimMs(); }
 
 bool enterMinimal() {
   if (minimalApp) return true;
@@ -142,7 +146,9 @@ void minimalTick(uint32_t nowMs) {
   if (minimalApp) minimalApp->minimalTick(nowMs);
 }
 
-uint32_t minimalRefreshMs(uint32_t nowMs) { return minimalApp ? minimalApp->minimalRefreshMs(nowMs) : 1000; }
+uint32_t minimalRefreshMs(uint32_t nowMs) {
+  return minimalApp ? minimalApp->minimalRefreshMs(nowMs) : MINIMAL_REFRESH_DEFAULT_MS;
+}
 
 void prepareSleep() {
   for (size_t i = 0; i < n; i++) list[i]->onSleep();

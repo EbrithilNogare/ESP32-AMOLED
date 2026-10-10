@@ -50,7 +50,9 @@ Simulator frames: `docs/design/screens/22-level-flat.png`,
 - The view switches by itself: flat while the screen is less than 40° from
   horizontal, edge above 50° (hysteresis in between). Face down counts as flat.
 - Rotation 0 = standing on the bottom edge; the nearest of 0°, ±90° (plumb)
-  and 180° is the reference.
+  and 180° is the reference. It switches only once another reference is
+  closer by 2°, so the readout doesn't flicker between level and plumb
+  around 45°.
 - Zero is kept per view in NVS (`level`), with the unit.
 - A short beep (`LEVEL_BEEP`) when the reading becomes level, at most every
   1.5 s, with a little hysteresis.

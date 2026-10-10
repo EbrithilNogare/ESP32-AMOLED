@@ -29,20 +29,42 @@ constexpr uint32_t normal = 220;
 constexpr uint32_t slow = 400;
 }  // namespace motion
 
+// Layout grid (UI_DESIGN §4).
 constexpr int32_t kMargin = 4;  // pixel-shift travel; nothing touches the edge
 constexpr int32_t kPad = 16;
+constexpr int32_t kEdge = 24;       // headers and bottom bars, from the screen edge
+constexpr int32_t kBarBottom = 20;  // bottom bar, from the bottom edge
+constexpr int32_t kBtn = 56;        // button height
+constexpr int32_t kBtnSmall = 48;   // bottom bars with three controls
 
 inline lv_color_t c(uint32_t hex) { return lv_color_hex(hex); }
-lv_color_t mixBlack(uint32_t hex, uint8_t percent);  // accent at N % on black
+inline uint32_t hex(lv_color_t color) { return lv_color_to_u32(color) & 0xFFFFFF; }
+uint32_t mixBlack(uint32_t hex, uint8_t percent);  // accent at N % on black
 
 void begin();
 lv_obj_t *screen();               // a new black screen
-lv_obj_t *box(lv_obj_t *parent);  // plain container: no bg, padding or scrolling
+lv_obj_t *box(lv_obj_t *parent);  // plain container: no bg, padding, scrolling or clicks
 lv_obj_t *label(lv_obj_t *parent, const lv_font_t *font, uint32_t color, const char *text);
-lv_obj_t *pill(lv_obj_t *parent, const char *icon, const char *text, uint32_t color);  // 56 px
-lv_obj_t *roundButton(lv_obj_t *parent, const char *icon, uint32_t color);             // 56 px
+lv_obj_t *header(lv_obj_t *parent, const char *text, uint32_t color);  // caption, top left
+
+// Buttons: rounded, `surface` fill, content in `color`, press feedback.
+lv_obj_t *pill(lv_obj_t *parent, const char *icon, const char *text, uint32_t color);  // kBtn
+lv_obj_t *roundButton(lv_obj_t *parent, const char *icon, uint32_t color);             // kBtn
+lv_obj_t *textButton(lv_obj_t *parent, const char *text, uint32_t color, int32_t height = kBtn);
 void setPillContent(lv_obj_t *pill, const char *icon, const char *text);
 void pressable(lv_obj_t *obj);  // shrink + brighten while pressed
+
+// Segmented control: a kBtnSmall pill of `n` tappable segments. `cb` gets
+// the segment as current target with its index in user data.
+lv_obj_t *segmented(lv_obj_t *parent, const char *const *labels, int n, const lv_font_t *font, int32_t segWidth,
+                    lv_event_cb_t cb, void *user);
+void setSegment(lv_obj_t *seg, int selected, lv_color_t fill, lv_color_t text);
+inline int eventIndex(lv_event_t *e) {
+  return int(intptr_t(lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e)))));
+}
+
+lv_obj_t *toast(lv_obj_t *parent, const char *text);                    // caption on a raised chip
+lv_obj_t *progressRing(lv_obj_t *parent, int32_t size, int32_t width);  // 0..1000 from 12 o'clock
 
 // lv_label_set_text() always invalidates; these skip unchanged text so
 // once-a-second refreshes don't redraw (and flush) an identical label.

@@ -12,7 +12,9 @@ enum class Profile : uint8_t { Battery, Charger };
 enum class Policy : uint8_t { Normal, KeepAwake, LowPowerDisplay };
 enum class Stage : uint8_t { Active, Dimmed, Black, Minimal, Sleep };
 
-// Idle thresholds in ms (time since the last touch/button).
+// Idle thresholds in ms (time since the last touch/button). Meant to be
+// non-decreasing per profile (dim <= black <= sleep); a threshold below an
+// earlier one is raised to it, so the stages always run in order.
 struct Timings {
   uint32_t batDimMs, batBlackMs, batSleepMs, chgDimMs, chgBlackMs;
 };

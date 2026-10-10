@@ -25,8 +25,8 @@ void begin(bool (*onPress)()) {
 void poll(const pmu::KeyEvents &pwr) {
   switch (boot.update(digitalRead(PIN_BOOT_BUTTON) == LOW, millis())) {
     case btn::Event::Pressed:
-      if (ignoreFirst && millis() < 2000) {
-        boot.suppress();  // cancels Short and Long for this press
+      if (ignoreFirst && millis() < BUTTON_WAKE_IGNORE_MS) {  // uptime, not a deadline
+        boot.suppress();                                      // cancels Short and Long for this press
         bootSwallow = true;
       } else {
         bootSwallow = pressHook && !pressHook();
@@ -41,7 +41,8 @@ void poll(const pmu::KeyEvents &pwr) {
   }
 
   // The AXP2101 reports PWR presses only once they're classified (short on
-  // release, long after 1 s), so "press started" and "action" coincide.
+  // release, long after BUTTON_LONG_PRESS_MS, see pmu.cpp), so "press
+  // started" and "action" coincide.
   if (pwr.longPress) {
     if (pressHook) pressHook();
     events::post({Ev::LongPress, 0, 0});
@@ -50,7 +51,9 @@ void poll(const pmu::KeyEvents &pwr) {
   }
 }
 
-void ignoreHeldPress() { ignoreFirst = true; }
+// Only if BOOT is still down: a wake press already released must not eat the
+// next real press.
+void ignoreHeldPress() { ignoreFirst = digitalRead(PIN_BOOT_BUTTON) == LOW; }
 
 bool bootHeld() { return boot.held() || digitalRead(PIN_BOOT_BUTTON) == LOW; }
 

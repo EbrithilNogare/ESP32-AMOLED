@@ -7,6 +7,10 @@ namespace bot {
 namespace {
 
 constexpr float kPi = 3.14159265f;
+// An update() gap longer than this restarts the schedules from now: the
+// signed comparisons below only reach 24.8 days, so a face left without
+// update() for longer would otherwise wait another 24.8 days to blink.
+constexpr uint32_t kGapMs = 10000;
 constexpr Params kResting = {1.0f, 0.0f, 0.0f, 0.55f, 0.0f, 0.0f, 1.0f};
 
 // Timestamps are compared by signed difference so millis() wrap is harmless.
@@ -60,6 +64,14 @@ float Face::rand01() {
 }
 
 void Face::update(uint32_t nowMs, bool dimmed) {
+  if (nowMs - lastMs_ > kGapMs) {  // unsigned: also catches a jump backwards
+    // Every pending timer is far over (they last at most a few seconds):
+    // end reactions and let look and blink fire on this update.
+    hopPending_ = false;
+    reacting_ = false;
+    nextLookMs_ = nowMs - 1;
+    nextBlinkMs_ = nowMs - 1;
+  }
   if (hopPending_ && reached(nowMs, hopEndMs_)) {
     tg_.bounce = 0;
     hopPending_ = false;

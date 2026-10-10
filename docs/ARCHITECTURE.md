@@ -16,6 +16,8 @@
    - [Bot face](apps/bot-face.md): animated smiley face
    - [Pomodoro](apps/pomodoro.md): focus/break timer that keeps the screen on at minimal power
    - [Espresso shot timer](apps/espresso-timer.md): stopwatch for espresso shots
+   - [Dice](apps/dice.md): wireframe dice roller
+   - [Level](apps/level.md): spirit level and inclinometer (QMI8658 IMU)
    - [System](apps/system.md): version, battery, Wi-Fi, memory, and **wireless firmware update (OTA)**
 3. **Two power profiles:**
    - **On battery** (small ~400 mAh cell): aggressive dim → black → deep sleep.
@@ -38,7 +40,7 @@ audio beyond short beeps, settings UI (later app).
 ┌──────────────────────────┐   368 × 448 portrait, black background
 │ 12:34        ▂▄▆  🔋 82% │   status bar (time, Wi-Fi, battery / ⚡)
 │                          │
-│    ╭─────╮    ╭─────╮    │   round icons, ~130 px diameter,
+│    ╭─────╮    ╭─────╮    │   round icons, 128 px diameter, 
 │    │ 💡  │    │ 🙂  │    │   2 per row, label under each
 │    ╰─────╯    ╰─────╯    │
 │    Lights     Bot face   │   vertical scroll with snapping to rows,
@@ -117,12 +119,14 @@ Each app declares how it interacts with the idle timeline:
 
 | Policy | Meaning | Used by |
 | --- | --- | --- |
-| `Normal` | follow the profile's dim → black → sleep timeline | menu, Home Assistant, bot face |
-| `KeepAwake` | full UI stays on while the app says it's busy | espresso timer *while running* |
-| `LowPowerDisplay` | never deep sleep; after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) | pomodoro *while a timer runs* |
+| `Normal` | follow the profile's dim → black → sleep timeline | menu, Home Assistant, bot face, dice, level (longer dim delay), espresso and System when idle |
+| `KeepAwake` | full UI stays on while the app says it's busy | espresso timer *while running*, System *while the update screen is open* |
+| `LowPowerDisplay` | never deep sleep; after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) | pomodoro *while a timer runs* (also in the background) |
 
-A policy can change at runtime (`setPowerPolicy()`), e.g. the espresso timer
-becomes `KeepAwake` only while the stopwatch runs.
+A policy can change at runtime: the manager asks the open app for
+`powerPolicy()` every loop (and closed apps for `backgroundPolicy()`), so the
+espresso timer is `KeepAwake` only while the stopwatch runs. An app can also
+lengthen its dim delay with `idleDimMs()` (espresso, level).
 
 **Policies beat profiles.** A non-`Normal` policy behaves the same on the
 charger as on battery. A running pomodoro switches to its minimal view after
@@ -141,7 +145,7 @@ only to `Normal` apps.
 | PWR button (AXP2101 PEK) | side button **Home**, wake, long-press sleep; 6 s hold = hardware off | short/long-press IRQs via EXIO5; deep-sleep wake path: §8.4 |
 | AXP2101 PMU | VBUS detect, charging, battery %, power-off/on | XPowersLib: `isVbusIn()`, `isCharging()`, `getBatteryPercent()`, `shutdown()`, VBUS insert/remove + PEK IRQs |
 | ES8311 + speaker amp (PA GPIO46) | short beeps (pomodoro phase end) | amp off except while beeping |
-| QMI8658 IMU | later: shake/tilt for bot face, pump-vibration auto-start for espresso | optional |
+| QMI8658 IMU | Level app (accelerometer, own `core/imu` driver, standby outside the app); later: shake/tilt for bot face, pump-vibration auto-start for espresso | optional |
 | PCF85063 RTC | wall clock in the status bar | keeps time through deep sleep and AXP power-off |
 | ESP32-S3 Wi-Fi | Home Assistant | station mode, only when needed on battery |
 
@@ -155,11 +159,11 @@ asset pipeline: [UI_DESIGN.md](UI_DESIGN.md).
 | --- | --- |
 | Framework | Arduino core 3.x (pioarduino), ESP-IDF APIs where needed (sleep, PM, esp_lcd) |
 | UI | **LVGL 9.6**, rendering `RGB565_SWAPPED`, partial mode, 2 DMA buffers |
-| Display | **esp_lcd** QSPI panel IO (async DMA) + vendored SH8601/CO5300 panel driver |
-| Touch / IMU / RTC | SensorLib |
+| Display | **esp_lcd** QSPI panel IO (async DMA) + panel commands ported into `src/core/display.cpp` |
+| Touch / IMU / RTC | own drivers (`core/touch`, `core/imu`, `core/rtc_clock`) |
 | PMU | XPowersLib |
 | IO expander | own TCA9554 driver |
-| Audio | vendored Espressif es8311 + core `ESP_I2S` |
+| Audio | ES8311 register setup ported into `core/sound` + core `ESP_I2S` |
 | Network / data | core `WiFi`, `HTTPClient`, ArduinoJson 7 |
 | Storage | `Preferences` (NVS), `LittleFS`, `RTC_DATA_ATTR` |
 | Assets | `assets/` sources → `tools/assets.py` (lv_font_conv + LVGLImage.py) → `src/ui/generated/` |
@@ -171,14 +175,15 @@ flowchart TB
     main["main.cpp — wiring only"]
     subgraph core [core/]
         board["Board<br/>I2C, expander reset,<br/>revision detect"]
-        display["Display<br/>GFX + LVGL glue, brightness,<br/>panel on/off/sleep, pixel shift"]
-        input["Input<br/>touch indev, side-button events<br/>(BOOT GPIO + PWR via PMU IRQ)"]
+        display["Display<br/>esp_lcd + LVGL glue, brightness,<br/>panel on/off/sleep, pixel shift"]
+        input["Touch / Buttons<br/>touch indev, side-button events<br/>(BOOT GPIO + PWR via PMU IRQ)"]
         pmu["Pmu<br/>AXP2101: VBUS, battery,<br/>IRQs, shutdown"]
+        imu["Imu<br/>QMI8658 accelerometer"]
         power["PowerManager<br/>profile, idle timeline, policies,<br/>light/deep sleep, wake cause"]
         net["Net<br/>Wi-Fi on demand,<br/>fast reconnect"]
         sound["Sound<br/>ES8311 beeps"]
         store["Store<br/>NVS + RTC memory"]
-        apps["AppManager<br/>registry, menu, open/close"]
+        apps["apps::manager<br/>registry, menu, open/close"]
     end
     subgraph appdir [apps/]
         menu["MenuApp (launcher)"]
@@ -186,6 +191,9 @@ flowchart TB
         bot["BotFace"]
         pomo["Pomodoro"]
         esp["Espresso"]
+        dice["Dice"]
+        level["Level"]
+        sys["System"]
     end
     main --> core
     input -- activity --> power
@@ -195,6 +203,8 @@ flowchart TB
     apps --> appdir
     ha --> net
     pomo --> sound
+    level --> imu
+    sys --> net
 ```
 
 Rules:
@@ -207,42 +217,45 @@ Rules:
 ### 6.1 App interface
 
 ```cpp
-// src/apps/app.h — sketch, final signatures may change
-enum class PowerPolicy { Normal, KeepAwake, LowPowerDisplay };
-
+// src/apps/app.h (trimmed)
 struct AppInfo {
-  const char *id;                 // stable key for NVS/RTC ("pomodoro")
-  const char *name;               // label in the menu
-  const lv_image_dsc_t *icon;     // round icon art (~130 px)
-  lv_color_t accent;              // icon ring / app accent colour
+  const char *id;    // stable key for NVS ("pomodoro")
+  const char *name;  // label in the menu
+  const char *icon;  // ICON_* glyph from the icon font
+  uint32_t accent;   // 0xRRGGBB
 };
 
 class App {
  public:
   virtual const AppInfo &info() const = 0;
-  virtual void onCreate(lv_obj_t *screen) = 0;  // build widgets once
-  virtual void onResume() {}                    // became visible (incl. after wake)
-  virtual void onPause() {}                     // leaving: stop timers/requests
-  virtual void onTick(uint32_t nowMs) {}        // from the UI loop while visible
-  virtual bool onBack() { return false; }       // Back button: true = handled in-app,
-                                                // false = AppManager returns to the menu
-  virtual PowerPolicy powerPolicy() const { return PowerPolicy::Normal; }
-  // LowPowerDisplay apps: switch to / leave the minimal render mode and say
-  // when the next refresh is due (the CPU light-sleeps until then).
-  virtual void enterMinimalMode() {}
-  virtual void exitMinimalMode() {}
-  virtual uint32_t nextMinimalRefreshMs() const { return 60000; }
-  // Persist across deep sleep / power-off (small, POD).
-  virtual size_t saveState(void *buf, size_t cap) { return 0; }
-  virtual void restoreState(const void *buf, size_t len) {}
+  virtual void onCreate(lv_obj_t *root) = 0;  // build widgets; called on every open
+  virtual void onDestroy() {}                 // widgets about to be deleted
+  virtual void onTick(uint32_t nowMs) {}      // every loop while visible
+  virtual void service(uint32_t nowMs) {}     // every loop, visible or not
+  virtual bool onBack() { return false; }     // true = handled in-app, false = menu
+  virtual bool blocksNavigation() const { return false; }  // e.g. OTA transfer running
+
+  virtual power::Policy powerPolicy() const { return power::Policy::Normal; }       // while open
+  virtual power::Policy backgroundPolicy() const { return power::Policy::Normal; }  // while closed
+  virtual uint32_t idleDimMs() const { return 0; }                                  // 0 = profile default
+
+  // LowPowerDisplay: draw a sparse, dim view into `layer` and say when the
+  // next redraw is due; the CPU light-sleeps in between.
+  virtual void enterMinimal(lv_obj_t *layer) {}
+  virtual void exitMinimal() {}
+  virtual void minimalTick(uint32_t nowMs) {}
+  virtual uint32_t minimalRefreshMs(uint32_t nowMs) const { return 60000; }
+
+  virtual void onSleep() {}  // deep sleep is coming: persist what matters
   virtual ~App() = default;
 };
 ```
 
-`AppManager` owns the registered apps (static instances in `main.cpp`). It
-creates each app's LVGL screen on first open, switches screens with an
-animation, and only keeps the menu plus the current app in memory (other
-screens are deleted on pause to save RAM, opt-out per app).
+`apps::manager` holds the registered apps (static instances in `main.cpp`,
+`apps::manager::add()`). Opening an app calls `onCreate()` on a fresh root
+container; closing it calls `onDestroy()` and deletes the widgets, so only the
+menu and the current app have widgets. Apps persist their own state (NVS via
+`core::store`) when they change or in `onSleep()`.
 
 ### 6.2 File layout
 
@@ -286,10 +299,9 @@ content yet.
 
 | Task | Core | Priority | Owns |
 | --- | --- | --- | --- |
-| UI (Arduino `loop()`) | 1 | normal | LVGL (only task calling `lv_*`), AppManager, PowerManager, input polling |
-| Net | 0 | normal | Wi-Fi state machine, SNTP |
-| HA client | 0 | low | HTTP requests (spawned by the HA app) |
-| Sound | 0 | high, short-lived | I2S beep playback |
+| UI (Arduino `loop()`) | 1 | 1 (Arduino default) | LVGL (only task calling `lv_*`), app manager, PowerManager, input polling, Wi-Fi state machine (`core::net::loop()`), OTA |
+| HA client | 0 | 3 | HTTP requests (started by the HA app) |
+| Sound | 0 | 5 | I2S beep playback |
 
 LVGL runs with `LV_OS_NONE`. Concurrency safety comes from ownership, not
 locks: other tasks never touch UI objects.
@@ -299,15 +311,15 @@ FreeRTOS queue of small typed events, drained by the UI task once per frame
 and dispatched to services and the current app:
 
 ```cpp
-enum class Ev : uint8_t { BackPressed, HomePressed, LongPress, Touch,
-                          VbusChanged, BatteryLevel, WifiState, HaResult,
-                          TimerDue, ... };
-struct Event { Ev type; uint32_t a; uint32_t b; void *ptr; };  // ptr: owned by receiver
-bool events::post(const Event &e);            // any task, ISR-safe variant too
+// src/core/events.h
+enum class Ev : uint8_t { Back, Home, LongPress, WifiChanged, HaResult, TimeSynced };
+struct Event { Ev type; uint32_t a; uint32_t b; };
+bool events::post(const Event &e);  // any task
 ```
 
-ISRs (button GPIO, PMU IRQ) only set flags or post events; the I2C work they
-trigger runs in the UI task.
+ISRs (touch INT) only set flags; the I2C work they trigger runs in the UI
+task. `WifiChanged` is posted from `net::loop()` on a real link change, after
+`net::connected()` has changed, so handlers always read the new state.
 
 **I2C.** One bus with 7 devices. Every access goes through
 `I2cBus::lock()` (FreeRTOS mutex). In practice almost all I2C traffic (touch,
@@ -319,9 +331,9 @@ PMU, RTC, expander) comes from the UI task.
 | --- | --- |
 | LVGL draw buffers (2 × ~29 KB) | internal DMA RAM |
 | LVGL heap (widgets, styles), image cache | PSRAM |
-| Network buffers, JSON documents | PSRAM (`ArduinoJson` custom allocator) |
+| Network buffers, JSON documents | default heap (small, filtered `JsonDocument`s in `lib/HaParse`) |
 | Fonts, images, sprites | flash (memory-mapped) |
-| Stack sizes | UI 16 KB, Net 8 KB, HA 8 KB |
+| Stack sizes | UI 8 KB (Arduino loop task default), HA 8 KB, Sound 4 KB |
 
 No allocation in per-frame paths; apps are static objects; screens are
 created on open and deleted on close.
@@ -382,11 +394,15 @@ on, so a touch restores the picture instantly.
 ### 8.2 `LowPowerDisplay` (pomodoro)
 
 Active → (dim timeout) → **Minimal**: the app redraws a sparse, dim view;
-Wi-Fi off; LVGL refreshes only when `nextMinimalRefreshMs()` is due; between
-refreshes the ESP32-S3 enters **light sleep**. The panel keeps showing its
-last frame from its own RAM. Wake sources during light sleep: timer
-(next refresh), touch INT (GPIO21), BOOT (GPIO0), PMU IRQ path.
-A touch/button returns to the full view.
+Wi-Fi is suspended (`net::suspend()`, even if an app holds it); LVGL refreshes
+only when the app's `minimalRefreshMs()` is due; between refreshes the
+ESP32-S3 enters **light sleep**. The panel keeps showing its last frame from
+its own RAM. Wake sources during light sleep: timer, touch INT (GPIO21) and
+BOOT (GPIO0). The AXP2101 IRQ only reaches the expander (EXIO5), so PWR can't
+wake the chip: each light sleep lasts at most `MINIMAL_PWR_POLL_MS` (1 s) and
+a wake that isn't a redraw just polls the PMU. A touch or button returns to
+the full view. If no app offers a minimal view, the stage falls back to
+Black.
 
 ### 8.3 Deep sleep entry
 
@@ -404,11 +420,14 @@ read released (with a 3 s safety timeout; if one is still held, show
 
 Sequence:
 
-1. Current app `onPause()` + `saveState()` (e.g. pomodoro saves as paused);
+1. Confirm a pending OTA image (`ota::confirmIfPending()`): getting this far
+   means it works, and a deep-sleep wake would otherwise roll it back.
+2. Every app's `onSleep()` (e.g. pomodoro saves as paused);
    save `RtcState`.
-2. Wi-Fi off. Speaker amp off.
-3. Panel: brightness 0 → display off (`0x28`) → sleep-in (`0x10`); touch IC to sleep.
-4. Arm the wake sources (§8.4), confirm the buttons are released,
+3. Wi-Fi off. IMU to standby. Speaker amp off (PA_EN, GPIO46, held low
+   through deep sleep: it isn't an RTC pin and would float).
+4. Panel: brightness 0 → display off (`0x28`) → sleep-in (`0x10`); touch IC to sleep.
+5. Arm the wake sources (§8.4), confirm the buttons are released,
    `esp_deep_sleep_start()`.
 
 Wake = reboot: `setup()` checks `esp_sleep_get_wakeup_cause()`, re-runs the
@@ -433,7 +452,7 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 
 | What | Where | Survives |
 | --- | --- | --- |
-| Wi-Fi channel/BSSID, cached HA states, app `saveState()` blobs | `RTC_DATA_ATTR RtcState` | deep sleep |
+| Wi-Fi channel/BSSID, cached HA states | `RTC_DATA_ATTR RtcState` | deep sleep |
 | same, written on "deep off" / power-off | NVS (`Store`) | power-off |
 | espresso shot history, pomodoro counters/settings | NVS | power-off |
 
@@ -458,12 +477,12 @@ periodically (flash wear).
 #define CHG_IDLE_BLACK_MS          300000   // plain black (display off)
 // ---- buttons ----
 #define BUTTON_BACK_IS_BOOT        1     // 1: BOOT = back, PWR = home; 0: swapped
+#define BUTTON_LONG_PRESS_MS       1000  // long press → power-off animation → deep sleep
+#define POWER_OFF_ANIM_MS          1000
 // ---- OTA (§12) ----
 #define OTA_HOSTNAME               "esp32-amoled"
 #define OTA_MIN_BATTERY_PCT        30
 #define OTA_HEALTHY_AFTER_MS       10000
-#define BUTTON_LONG_PRESS_MS       1000  // long press → power-off animation → deep sleep
-#define POWER_OFF_ANIM_MS          1000
 // ---- burn-in ----
 #define PIXEL_SHIFT_PERIOD_MS      180000
 #define PIXEL_SHIFT_MAX_PX         4
@@ -488,8 +507,9 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
   `tools/size_check.py`), host tests and the simulator flow test run, and the
   generated assets are checked against their sources.
 - **Host tests (`[env:native]` + Unity, `test/`):** pure logic lives in
-  Arduino-free libraries under `lib/` (`PowerFsm`, `PomodoroCore`, `BotFace`,
-  `ShotTimer`, `HaParse`), so it compiles and runs on the PC. Adapters in
+  Arduino-free libraries under `lib/` (`PowerFsm`, `ButtonLogic`,
+  `PomodoroCore`, `ShotTimer`, `BotFace`, `HaParse`, `PixelShift`, `DiceCore`,
+  `LevelCore`), so it compiles and runs on the PC. Adapters in
   `src/` connect them to hardware and LVGL. CI runs these tests next to the
   firmware builds.
 - **Simulator (`[env:sim]`, `tools/sim/`):** the real apps, UI and LVGL run
@@ -510,8 +530,8 @@ while the old one keeps running, then the bootloader switches over.
 
 | Budget | Limit | Enforced by |
 | --- | --- | --- |
-| Firmware image | **≤ 3.0 MB** target (warn), **3.5 MB** hard limit (fail) of the 4 MB slot | CI size check on `firmware.bin` |
-| Today (skeleton) | 0.3 MB | — |
+| Firmware image | **≤ 3.0 MiB** target (warn), **3.5 MiB** hard limit (fail) of the 4 MiB `app0` slot (read from `partitions.csv`) | CI size check on `firmware.bin` |
+| Today (M1–M17, release) | ~1.7 MB | — |
 | Expected with LVGL, fonts, Wi-Fi/HTTP, apps | ~1.5–2.5 MB | measured each milestone, noted in the PR |
 
 If the budget gets tight: move big images/sprites to LittleFS (UI_DESIGN §7),
@@ -525,7 +545,7 @@ partition table would need one USB flash, so it's the last resort.
 - On the device: **System → Wireless update** turns Wi-Fi on, takes a
   `KeepAwake` lock (no dimming or sleep), starts the OTA listener with mDNS
   name `esp32-amoled.local`, and shows host, IP and version.
-- On the PC: VS Code task **"ESP: upload OTA"** →
+- On the PC: VS Code task **"ESP: upload OTA (Wi-Fi)"** →
   `pio run -e amoled-ota -t upload` (env with `upload_protocol = espota`,
   `upload_port = esp32-amoled.local`). The password comes from the
   `ESP_OTA_PASSWORD` environment variable on the PC and must match
@@ -547,7 +567,7 @@ exists. Needs the repo releases to be reachable without auth.
 
 | Risk | Protection |
 | --- | --- |
-| Bad firmware boots and crashes / hangs | **Rollback.** The Arduino core ships its bootloader with `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1`. We override the core's weak `verifyRollbackLater()` to return `true`, then mark the image valid (`esp_ota_mark_app_valid_cancel_rollback()`) only after a **health check**: display + touch initialised, menu rendered, 10 s without a reset. A crash or watchdog reset before that → the bootloader boots the previous slot. |
+| Bad firmware boots and crashes / hangs | **Rollback.** The Arduino core ships its bootloader with `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=1`. We override the core's weak `verifyRollbackLater()` to return `true`, then mark the image valid (`esp_ota_mark_app_valid_cancel_rollback()`) only after a **health check**: the main loop has been running for `OTA_HEALTHY_AFTER_MS` (10 s) without a reset; a failed display init restarts before that. A crash or watchdog reset before that → the bootloader boots the previous slot. |
 | Power loss mid-transfer | the old slot stays active until the new image is complete and verified (SHA-256 check by the OTA library) |
 | Flat battery during update | listener refuses to start below **30 %** unless on the charger |
 | Someone else on the LAN flashes it | listener runs only while the update screen is open; password required; never enabled when `OTA_PASSWORD` is empty |

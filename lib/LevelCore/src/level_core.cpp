@@ -40,15 +40,18 @@ float wrap180(float d) {
   return d - 180.0f;
 }
 
-Ref nearestRef(float rotation) {
+Ref nearestRef(float rotation, const Ref *prev) {
   const float n = wrap180(rotation);
-  static const float kRefs[5] = {0, 90, -90, 180, -180};
+  static const float kRefs[4] = {0, 90, -90, 180};
   Ref best = {0, 1e9f, false};
   for (float r : kRefs) {
-    const float d = n - r;
+    const float d = wrap180(n - r);
     if (fabsf(d) < fabsf(best.dev)) best = {r, d, fabsf(r) == 90};
   }
-  if (best.ref == -180) best.ref = 180;
+  if (prev && prev->ref != best.ref) {
+    const float d = wrap180(n - prev->ref);
+    if (fabsf(d) < fabsf(best.dev) + kRefHysteresisDeg) return {prev->ref, d, prev->plumb};
+  }
   return best;
 }
 

@@ -16,8 +16,10 @@ class HomeAssistantApp : public App {
   void onTick(uint32_t nowMs) override;
   void onSleep() override;
 
-  void onResult(int index, ha::LightState state, ha::Result result);  // from Ev::HaResult
+  // From Ev::HaResult; `toggle` = the answer to a tap rather than a poll.
+  void onResult(int index, ha::LightState state, ha::Result result, bool toggle);
   void onWifiChanged();
+  bool pending(int index) const { return tiles_[index].pending; }
 
  private:
   struct Tile {
@@ -27,9 +29,8 @@ class HomeAssistantApp : public App {
     bool stale = true;
   };
   void renderTile(int i);
-  void setBanner(const char *text, uint32_t color);
   void updateBanner();
-  void shake(lv_obj_t *obj);
+  static void shake(lv_obj_t *obj);
   static void onTileClicked(lv_event_t *e);
 
   Tile tiles_[ha_client::kLights];

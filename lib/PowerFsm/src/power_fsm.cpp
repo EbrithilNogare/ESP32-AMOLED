@@ -12,7 +12,7 @@ struct Step {
 
 // The timeline for a profile/policy pair, in order. Returns the step count.
 // KeepAwake has no steps (Active forever).
-uint8_t timeline(Profile profile, Policy policy, const Timings &t, Step out[3]) {
+uint8_t timelineRaw(Profile profile, Policy policy, const Timings &t, Step out[3]) {
   switch (policy) {
     case Policy::KeepAwake: return 0;
     case Policy::LowPowerDisplay:
@@ -30,6 +30,15 @@ uint8_t timeline(Profile profile, Policy policy, const Timings &t, Step out[3]) 
   out[1] = {t.batBlackMs, Stage::Black};
   out[2] = {t.batSleepMs, Stage::Sleep};
   return 3;
+}
+
+// Thresholds are clamped to be non-decreasing, so a deeper stage never comes
+// before a shallower one (e.g. black < dim → both at the dim threshold).
+uint8_t timeline(Profile profile, Policy policy, const Timings &t, Step out[3]) {
+  const uint8_t n = timelineRaw(profile, policy, t, out);
+  for (uint8_t i = 1; i < n; i++)
+    if (out[i].atMs < out[i - 1].atMs) out[i].atMs = out[i - 1].atMs;
+  return n;
 }
 
 uint8_t minU8(uint8_t a, uint8_t b) { return a < b ? a : b; }

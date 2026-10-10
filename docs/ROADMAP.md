@@ -13,15 +13,15 @@ then Wi-Fi + Home Assistant.
 
 Status: ☐ not started · ◐ code written, on-device check pending · ☑ done
 
-**Where we are (2026-10-09):** M1–M14 are implemented in one go on this
-branch. Both firmware envs build with 0 warnings, the `lib/` logic passes 98
-host unit tests, and the PC simulator taps through every app
-(`docs/design/firmware-screens.png`). **Nothing has been flashed yet**: the
-next step is the owner working through the **On device** checklists below, in
-order, starting with M1. Differences from the plan: no SensorLib (own touch
-and RTC drivers), the panel and ES8311 code is ported into `src/core/`
-instead of vendored libraries, and the menu has the 5 real apps instead of
-10 placeholders.
+**Where we are (2026-10-10):** M1–M14, M16 (Dice) and M17 (Level) are
+implemented on this branch. Both firmware envs build with 0 warnings, the
+`lib/` logic passes the host unit tests, and the PC simulator taps through
+every app (`docs/design/firmware-screens.png`). **Nothing has been flashed
+yet**: the next step is the owner working through the **On device**
+checklists below, in order, starting with M1. Differences from the plan: no
+SensorLib (own touch, RTC and IMU drivers), the panel and ES8311 code is
+ported into `src/core/` instead of vendored libraries, and the menu has the
+7 real apps instead of 10 placeholders.
 
 ## Phase 0 — Plan ☑
 
@@ -36,7 +36,7 @@ instead of vendored libraries, and the menu has the 5 real apps instead of
 
 `core/board` (Wire + `I2cBus` mutex, own TCA9554 driver with reset pulse,
 revision detect by touch address), `core/display` on **esp_lcd QSPI** with the
-vendored panel driver in `lib/esp_lcd_amoled/` (CO5300 init from the vendor
+panel commands ported into `src/core/display.cpp` (CO5300 init from the vendor
 BSP): fill, brightness, panel on/off/sleep. Event bus skeleton. `.clang-format`.
 If esp_lcd causes trouble, fall back to GFX Library for Arduino
 (LIBRARIES.md) and record why in LESSONS.md.
@@ -48,8 +48,8 @@ corner radius of the panel is noted in HARDWARE.md.
 ### M2 — LVGL + touch ◐
 
 `lv_conf.h` per UI_DESIGN §8 (LVGL 9.6, `RGB565_SWAPPED`, 2 internal DMA
-buffers, async flush, even-alignment rounder, LVGL heap in PSRAM); touch via
-SensorLib as an LVGL pointer device; `ui/theme` with the colour, spacing and
+buffers, async flush, even-alignment rounder, LVGL heap in PSRAM); own
+CST820/FT3168 touch driver (`core/touch`) as an LVGL pointer device; `ui/theme` with the colour, spacing and
 motion tokens (built-in Montserrat font as a stand-in until M3).
 
 **On device:** no artefacts on partial updates; taps land under the finger in
@@ -61,19 +61,18 @@ all four corners; ≥ 30 fps while animating (log LVGL's FPS).
    Symbols Rounded + licences, `assets.toml`, `tools/assets.py` (+
    `requirements.txt`, `package.json`), generated fonts in `src/ui/generated/`,
    CI check that regenerating produces no diff.
-2. **Framework:** `apps/app.h`, `core/app_manager`, `MenuApp` with round
+2. **Framework:** `apps/app.h`, `apps/app_manager`, `MenuApp` with round
    icon-font icons in pairs (UI_DESIGN §5),
 vertical scroll with row snapping, open/close transitions, remembered scroll
-position. **10 placeholder apps** to exercise scrolling. Temporary on-screen
-back button.
+position, with the **7 real apps**. Temporary on-screen back button.
 
-**On device:** smooth scrolling (no stutter with 10+ icons), snapping to rows,
+**On device:** smooth scrolling across all rows, snapping to rows,
 tap opens the right app, back returns to the same scroll position.
 
 ### M4 — Side buttons ◐
 
 `core/pmu` (AXP2101 init, PEK short-press IRQ via EXIO5),
-`core/input` button events for BOOT (GPIO0, debounced) and PWR, mapped to
+`core/buttons` button events for BOOT (GPIO0, debounced) and PWR, mapped to
 **Back** (one step, app `onBack()` first) and **Home** (menu), plus
 long-press detection (≥ 1 s) as an event (the sleep action itself comes in M6).
 Remove the temporary back button.
@@ -146,6 +145,25 @@ State machine (host-tested), big digits, colour thresholds, history in NVS,
 
 **On device:** spec acceptance list, plus the measured current in minimal mode.
 
+### M16 — Dice ◐ — [spec](apps/dice.md)
+
+`lib/DiceCore` (rolls, advantage, percentile d100, solids with face-on rest
+pose, spin, projection) with host tests; `DiceApp` draws wireframe dice in
+the stage's draw event; NVS keeps the last die/count/mode.
+
+**On device:** the checklist in the spec (smooth spins with 20 dice, every
+die lands face-on, controls don't roll, settings survive deep sleep).
+
+### M17 — Level ◐ — [spec](apps/level.md)
+
+Own QMI8658 driver (`core/imu`, accelerometer only, standby when unused),
+`lib/LevelCore` (angles, flat/edge switching, smoothing) with host tests, and
+`LevelApp`: bullseye vial flat, attitude horizon with lean on an edge, Zero /
+Hold / ° %.
+
+**On device:** the checklist in the spec — start with the IMU axis mapping
+(`IMU_SCREEN_*` in `config.h`), which hasn't been checked on the board.
+
 ## Networked apps
 
 ### M11 — Wi-Fi ◐
@@ -160,8 +178,8 @@ password doesn't hang the UI.
 ### M12 — OTA + System app ◐ — [spec](apps/system.md)
 
 `tools/version.py` (git-describe version), CI firmware size check (warn
-3.0 MB / fail 3.5 MB), `[env:amoled-ota]` (espota, password from
-`ESP_OTA_PASSWORD`), VS Code task "ESP: upload OTA", System app with the
+3.0 MiB / fail 3.5 MiB), `[env:amoled-ota]` (espota, password from
+`ESP_OTA_PASSWORD`), VS Code task "ESP: upload OTA (Wi-Fi)", System app with the
 info list and the update screen, rollback via `verifyRollbackLater()` and a
 health check (ARCHITECTURE §12).
 
@@ -182,26 +200,9 @@ logs 401.
 
 **On device:** spec acceptance list.
 
-### M16 — Dice ◐ — [spec](apps/dice.md)
+## Wrap-up
 
-`lib/DiceCore` (rolls, advantage, percentile d100, solids with face-on rest
-pose, spin, projection) with host tests; `DiceApp` draws wireframe dice in
-the stage's draw event; NVS keeps the last die/count/mode.
-
-**On device:** the checklist in the spec (smooth spins with 20 dice, every
-die lands face-on, controls don't roll, settings survive deep sleep).
-
-### M17 — Level ◐ — [spec](apps/level.md)
-
-Own QMI8658 driver (`core/imu`, accelerometer only, standby when unused),
-`lib/LevelCore` (angles, flat/edge switching, smoothing) with host tests, and
-`LevelApp`: bullseye vial flat, attitude horizon with lean on an edge, Zero /
-Hold / ° %.
-
-**On device:** the checklist in the spec — start with the IMU axis mapping
-(`IMU_SCREEN_*` in `config.h`), which hasn't been checked on the board.
-
-## M15 — Polish & merge ◐
+### M15 — Polish & merge ◐
 
 Icons and fonts, menu fisheye effect (optional), README usage section,
 DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
@@ -209,6 +210,6 @@ DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
 
 ## Later
 
-Settings app (brightness, timeouts), clock/watch face (RTC), battery/system
-info app, HA WebSocket push, IMU features (bot reactions, espresso
-auto-start), OTA pull from GitHub Releases, more apps from [apps/README.md](apps/README.md).
+Settings app (brightness, timeouts), clock/watch face (RTC), HA WebSocket
+push, IMU features (bot reactions, espresso auto-start), OTA pull from GitHub
+Releases, more apps from [apps/README.md](apps/README.md).

@@ -30,7 +30,9 @@ class Pomodoro {
 
   void toggle(uint64_t nowMs);  // Idle → Focus running; running → paused; paused → running
   void pause(uint64_t nowMs);
-  void reset(uint64_t nowMs);  // current phase back to full duration, paused (Idle stays Idle)
+  // Current phase back to full duration, paused (Idle stays Idle). nowMs is
+  // unused today; it keeps the signature uniform with the other actions.
+  void reset(uint64_t nowMs);
   // End the current phase now; it counts like a normal end. A running phase
   // hands over as update() would; a paused one leaves the next phase paused
   // (the user had stopped the clock). No-op in Idle.

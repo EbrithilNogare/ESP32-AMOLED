@@ -334,6 +334,23 @@ static void test_time_going_backwards_is_harmless() {
   TEST_ASSERT_FALSE(isnan(f.geometry(900).eyeL.h));
 }
 
+static void test_blinks_resume_after_long_gap() {
+  Face f(7, 0);
+  for (uint32_t t = 0; t <= 5000; t += 16) f.update(t, false);
+  // More than 2^31 ms (24.8 days) without update(): a signed comparison
+  // against the old schedule would read as "not yet" for another 24.8 days.
+  const uint32_t t0 = 0x90000000u;
+  int blinks = 0;
+  bool inBlink = false;
+  for (uint32_t t = t0; t - t0 < 15000; t += 2) {
+    f.update(t, false);
+    const bool dip = f.geometry(t).eyeL.h < 118 * f.params().open - 0.5f;
+    if (dip && !inBlink) blinks++;
+    inBlink = dip;
+  }
+  TEST_ASSERT_GREATER_OR_EQUAL(3, blinks);  // first one right away, then every 2-6 s
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_rest_geometry_matches_mockup);
@@ -343,6 +360,7 @@ int main() {
   RUN_TEST(test_o_mouth_threshold_and_size);
   RUN_TEST(test_breathing);
   RUN_TEST(test_first_blink_after_1500_ms);
+  RUN_TEST(test_blinks_resume_after_long_gap);
   RUN_TEST(test_first_look_after_1200_ms_uses_seeded_draws);
   RUN_TEST(test_deterministic_for_seed);
   RUN_TEST(test_blink_intervals);

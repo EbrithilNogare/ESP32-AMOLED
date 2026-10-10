@@ -27,6 +27,7 @@ class LevelApp : public App {
     level::View view;
     level::Flat flat;  // after Zero
     level::Edge edge;  // after Zero
+    level::Ref ref;    // nearest level / plumb reference for edge.rotation
   };
   struct Saved {
     float fx, fy, rot, lean;
@@ -59,8 +60,7 @@ class LevelApp : public App {
   bool wasLevel_ = false;
   int32_t drawnKey_[4] = {};
 
-  lv_obj_t *stage_ = nullptr, *zeroBtn_ = nullptr, *zeroLabel_ = nullptr, *holdBtn_ = nullptr;
-  lv_obj_t *unitBtn_[2] = {};
+  lv_obj_t *stage_ = nullptr, *zeroBtn_ = nullptr, *holdBtn_ = nullptr, *units_ = nullptr;
 };
 
 }  // namespace apps

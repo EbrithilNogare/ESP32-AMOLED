@@ -7,6 +7,7 @@
 
 #include <Arduino.h>
 #include <ESP_I2S.h>
+#include <driver/gpio.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
@@ -18,7 +19,15 @@
 
 namespace core::sound {
 
-static const char *TAG = "sound";
+[[maybe_unused]] static const char *TAG = "sound";
+
+static_assert(SOUND_SAMPLE_RATE == 16000, "initCodec() hard-codes the ES8311 dividers for fs = 16 kHz");
+static_assert(SOUND_VOLUME >= 0 && SOUND_VOLUME <= 100, "SOUND_VOLUME is 0-100");
+
+// DAC volume register 0x32: 0x00 = -95.5 dB ... 0xBF = 0 dB, 0.5 dB per step
+// (above 0xBF is digital gain up to +32 dB, which would clip the tones).
+static constexpr uint8_t kDacVolume0dB = 0xBF;
+static constexpr uint8_t kDacVolume = SOUND_VOLUME == 0 ? 0 : uint8_t(SOUND_VOLUME * kDacVolume0dB / 100);
 static QueueHandle_t queue;
 static I2SClass i2s;
 static bool codecReady;
@@ -57,7 +66,7 @@ static bool initCodec() {
   reg(0x13, 0x10);
   reg(0x1C, 0x6A);
   reg(0x37, 0x08);
-  reg(0x32, uint8_t(SOUND_VOLUME * 256 / 100 - 1));
+  reg(0x32, kDacVolume);
   return true;
 }
 
@@ -126,6 +135,7 @@ static void task(void *) {
 }
 
 void begin() {
+  gpio_hold_dis(gpio_num_t(PIN_PA_EN));  // held LOW through deep sleep (power.cpp)
   pinMode(PIN_PA_EN, OUTPUT);
   digitalWrite(PIN_PA_EN, LOW);
   queue = xQueueCreate(4, sizeof(Pattern));

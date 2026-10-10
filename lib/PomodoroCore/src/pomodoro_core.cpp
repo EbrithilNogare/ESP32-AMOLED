@@ -54,6 +54,8 @@ void Pomodoro::pause(uint64_t nowMs) {
   running_ = false;
 }
 
+// nowMs is unused (reset always pauses, so no end timestamp is needed); kept
+// so every state change takes the clock the same way.
 void Pomodoro::reset(uint64_t /*nowMs*/) {
   if (phase_ == Phase::Idle) return;
   running_ = false;
@@ -112,7 +114,11 @@ void Pomodoro::restore(const Saved &s, uint64_t nowMs) {
   // Blobs come from RTC memory/NVS: clamp anything out of range (e.g. a
   // config change between save and restore) instead of trusting it.
   phase_ = s.phase <= static_cast<uint8_t>(Phase::LongBreak) ? static_cast<Phase>(s.phase) : Phase::Idle;
-  completed_ = s.completed <= cfg_.setSize ? s.completed : cfg_.setSize;
+  // Focus/ShortBreak run with at most setSize - 1 sessions done (the last
+  // focus end goes to LongBreak); only LongBreak may hold setSize. Anything
+  // higher would make the next focus end count past the set.
+  const uint8_t maxDone = phase_ == Phase::LongBreak ? cfg_.setSize : static_cast<uint8_t>(cfg_.setSize - 1);
+  completed_ = s.completed <= maxDone ? s.completed : maxDone;
   const uint32_t full = durationOf(phase_);
   remainingMs_ = s.remainingMs <= full ? s.remainingMs : full;
   running_ = false;

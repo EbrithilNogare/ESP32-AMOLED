@@ -1,11 +1,12 @@
-#pragma once
-#include <stdint.h>
-
 // Dice logic for the Dice app (docs/apps/dice.md), free of Arduino and LVGL so
 // it runs in the host tests: rolls with advantage/disadvantage and percentile
 // d100, the wireframe solids with their face-on rest pose, the spin that
 // decays exactly onto that pose, projection, the 2D die icons and the grid
 // layout of several dice.
+#pragma once
+
+#include <stdint.h>
+
 namespace dice {
 
 constexpr int kTypes = 7;
@@ -20,7 +21,7 @@ enum class Crit : uint8_t { None, Nat20, Nat1 };
 int maxCount(uint8_t die);
 bool validDie(uint8_t die);
 
-// Uniform 1..n from a 32-bit random source, without modulo bias.
+// Uniform 1..n from a 32-bit random source, without modulo bias. n <= 1 → 1.
 using Rng = uint32_t (*)();
 uint8_t uniform(Rng rng, uint8_t n);
 

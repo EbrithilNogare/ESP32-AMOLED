@@ -25,7 +25,8 @@ Event Button::update(bool rawPressed, uint32_t nowMs) {
     return quiet ? Event::None : Event::Short;
   }
 
-  if (held_ && !longSent_ && !suppressed_ && nowMs - pressedAtMs_ >= cfg_.longMs) {
+  // raw_ too: a release that is still debouncing must not turn into a Long.
+  if (held_ && raw_ && !longSent_ && !suppressed_ && nowMs - pressedAtMs_ >= cfg_.longMs) {
     longSent_ = true;
     return Event::Long;
   }

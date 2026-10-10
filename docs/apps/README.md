@@ -14,7 +14,8 @@ menu, burn-in rules) is in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 | System (info + OTA) | `system` | Normal; KeepAwake on the update screen | Wi-Fi | [system.md](system.md) |
 
 The menu is built for 10+ apps; candidates for later: clock / watch face,
-settings, battery & system info, stopwatch / countdown, coin flip, weather from Home Assistant, HA scenes.
+settings, stopwatch / countdown, coin flip, weather from Home Assistant, HA
+scenes.
 
 ## Adding an app
 
@@ -22,8 +23,11 @@ settings, battery & system info, stopwatch / countdown, coin flip, weather from 
    on it before coding).
 2. Create `src/apps/<name>/` with a class implementing `App`
    (`src/apps/app.h`).
-3. Draw a round icon (~130 px, transparent background, works on black) and
-   convert it with the LVGL image converter into `src/ui/icons/`.
+3. Pick a Material Symbols glyph for the icon (the menu draws it on a 128 px
+   disc in the app's accent colour), add its name to the `icons` list of
+   every `icon_*` font in `assets/assets.toml`, run `python tools/assets.py`,
+   and use `ICON_<NAME>` in the app's `AppInfo` (see
+   [tools/README.md](../../tools/README.md)).
 4. Register the app in `main.cpp`; that's its position in the menu.
 5. App settings go in a `// ---- <app> ----` block in `include/config.h`;
    secrets, if any, in `secrets.example.h`.

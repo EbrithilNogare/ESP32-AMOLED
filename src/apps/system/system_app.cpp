@@ -9,6 +9,7 @@
 #include "core/net.h"
 #include "core/ota.h"
 #include "core/pmu.h"
+#include "core/ticks.h"
 #include "ui/power_anim.h"
 #include "ui/theme.h"
 
@@ -16,8 +17,8 @@ namespace apps {
 
 using core::ota::State;
 
-static const AppInfo kInfo = {"system", "System", ICON_MEMORY, 0x8FA3BF};
-static constexpr uint32_t kAccent = 0x8FA3BF;
+static constexpr uint32_t kAccent = 0x8FA3BF;  // slate
+static const AppInfo kInfo = {"system", "System", ICON_MEMORY, kAccent};
 static const char *const kKeys[8] = {"Firmware", "Board", "Battery", "Charging", "Wi-Fi", "IP", "Free RAM", "Uptime"};
 
 const AppInfo &SystemApp::info() const { return kInfo; }
@@ -37,6 +38,7 @@ void SystemApp::onCreate(lv_obj_t *root) {
 void SystemApp::onDestroy() {
   if (updateView_) core::ota::stop();
   updateView_ = false;
+  openUpdate_ = false;
   root_ = arc_ = icon_ = pct_ = status_ = line1_ = nullptr;
   for (auto &v : values_) v = nullptr;
 }
@@ -50,7 +52,7 @@ bool SystemApp::onBack() {
 
 static lv_obj_t *title(lv_obj_t *root, const char *text) {
   lv_obj_t *t = ui::label(root, &font_title, ui::col::text, text);
-  lv_obj_set_pos(t, 24, 22);
+  lv_obj_set_pos(t, ui::kEdge, ui::kEdge - 2);  // cap height lines up with captions
   return t;
 }
 
@@ -69,7 +71,7 @@ void SystemApp::showInfo() {
     lv_obj_t *row = box(list);
     lv_obj_set_size(row, LV_PCT(100), 35);
     lv_obj_set_style_border_side(row, LV_BORDER_SIDE_BOTTOM, 0);
-    lv_obj_set_style_border_color(row, c(0x1C1C1C), 0);
+    lv_obj_set_style_border_color(row, c(col::track), 0);
     lv_obj_set_style_border_width(row, 1, 0);
     lv_obj_set_style_pad_hor(row, 4, 0);
     lv_obj_align(label(row, &font_list, col::textDim, kKeys[i]), LV_ALIGN_LEFT_MID, 0, 0);
@@ -77,16 +79,15 @@ void SystemApp::showInfo() {
     lv_obj_align(values_[i], LV_ALIGN_RIGHT_MID, 0, 0);
   }
 
-  lv_obj_t *btn = pill(root_, ICON_SYSTEM_UPDATE, "Wireless update", 0xC9D6E8);
-  lv_obj_set_width(btn, LCD_WIDTH - 48);
-  lv_obj_set_flex_align(btn, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_bg_color(btn, c(0x18202A), 0);
+  lv_obj_t *btn = pill(root_, ICON_SYSTEM_UPDATE, "Wireless update", col::text);
+  lv_obj_set_width(btn, LCD_WIDTH - 2 * kEdge);
+  lv_obj_set_style_bg_color(btn, c(mixBlack(kAccent, 18)), 0);
   lv_obj_set_style_border_color(btn, c(kAccent), 0);
   lv_obj_set_style_border_width(btn, 2, 0);
-  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -22);
+  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -kBarBottom);
   lv_obj_add_event_cb(btn, onUpdateClicked, LV_EVENT_CLICKED, this);
 
-  nextInfoMs_ = 0;
+  nextInfoMs_ = millis();
   updateInfo();
 }
 
@@ -106,9 +107,9 @@ void SystemApp::updateInfo() {
   else
     ui::setText(values_[4], "off");
   ui::setText(values_[5], core::net::connected() ? core::net::ip() : "–");
+  const size_t psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
   ui::setTextFmt(values_[6], "%u KB · %u.%u MB", unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
-                 unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1048576),
-                 unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) % 1048576 * 10 / 1048576));
+                 unsigned(psram / 1048576), unsigned(psram % 1048576 * 10 / 1048576));
   ui::setTextFmt(values_[7], "%lu:%02lu:%02lu", (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60),
                  (unsigned long)(up % 60));
 }
@@ -122,19 +123,11 @@ void SystemApp::showUpdate() {
   restarting_ = false;
   title(root_, "Wireless update");
 
-  arc_ = lv_arc_create(root_);
-  lv_obj_set_size(arc_, 260, 260);
+  arc_ = progressRing(root_, 260, 6);
   lv_obj_set_pos(arc_, 54, 70);
-  lv_arc_set_rotation(arc_, 270);
-  lv_arc_set_bg_angles(arc_, 0, 360);
   lv_arc_set_range(arc_, 0, 100);
   lv_arc_set_value(arc_, 0);
-  lv_obj_set_style_arc_width(arc_, 6, LV_PART_MAIN);
-  lv_obj_set_style_arc_color(arc_, c(col::track), LV_PART_MAIN);
-  lv_obj_set_style_arc_width(arc_, 6, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_rounded(arc_, true, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_opa(arc_, LV_OPA_TRANSP, LV_PART_KNOB);
-  lv_obj_set_clickable(arc_, false);
+  otaColor_ = 0;
 
   icon_ = label(root_, &font_icon_56, kAccent, ICON_WIFI_TETHERING);
   lv_obj_align(icon_, LV_ALIGN_TOP_MID, 0, 160);
@@ -146,12 +139,12 @@ void SystemApp::showUpdate() {
   lv_obj_align(status_, LV_ALIGN_TOP_MID, 0, 232);
 
   line1_ = label(root_, &font_body_medium, col::text, "");
-  lv_obj_set_width(line1_, LCD_WIDTH - 48);
+  lv_obj_set_width(line1_, LCD_WIDTH - 2 * kEdge);
   lv_obj_set_style_text_align(line1_, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(line1_, LV_ALIGN_TOP_MID, 0, 352);
   lv_obj_t *line2 = label(root_, &font_caption, col::textDim, "");
   ui::setTextFmt(line2, "%s.local · %s", OTA_HOSTNAME, APP_VERSION);
-  lv_obj_set_width(line2, LCD_WIDTH - 48);
+  lv_obj_set_width(line2, LCD_WIDTH - 2 * kEdge);
   lv_obj_set_style_text_align(line2, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_align(line2, LV_ALIGN_TOP_MID, 0, 384);
 
@@ -182,18 +175,18 @@ void SystemApp::updateOta(uint32_t nowMs) {
       break;
     case State::Off: break;
   }
-  lv_obj_set_style_arc_color(arc_, ui::c(color), LV_PART_INDICATOR);
+  // This runs every loop pass while the screen is open: touch the styles only
+  // when the colour changes (the arc value and texts skip unchanged values).
+  if (color != otaColor_) {
+    otaColor_ = color;
+    lv_obj_set_style_arc_color(arc_, ui::c(color), LV_PART_INDICATOR);
+    lv_obj_set_style_text_color(icon_, ui::c(color), 0);
+  }
   lv_arc_set_value(arc_, s == State::Done ? 100 : s == State::Receiving ? core::ota::progress() : 0);
   ui::setText(icon_, s == State::Done ? ICON_CHECK_CIRCLE : s == State::Error ? ICON_ERROR : ICON_WIFI_TETHERING);
-  lv_obj_set_style_text_color(icon_, ui::c(color), 0);
-  if (showPct) {
-    lv_obj_set_hidden(icon_, true);
-    lv_obj_set_hidden(pct_, false);
-    ui::setTextFmt(pct_, "%u %%", core::ota::progress());
-  } else {
-    lv_obj_set_hidden(icon_, false);
-    lv_obj_set_hidden(pct_, true);
-  }
+  lv_obj_set_hidden(icon_, showPct);
+  lv_obj_set_hidden(pct_, !showPct);
+  if (showPct) ui::setTextFmt(pct_, "%u %%", core::ota::progress());
   ui::setText(status_, status);
   ui::setText(line1_, s == State::Receiving ? "Don’t power off" : core::net::connected() ? core::net::ip() : "");
 
@@ -213,7 +206,7 @@ void SystemApp::onTick(uint32_t nowMs) {
   }
   if (updateView_) {
     updateOta(nowMs);
-  } else if (nowMs >= nextInfoMs_) {
+  } else if (core::reached(nowMs, nextInfoMs_)) {
     nextInfoMs_ = nowMs + 1000;
     updateInfo();
   }

@@ -139,3 +139,34 @@ sprites small (64×64 × 12 frames RGB565A8 ≈ 147 KB of flash).
   `LV_FONT_CONV_VERSION` in `assets.py`, run `npm install --prefix tools`,
   commit `package-lock.json`, regenerate and review the diff.
 - **fontTools**: bump `requirements.txt`, regenerate, review the icon diff.
+
+## Firmware version (`version.py`)
+
+PlatformIO pre-build script (`extra_scripts = pre:tools/version.py`). It sets
+`APP_VERSION` from `git describe --tags --always --dirty`, so the boot log,
+the System app and the OTA screen show exactly which build is running.
+Without git it falls back to `unknown`.
+
+## Size budget (`size_check.py`)
+
+PlatformIO post-build script (`post:tools/size_check.py`). It prints the size
+of `firmware.bin` against the `app0` slot read from `partitions.csv` (4 MiB),
+warns above 3.0 MiB and fails the build above 3.5 MiB or the slot size
+(`docs/ARCHITECTURE.md` §12).
+
+## PC simulator (`sim/`)
+
+`[env:sim]` builds the real apps, UI and LVGL for the PC, with the hardware
+modules stubbed (`sim_core.cpp`, `shim/`). `sim_main.cpp` taps through every
+app, checks the results and writes each frame as a PPM into `.pio/sim/`
+(override with `$SIM_OUT`). Its clock starts 30 s before `millis()` wraps,
+so every flow also runs across the wrap. `shots.py` turns them into
+`docs/design/screens/*.png` and the contact sheet
+`docs/design/firmware-screens.png`; it needs Pillow (`pip install pillow`).
+
+```bash
+pio run -e sim && .pio/build/sim/program   # or: pio run -e sim -t exec
+python tools/sim/shots.py                  # or /usr/bin/python3 if that's where Pillow is
+```
+
+Regenerate and look at the screenshots after every visible UI change.

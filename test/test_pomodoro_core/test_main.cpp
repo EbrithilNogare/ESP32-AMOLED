@@ -240,8 +240,16 @@ static void test_restore_clamps_garbage() {
   TEST_ASSERT_EQUAL_UINT8(0, p.completed());
   p.restore({uint8_t(Phase::Focus), 0, 200, 99 * MIN}, 0);
   TEST_ASSERT_EQUAL(Phase::Focus, p.phase());
-  TEST_ASSERT_EQUAL_UINT8(4, p.completed());             // clamped to setSize
+  TEST_ASSERT_EQUAL_UINT8(3, p.completed());             // Focus holds at most setSize - 1
   TEST_ASSERT_EQUAL_UINT32(25 * MIN, p.remainingMs(0));  // clamped to the phase
+  // Ending that focus completes the set exactly: long break with setSize done.
+  p.skip(0);
+  TEST_ASSERT_EQUAL(Phase::LongBreak, p.phase());
+  TEST_ASSERT_EQUAL_UINT8(4, p.completed());
+  p.restore({uint8_t(Phase::ShortBreak), 0, 4, MIN}, 0);
+  TEST_ASSERT_EQUAL_UINT8(3, p.completed());
+  p.restore({uint8_t(Phase::LongBreak), 0, 200, MIN}, 0);
+  TEST_ASSERT_EQUAL_UINT8(4, p.completed());  // LongBreak may hold setSize
 }
 
 static void test_large_timestamps() {

@@ -12,11 +12,10 @@ struct KeyEvents {
 };
 
 bool begin();
-KeyEvents poll();  // call every ~50 ms; posts VbusChanged events itself
+KeyEvents poll();  // call every PMU_POLL_MS; also tracks VBUS and the battery level
 bool onCharger();  // VBUS present
 bool charging();
 int batteryPercent();  // -1 if no battery
 uint16_t batteryMillivolts();
-bool pwrHeld();  // PWR currently pressed (EXIO4, per vendor demo)
 
 }  // namespace core::pmu

@@ -18,6 +18,8 @@ class EspressoApp : public App {
   power::Policy powerPolicy() const override;
   uint32_t idleDimMs() const override;
 
+  const shot::ShotTimer &timer() const { return timer_; }
+
  private:
   void render(uint32_t nowMs);
   void renderHistory();
@@ -28,7 +30,6 @@ class EspressoApp : public App {
 
   shot::ShotTimer timer_;
   bool loaded_ = false;
-  bool longPressed_ = false;
   lv_obj_t *digits_ = nullptr, *fill_ = nullptr, *msg_ = nullptr, *hist_ = nullptr;
   uint32_t nextFrameMs_ = 0;
 };

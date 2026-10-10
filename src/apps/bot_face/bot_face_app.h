@@ -20,10 +20,12 @@ class BotFaceApp : public App {
   static void onPressed(lv_event_t *e);
   void draw(uint32_t nowMs);
 
+  static constexpr int kMouthPts = 13;  // samples along the Bézier
+
   bool (*isDimmed_)();
   bot::Face face_;
   lv_obj_t *eyeL_ = nullptr, *eyeR_ = nullptr, *mouth_ = nullptr, *mouthO_ = nullptr;
-  lv_point_precise_t mouthPts_[13];
+  lv_point_precise_t mouthPts_[kMouthPts];
   uint32_t nextFrameMs_ = 0;
 };
 

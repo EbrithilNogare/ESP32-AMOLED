@@ -2,18 +2,18 @@
 
 #include <Arduino.h>
 #include <esp_log.h>
+#include <lvgl.h>
 
 #include "board.h"
 #include "i2c_bus.h"
 
 namespace core::touch {
 
-static const char *TAG = "touch";
+[[maybe_unused]] static const char *TAG = "touch";
 
 static uint8_t addr;
 static bool (*pressHook)();
 static void (*activityHook)();
-static lv_indev_t *dev;
 static volatile bool intFlag;
 static bool down;
 static bool swallowing;
@@ -54,14 +54,12 @@ bool begin(uint8_t i2cAddress, bool (*onPress)(), void (*onActivity)()) {
   activityHook = onActivity;
   pinMode(PIN_TOUCH_INT, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_TOUCH_INT), onInt, FALLING);
-  dev = lv_indev_create();
+  lv_indev_t *dev = lv_indev_create();
   lv_indev_set_type(dev, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(dev, readCb);
   if (!addr) ESP_LOGW(TAG, "no touch controller: input from buttons only");
   return addr != 0;
 }
-
-lv_indev_t *indev() { return dev; }
 
 void kick() { intFlag = true; }
 

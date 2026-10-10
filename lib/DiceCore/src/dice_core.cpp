@@ -17,6 +17,7 @@ bool validDie(uint8_t die) {
 int maxCount(uint8_t die) { return die == 100 ? kMaxCountD100 : kMaxCount; }
 
 uint8_t uniform(Rng rng, uint8_t n) {
+  if (n <= 1) return 1;  // nothing to choose (and n = 0 would divide by zero)
   // Reject the top partial bucket so every face is exactly equally likely.
   const uint32_t limit = UINT32_MAX - UINT32_MAX % n;
   uint32_t r;
@@ -178,9 +179,15 @@ static void build(Solid &s, uint8_t die) {
         vert(a * kPhi, 0, b);
       }
   } else {  // d10: pentagonal trapezohedron, apexes on the y axis (index 0 = top)
-    vert(0, -1.25f, 0), vert(0, 1.25f, 0);
-    for (int i = 0; i < 5; i++) vert(cosf(72 * i * kD2R), -0.13f, sinf(72 * i * kD2R));
-    for (int i = 0; i < 5; i++) vert(cosf((72 * i + 36) * kD2R), 0.13f, sinf((72 * i + 36) * kD2R));
+    // Ring vertices on the unit circle at heights -h / +h, alternating every
+    // 36 deg. A kite (apex, two upper ring vertices, the lower one between)
+    // is planar only if the line from the apex through the midpoint of the
+    // upper pair (radius cos 36) reaches the lower vertex (radius 1, height
+    // h): apex = h (1 + cos 36) / (1 - cos 36).
+    const float h = 0.13f, c36 = cosf(36 * kD2R), apex = h * (1 + c36) / (1 - c36);
+    vert(0, -apex, 0), vert(0, apex, 0);
+    for (int i = 0; i < 5; i++) vert(cosf(72 * i * kD2R), -h, sinf(72 * i * kD2R));
+    for (int i = 0; i < 5; i++) vert(cosf((72 * i + 36) * kD2R), h, sinf((72 * i + 36) * kD2R));
     for (int i = 0; i < 5; i++) {
       addEdge(s, 0, 2 + i);
       addEdge(s, 1, 7 + i);

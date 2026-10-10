@@ -9,11 +9,7 @@
 #include "config.h"
 #include "net.h"
 #include "pmu.h"
-#if __has_include("secrets.h")
-#include "secrets.h"
-#else
-#include "secrets.example.h"
-#endif
+#include "secrets_or_example.h"
 
 // The Arduino core confirms a new OTA image during startup unless told to
 // wait; we wait until the UI has proven itself (healthTick()). The hook is a
@@ -22,15 +18,17 @@ extern "C" bool verifyRollbackLater() { return true; }
 
 namespace core::ota {
 
-static const char *TAG = "ota";
+[[maybe_unused]] static const char *TAG = "ota";
 static State st = State::Off;
 static uint8_t pct;
 static const char *err = "";
 static bool pendingVerify;
 static bool listening;
+static bool sleepOff;  // the listener turned modem sleep off
 static bool netHeld;
 static void (*progressHook)();
 static uint32_t lastHookMs;
+static constexpr uint32_t kHookPeriodMs = 100;  // progress UI redraw rate during a transfer
 
 void begin() {
   esp_ota_img_states_t s;
@@ -39,12 +37,16 @@ void begin() {
   if (pendingVerify) ESP_LOGW(TAG, "new firmware: confirming after %d ms of healthy uptime", OTA_HEALTHY_AFTER_MS);
 }
 
+void confirmIfPending() {
+  if (!pendingVerify) return;
+  esp_ota_mark_app_valid_cancel_rollback();
+  pendingVerify = false;
+  ESP_LOGI(TAG, "firmware confirmed");
+}
+
+// Uptime since boot, not a deadline: millis() can't have wrapped this early.
 void healthTick() {
-  if (pendingVerify && millis() > OTA_HEALTHY_AFTER_MS) {
-    esp_ota_mark_app_valid_cancel_rollback();
-    pendingVerify = false;
-    ESP_LOGI(TAG, "firmware confirmed");
-  }
+  if (pendingVerify && millis() > OTA_HEALTHY_AFTER_MS) confirmIfPending();
 }
 
 static void startListener() {
@@ -57,7 +59,7 @@ static void startListener() {
   });
   ArduinoOTA.onProgress([](unsigned int done, unsigned int total) {
     if (total) pct = uint8_t(done * 100ULL / total);
-    if (progressHook && millis() - lastHookMs >= 100) {
+    if (progressHook && millis() - lastHookMs >= kHookPeriodMs) {
       lastHookMs = millis();
       progressHook();
     }
@@ -77,6 +79,7 @@ static void startListener() {
   });
   ArduinoOTA.begin();
   WiFi.setSleep(false);  // modem sleep makes the transfer crawl
+  sleepOff = true;
   listening = true;
   st = State::Waiting;
   ESP_LOGI(TAG, "listening as %s.local", OTA_HOSTNAME);
@@ -107,6 +110,10 @@ void stop() {
   if (listening) {
     ArduinoOTA.end();
     listening = false;
+  }
+  if (sleepOff) {
+    if (WiFi.getMode() != WIFI_OFF) WiFi.setSleep(true);  // net's default
+    sleepOff = false;
   }
   if (netHeld) {
     net::release();

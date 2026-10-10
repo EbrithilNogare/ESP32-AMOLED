@@ -27,11 +27,12 @@
 #include "core/rtc_clock.h"
 #include "core/sound.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "core/touch.h"
 #include "ui/power_anim.h"
 #include "ui/theme.h"
 
-static const char *TAG = "main";
+[[maybe_unused]] static const char *TAG = "main";
 
 static apps::MenuApp menuApp;
 static apps::HomeAssistantApp haApp;
@@ -50,10 +51,12 @@ static void dispatch(const core::Event &e) {
     case Ev::LongPress:
       if (!apps::manager::current()->blocksNavigation()) core::power::requestSleep();  // never mid-OTA
       break;
-    case Ev::HaResult: haApp.onResult(int(e.a), apps::ha_client::stateOf(e.b), apps::ha_client::resultOf(e.b)); break;
+    case Ev::HaResult:
+      haApp.onResult(int(e.a), apps::ha_client::stateOf(e.b), apps::ha_client::resultOf(e.b),
+                     apps::ha_client::isToggle(e.b));
+      break;
     case Ev::WifiChanged: haApp.onWifiChanged(); break;
     case Ev::TimeSynced: core::clock::onNtpSynced(); break;
-    case Ev::VbusChanged: break;  // the power manager reads the PMU itself
   }
 }
 
@@ -116,12 +119,12 @@ void setup() {
 }
 
 void loop() {
-  static uint32_t nextPmuMs;
+  static uint32_t nextPmuMs = millis();  // first pass polls; never 0 (see core::reached)
   const uint32_t now = millis();
 
   core::pmu::KeyEvents keys{false, false};
-  if (now >= nextPmuMs) {
-    nextPmuMs = now + 50;
+  if (core::reached(now, nextPmuMs)) {
+    nextPmuMs = now + PMU_POLL_MS;
     keys = core::pmu::poll();
   }
   core::buttons::poll(keys);
@@ -136,5 +139,5 @@ void loop() {
   core::ota::healthTick();
 
   const uint32_t next = lv_timer_handler();
-  delay(next < 5 ? next : 5);
+  delay(next < LOOP_DELAY_MAX_MS ? next : LOOP_DELAY_MAX_MS);
 }

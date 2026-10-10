@@ -10,7 +10,7 @@
 
 namespace core::clock {
 
-static const char *TAG = "clock";
+[[maybe_unused]] static const char *TAG = "clock";
 static bool timeValid;
 
 // PCF85063 time registers 0x04..0x0A: seconds (bit 7 = oscillator stopped),
@@ -67,8 +67,12 @@ void onNtpSynced() {
       bin2bcd(t.tm_mon + 1),
       bin2bcd(uint8_t(t.tm_year - 100)),
   };
-  if (i2c::write(I2C_ADDR_PCF85063, REG_SECONDS, r, sizeof r)) timeValid = true;
-  ESP_LOGI(TAG, "RTC set from SNTP");
+  if (i2c::write(I2C_ADDR_PCF85063, REG_SECONDS, r, sizeof r)) {
+    timeValid = true;
+    ESP_LOGI(TAG, "RTC set from SNTP");
+  } else {
+    ESP_LOGW(TAG, "RTC write failed");
+  }
 }
 
 }  // namespace core::clock
