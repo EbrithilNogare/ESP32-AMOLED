@@ -14,6 +14,7 @@
 #include "apps/menu/menu_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
 #include "apps/system/system_app.h"
+#include "apps/wifi/wifi_app.h"
 #include "config.h"
 #include "core/board_init.h"
 #include "core/buttons.h"
@@ -25,6 +26,7 @@
 #include "core/pmu.h"
 #include "core/power.h"
 #include "core/rtc_clock.h"
+#include "core/settings.h"
 #include "core/sound.h"
 #include "core/store.h"
 #include "core/ticks.h"
@@ -34,7 +36,8 @@
 
 [[maybe_unused]] static const char *TAG = "main";
 
-static apps::MenuApp menuApp;
+static apps::WifiApp wifiApp;  // opened from the quick settings, not listed in the menu
+static apps::MenuApp menuApp(&wifiApp);
 static apps::HomeAssistantApp haApp;
 static apps::BotFaceApp botApp([]() { return core::power::stage() == power::Stage::Dimmed; });
 static apps::PomodoroApp pomodoroApp;
@@ -70,6 +73,7 @@ void setup() {
 
   core::events::begin();
   core::store::begin();
+  core::settings::begin();  // user brightness and Wi-Fi, before display and net use them
   core::ota::begin();
   if (!core::board::begin()) ESP_LOGE(TAG, "board bring-up failed");
   if (!core::display::begin(core::board::lcdColumnOffset())) {

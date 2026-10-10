@@ -7,6 +7,7 @@
 #include <lvgl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 
 #include <string>
@@ -21,12 +22,16 @@
 #include "apps/menu/menu_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
 #include "apps/system/system_app.h"
+#include "apps/wifi/wifi_app.h"
 #include "board.h"
+#include "core/settings.h"
+#include "core/store.h"
 #include "sim.h"
 #include "ui/power_anim.h"
 #include "ui/theme.h"
 
-static apps::MenuApp menuApp;
+static apps::WifiApp wifiApp;  // opened from the quick settings, not listed in the menu
+static apps::MenuApp menuApp(&wifiApp);
 static apps::HomeAssistantApp haApp;
 static apps::BotFaceApp botApp([]() { return sim::stage == power::Stage::Dimmed; });
 static apps::PomodoroApp pomodoroApp;
@@ -377,6 +382,79 @@ int main() {
   CHECK(systemApp.powerPolicy() == power::Policy::Normal);
   apps::manager::home();
   advance(400);
+
+  // ---- quick settings: pull the status bar down
+  apps::manager::home();  // the menu scrolls back to the top
+  advance(400);
+  apps::QuickSettings &qs = menuApp.quickSettings();
+  drag(184, 14, 230);
+  CHECK(qs.isOpen());
+  capture("28-quick-settings");
+  apps::manager::back();  // Back closes the shade
+  advance(400);
+  CHECK(!qs.isOpen());
+  tap(184, 14);  // a tap on the status bar opens it too
+  CHECK(qs.isOpen());
+
+  // Brightness bar (y 148-212, x 16-352): a tap in the middle, then a drag;
+  // live while touched, saved on release.
+  const int applied = sim::brightnessApplied;
+  tap(184, 180);
+  CHECK(core::settings::brightnessPct() == 38 && sim::brightnessApplied > applied);
+  touchX = 100;  // press at x 100 and slide to x 300
+  touchY = 180;
+  touchDown = true;
+  advance(40);
+  for (int i = 1; i <= 10; i++) {
+    touchX = 100 + 20 * i;
+    advance(15);
+  }
+  touchDown = false;
+  advance(100);
+  CHECK(core::settings::brightnessPct() == 60);
+  uint8_t saved = 0;
+  CHECK(core::store::load("bright", &saved, 1) && saved == 60);
+
+  // ---- Wi-Fi: open from the shade, pick a network, type the password
+  sim::networks = {{"HomeNet", -52, true}, {"Neighbour 5G", -68, true}, {"Cafe Guest", -80, false}};
+  sim::scanDone = false;
+  tap(184, 104);  // the Wi-Fi row
+  CHECK(apps::manager::current() == &wifiApp && !qs.isOpen());
+  CHECK(sim::scans == 1);
+  sim::scanDone = true;
+  advance(100);
+  capture("29-wifi-networks");
+  tap(184, 60 + 56 + 6 + 28);  // "Neighbour 5G"
+  CHECK(wifiApp.view() == apps::WifiApp::View::Password);
+
+  // Keys: 3 × 4 from y 136, 106 × 54 px, 8 px apart (6 between rows).
+  static const char kKeyOrder[] = "123456789*0#";
+  auto key = [](char k, int times) {
+    const int i = int(strchr(kKeyOrder, k) - kKeyOrder);
+    for (int t = 0; t < times; t++) tap(16 + (i % 3) * 114 + 53, 136 + (i / 3) * 60 + 27);
+  };
+  auto pause = []() { advance(1000); };  // lets the pending letter commit
+  key('7', 1);                           // p
+  key('2', 1);                           // a
+  key('7', 4);                           // s
+  pause();
+  key('7', 3);  // r, still cycling
+  capture("30-wifi-password");
+  key('7', 1);  // r → s
+  key('#', 2);  // abc → ABC → 123 (commits the s)
+  key('1', 1);
+  key('2', 1);
+  key('3', 1);
+  key('4', 1);
+  CHECK(strcmp(wifiApp.typed(), "pass1234") == 0);
+  tap(241, LCD_HEIGHT - 20 - 24);  // Connect
+  CHECK(wifiApp.view() == apps::WifiApp::View::Joining);
+  CHECK(sim::joinSsid == "Neighbour 5G" && sim::joinPassword == "pass1234");
+  sim::join = core::net::Join::Joined;
+  advance(200);
+  capture("31-wifi-connected");
+  tap(184, LCD_HEIGHT - 20 - 28);  // Done
+  CHECK(apps::manager::inMenu());
 
   // ---- power-off animation
   static bool animDone;

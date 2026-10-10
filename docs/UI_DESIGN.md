@@ -63,6 +63,7 @@ Per-app **accent** (icon glyph + ring, in-app highlights):
 | Dice | `#FF8A1F` orange (`DICE_COLOR`) |
 | Level | `#FFD54F` yellow (`LEVEL_COLOR`) |
 | System | `#8FA3BF` slate |
+| Wi-Fi settings, quick settings | `#4DA3FF` (`col::info`) |
 
 New apps pick a hue not already in use. The accent at ~15 % brightness on black
 is the "tinted surface" (`accent_dim`, computed by the theme).

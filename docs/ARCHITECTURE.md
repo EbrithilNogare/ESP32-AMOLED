@@ -104,8 +104,8 @@ live.
 
 | | Battery | Charger |
 | --- | --- | --- |
-| Max brightness | 100 % (`BRIGHTNESS_MAX_BATTERY`) | **80 %** (`BRIGHTNESS_MAX_CHARGER`) |
-| Idle → dim | 10 s → 25 % | 60 s → 40 % |
+| Active brightness | the user's setting, 5–70 % (quick settings, default 60 %) | same |
+| Idle → dim | 10 s → half of it, at most 25 % | 60 s → half of it, at most 40 % |
 | Idle → black | 15 s | **5 min → plain black** (display off; touch/button restores, §7) |
 | Idle → deep sleep | 20 s | never |
 | Wi-Fi | only while an app needs it | can stay connected |
@@ -282,7 +282,7 @@ src/
     └── generated/        fonts + icon codepoints from tools/assets.py (committed)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
 lib/       Arduino-free logic (host-testable):
-           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/  DiceCore/  LevelCore/
+           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/  DiceCore/  LevelCore/  MultiTap/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
 tools/     assets.py, version.py, size_check.py, sim/ (PC simulator + screenshots)
@@ -342,11 +342,12 @@ created on open and deleted on close.
 power-off). When Wi-Fi is up, SNTP corrects it. Timezone is a POSIX TZ
 string in `config.h` (`TIMEZONE`, e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`).
 
-**Settings.** Compile-time defaults in `config.h`. A `Settings` service reads
-NVS overrides on top of them (written by a future Settings app), so apps read
-settings through `Settings`, never directly from macros. *Not implemented
-yet:* with no Settings app there is nothing to override, so apps read
-`config.h` directly for now; add the service together with the app.
+**Settings.** Compile-time defaults in `config.h`. The two settings changed on
+the device, brightness and the Wi-Fi network, live in `core::settings` (NVS)
+and are set from the [quick settings](apps/quick-settings.md) shade and the
+[Wi-Fi screen](apps/wifi.md). A saved network wins over `WIFI_SSID` in
+`secrets.h`; a new one is saved only after it connects (`net::join()`).
+Everything else is read from `config.h` directly.
 
 **Conventions.** C++17, one namespace per area (`core::`, `apps::`, `ui::`),
 `.clang-format` (Google style: 2-space indent, 120 columns), no exceptions in firmware code, `ESP_LOGx` with a per-module tag.
@@ -455,6 +456,7 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 | Wi-Fi channel/BSSID, cached HA states | `RTC_DATA_ATTR RtcState` | deep sleep |
 | same, written on "deep off" / power-off | NVS (`Store`) | power-off |
 | espresso shot history, pomodoro counters/settings | NVS | power-off |
+| brightness, saved Wi-Fi network (`bright`, `wifi`) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
 
 NVS writes happen only on sleep/shutdown or on user actions, never
 periodically (flash wear).
@@ -465,8 +467,9 @@ periodically (flash wear).
 
 ```cpp
 // ---- power profiles ----
-#define BRIGHTNESS_MAX_BATTERY     255
-#define BRIGHTNESS_MAX_CHARGER     204   // 80 %
+#define BRIGHTNESS_USER_MIN_PCT    5     // quick settings bar
+#define BRIGHTNESS_USER_MAX_PCT    70
+#define BRIGHTNESS_USER_DEFAULT_PCT 60
 #define BRIGHTNESS_DIM_BATTERY     64    // 25 %
 #define BRIGHTNESS_DIM_CHARGER     102   // 40 %
 #define BRIGHTNESS_FADE_MS         300
@@ -509,7 +512,7 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 - **Host tests (`[env:native]` + Unity, `test/`):** pure logic lives in
   Arduino-free libraries under `lib/` (`PowerFsm`, `ButtonLogic`,
   `PomodoroCore`, `ShotTimer`, `BotFace`, `HaParse`, `PixelShift`, `DiceCore`,
-  `LevelCore`), so it compiles and runs on the PC. Adapters in
+  `LevelCore`, `MultiTap`), so it compiles and runs on the PC. Adapters in
   `src/` connect them to hardware and LVGL. CI runs these tests next to the
   firmware builds.
 - **Simulator (`[env:sim]`, `tools/sim/`):** the real apps, UI and LVGL run

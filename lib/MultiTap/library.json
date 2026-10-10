@@ -1,0 +1,7 @@
+{
+  "name": "MultiTap",
+  "version": "0.1.0",
+  "description": "Nokia-style multi-tap text entry on a 12-key keypad",
+  "platforms": "*",
+  "frameworks": "*"
+}

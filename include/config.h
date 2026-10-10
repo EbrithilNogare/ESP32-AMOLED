@@ -37,8 +37,12 @@
 #define UI_FRAME_MS_DIM 100    // ... while dimmed
 
 // ---- power profiles (docs/ARCHITECTURE.md §3, §8) ----
-#define BRIGHTNESS_MAX_BATTERY 255
-#define BRIGHTNESS_MAX_CHARGER 204  // 80 %: burn-in protection
+// The active brightness is the user's setting (quick settings, saved in NVS).
+// The 70 % ceiling also protects the AMOLED against burn-in.
+#define BRIGHTNESS_USER_MIN_PCT 5
+#define BRIGHTNESS_USER_MAX_PCT 70
+#define BRIGHTNESS_USER_DEFAULT_PCT 60
+// Dimmed: at most half the user's brightness, and at most these levels.
 #define BRIGHTNESS_DIM_BATTERY 64   // 25 %
 #define BRIGHTNESS_DIM_CHARGER 102  // 40 %
 #define BRIGHTNESS_MINIMAL 38       // ~15 %: pomodoro minimal view
@@ -75,7 +79,8 @@
 // ---- Wi-Fi ----
 #define WIFI_CONNECT_TIMEOUT_MS 8000
 #define WIFI_RETRY_MS 15000
-#define WIFI_GRACE_MS 30000  // radio stays on this long after the last release()
+#define WIFI_JOIN_TIMEOUT_MS 15000  // a network picked on the device: first join, DHCP included
+#define WIFI_GRACE_MS 30000         // radio stays on this long after the last release()
 
 // ---- OTA (docs/ARCHITECTURE.md §12) ----
 #define OTA_HOSTNAME "esp32-amoled"

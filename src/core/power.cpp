@@ -14,6 +14,7 @@
 #include "net.h"
 #include "ota.h"
 #include "pmu.h"
+#include "settings.h"
 #include "ticks.h"
 #include "touch.h"
 #include "ui/power_anim.h"
@@ -30,8 +31,14 @@ static constexpr gpio_num_t kBootPin = gpio_num_t(PIN_BOOT_BUTTON);
 static constexpr gpio_num_t kTouchIntPin = gpio_num_t(PIN_TOUCH_INT);
 static constexpr uint32_t kFlushWaitMs = 100;  // longest wait for the minimal frame's DMA before sleeping
 
-static constexpr ::power::Levels kLevels = {BRIGHTNESS_MAX_BATTERY, BRIGHTNESS_MAX_CHARGER, BRIGHTNESS_DIM_BATTERY,
-                                            BRIGHTNESS_DIM_CHARGER, BRIGHTNESS_MINIMAL};
+// Active = the user's brightness (both profiles); dimmed stays clearly
+// darker than that, whatever the user picked.
+static ::power::Levels levels() {
+  const uint8_t user = settings::brightnessLevel();
+  const uint8_t half = user / 2;
+  return {user, user, uint8_t(half < BRIGHTNESS_DIM_BATTERY ? half : BRIGHTNESS_DIM_BATTERY),
+          uint8_t(half < BRIGHTNESS_DIM_CHARGER ? half : BRIGHTNESS_DIM_CHARGER), BRIGHTNESS_MINIMAL};
+}
 
 enum class SleepPhase : uint8_t { None, Animating, WaitRelease };
 
@@ -102,7 +109,7 @@ static Stage apply(Stage s, Stage old) {
     panelOff = false;
   }
   display::setRefreshPeriod(s == Stage::Dimmed ? UI_FRAME_MS_DIM : UI_FRAME_MS);
-  display::fadeTo(::power::brightnessFor(s, prof, kLevels), BRIGHTNESS_FADE_MS);
+  display::fadeTo(::power::brightnessFor(s, prof, levels()), BRIGHTNESS_FADE_MS);
   ESP_LOGD(TAG, "stage %s", ::power::stageName(s));
   return s;
 }
@@ -198,6 +205,11 @@ bool onPress() {
   const bool wasActive = st == Stage::Active && sleepPhase == SleepPhase::None;
   lastInputMs = millis();
   return wasActive;
+}
+
+void applyBrightness() {
+  if (st == Stage::Active && sleepPhase == SleepPhase::None)
+    display::setBrightness(::power::brightnessFor(st, prof, levels()));
 }
 
 void activity() { lastInputMs = millis(); }

@@ -5,9 +5,12 @@
 #include <esp_log.h>
 #include <esp_sntp.h>
 
+#include <algorithm>
+
 #include "config.h"
 #include "events.h"
 #include "secrets_or_example.h"
+#include "settings.h"
 #include "store.h"
 #include "ticks.h"
 
@@ -22,10 +25,23 @@ static bool suspended;
 static uint32_t startedMs, releasedMs, retryAtMs;
 static bool sntpStarted;
 static char ipText[16];
+static bool scanning;
+static int scanCount = -1;
+static Network networks[kMaxNetworks];
+static Join joinSt = Join::Idle;
+static char joinSsid[settings::kSsidMax + 1], joinPassword[settings::kPasswordMax + 1];
 
 static void onTimeSync(timeval *) { events::post({Ev::TimeSynced, 0, 0}); }
 
-static bool configured() { return WIFI_SSID[0] != '\0'; }
+// A network being tried comes first, then the one saved on the device, then
+// the one compiled in.
+static const char *wifiSsid() {
+  return joinSt == Join::Trying ? joinSsid : settings::hasWifi() ? settings::wifiSsid() : WIFI_SSID;
+}
+static const char *wifiPassword() {
+  return joinSt == Join::Trying ? joinPassword : settings::hasWifi() ? settings::wifiPassword() : WIFI_PASSWORD;
+}
+static bool configured() { return wifiSsid()[0] != '\0'; }
 
 // The one place linkUp changes, so connected() is already current when an
 // app handles the WifiChanged event (posted from the UI task, not the Wi-Fi
@@ -33,6 +49,10 @@ static bool configured() { return WIFI_SSID[0] != '\0'; }
 static void setLink(bool up, uint32_t now) {
   if (up == linkUp) return;
   linkUp = up;
+  if (up && joinSt == Join::Trying) {
+    settings::setWifi(joinSsid, joinPassword);  // it works: keep it
+    joinSt = Join::Joined;
+  }
   if (up) {
     strlcpy(ipText, WiFi.localIP().toString().c_str(), sizeof ipText);
     store::RtcState &rtc = store::rtc();
@@ -67,20 +87,51 @@ static void startRadio() {
   // After deep sleep, joining the cached channel/BSSID skips the scan.
   store::RtcState &rtc = store::rtc();
   if (store::rtcValid() && rtc.wifiChannel) {
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD, rtc.wifiChannel, rtc.wifiBssid, true);
+    WiFi.begin(wifiSsid(), wifiPassword(), rtc.wifiChannel, rtc.wifiBssid, true);
   } else {
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    WiFi.begin(wifiSsid(), wifiPassword());
   }
   radioOn = true;
   startedMs = millis();
-  ESP_LOGI(TAG, "connecting to %s", WIFI_SSID);
+  ESP_LOGI(TAG, "connecting to %s", wifiSsid());
 }
 
 static void stopRadio(uint32_t now) {
+  if (scanning) {  // cut short (suspend, shutdown): report an empty result
+    WiFi.scanDelete();
+    scanning = false;
+    scanCount = 0;
+  }
+  // A network on trial that loses its radio before connecting has failed;
+  // the saved one is used again from here on.
+  if (joinSt == Join::Trying) joinSt = Join::Failed;
   WiFi.disconnect(true, false);
   WiFi.mode(WIFI_OFF);
   radioOn = false;
   setLink(false, now);
+}
+
+// Keeps one entry per name (the strongest), strongest first.
+static void collectScan(int found) {
+  scanCount = 0;
+  for (int i = 0; i < found; i++) {
+    const String name = WiFi.SSID(i);
+    if (name.isEmpty()) continue;  // hidden network
+    const int8_t rssi = int8_t(WiFi.RSSI(i));
+    int k = 0;
+    while (k < scanCount && strcmp(networks[k].ssid, name.c_str()) != 0) k++;
+    if (k < scanCount) {
+      if (rssi > networks[k].rssi) networks[k].rssi = rssi;
+      continue;
+    }
+    if (scanCount == kMaxNetworks) continue;
+    Network &n = networks[scanCount++];
+    strlcpy(n.ssid, name.c_str(), sizeof n.ssid);
+    n.rssi = rssi;
+    n.secure = WiFi.encryptionType(i) != WIFI_AUTH_OPEN;
+  }
+  WiFi.scanDelete();
+  std::sort(networks, networks + scanCount, [](const Network &a, const Network &b) { return a.rssi > b.rssi; });
 }
 
 void begin() { WiFi.persistent(false); }
@@ -89,17 +140,38 @@ void loop() {
   const uint32_t now = millis();
   setLink(radioOn && WiFi.status() == WL_CONNECTED, now);
 
+  if (scanning) {
+    const int found = WiFi.scanComplete();
+    if (found == WIFI_SCAN_RUNNING) return;  // leave the radio alone meanwhile
+    scanning = false;
+    collectScan(found > 0 ? found : 0);
+    ESP_LOGI(TAG, "scan: %d networks", scanCount);
+    // A connection attempt was paused (or the radio started just for the
+    // scan): start over, so the join below runs normally again.
+    if (!linkUp) {
+      stopRadio(now);
+      retryAtMs = now;
+    }
+  }
+
   if (suspended) {
     if (radioOn) stopRadio(now);
   } else if (holders > 0) {
     if (!radioOn && configured() && reached(now, retryAtMs)) startRadio();
     // A stale cached BSSID/channel can make the fast join fail: drop the
     // cache and retry with a full scan.
-    if (radioOn && !linkUp && now - startedMs > WIFI_CONNECT_TIMEOUT_MS) {
-      ESP_LOGW(TAG, "connect timed out; retrying");
+    const uint32_t timeout = joinSt == Join::Trying ? WIFI_JOIN_TIMEOUT_MS : WIFI_CONNECT_TIMEOUT_MS;
+    if (radioOn && !linkUp && now - startedMs > timeout) {
+      const bool trial = joinSt == Join::Trying;
       store::rtc().wifiChannel = 0;
-      stopRadio(now);
-      retryAtMs = now + WIFI_RETRY_MS;
+      stopRadio(now);  // also ends a trial as Failed
+      if (trial) {
+        ESP_LOGW(TAG, "couldn't join %s; back to the saved network", joinSsid);
+        retryAtMs = now;
+      } else {
+        ESP_LOGW(TAG, "connect timed out; retrying");
+        retryAtMs = now + WIFI_RETRY_MS;
+      }
     }
   } else if (radioOn && now - releasedMs > WIFI_GRACE_MS) {
     stopRadio(now);
@@ -126,6 +198,42 @@ void suspend(bool on) {
   else
     retryAtMs = millis();  // holders get the radio back right away
 }
+
+void join(const char *ssid, const char *password) {
+  strlcpy(joinSsid, ssid, sizeof joinSsid);
+  strlcpy(joinPassword, password ? password : "", sizeof joinPassword);
+  store::rtc().wifiChannel = 0;  // the cached channel / BSSID belong to the old network
+  if (radioOn) stopRadio(millis());
+  joinSt = Join::Trying;
+  retryAtMs = millis();
+}
+
+Join joinState() { return joinSt; }
+
+void startScan() {
+  if (scanning) return;
+  if (suspended) {
+    scanCount = 0;
+    return;
+  }
+  if (!radioOn) {
+    WiFi.mode(WIFI_STA);
+    radioOn = true;
+    startedMs = millis();
+  } else if (!linkUp) {
+    WiFi.disconnect(false, false);  // the driver can't scan while it's joining
+  }
+  scanCount = -1;
+  scanning = WiFi.scanNetworks(true, false) == WIFI_SCAN_RUNNING;
+  if (!scanning) scanCount = 0;
+}
+
+int scanResults(const Network *&list) {
+  list = networks;
+  return scanning ? -1 : scanCount;
+}
+
+const char *ssid() { return wifiSsid(); }
 
 bool connected() { return linkUp; }
 int rssi() { return linkUp ? WiFi.RSSI() : 0; }

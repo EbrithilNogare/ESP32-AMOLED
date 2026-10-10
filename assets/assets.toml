@@ -158,6 +158,8 @@ icons      = [
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
     "casino", "straighten",
+    "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
+    "backspace", "refresh", "chevron_right",
 ]
 
 [[font]]
@@ -174,6 +176,8 @@ icons      = [
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
     "casino", "straighten",
+    "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
+    "backspace", "refresh", "chevron_right",
 ]
 
 [[font]]
@@ -190,6 +194,8 @@ icons      = [
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
     "casino", "straighten",
+    "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
+    "backspace", "refresh", "chevron_right",
 ]
 
 [[font]]
@@ -206,6 +212,8 @@ icons      = [
     "pause", "play_arrow", "restart_alt", "skip_next",
     "check_circle", "system_update", "error", "cancel", "power_settings_new", "schedule",
     "casino", "straighten",
+    "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
+    "backspace", "refresh", "chevron_right",
 ]
 
 # ---------------------------------------------------------------------------

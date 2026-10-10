@@ -34,10 +34,10 @@ LV_FONT_DECLARE(font_digits_44)    /* RobotoMono-Medium.ttf, 44 px, 4 bpp, 0x221
 LV_FONT_DECLARE(font_digits_56)    /* RobotoMono-Medium.ttf, 56 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_80)    /* RobotoMono-Medium.ttf, 80 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_120)   /* RobotoMono-Medium.ttf, 120 px, 4 bpp, 0x2212, "0123456789:.-% " */
-LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 30 icons */
-LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 30 icons */
-LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 30 icons */
-LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 30 icons */
+LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 38 icons */
+LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 38 icons */
+LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 38 icons */
+LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 38 icons */
 
 /* ---- Images ---- */
 /* (none) */
@@ -77,6 +77,14 @@ LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,ops
 #define ICON_SCHEDULE            "\xEE\xBF\x96"  /* U+EFD6 */
 #define ICON_CASINO              "\xEE\xAD\x80"  /* U+EB40 */
 #define ICON_STRAIGHTEN          "\xEE\x90\x9C"  /* U+E41C */
+#define ICON_LOCK                "\xEE\xA2\x99"  /* U+E899 */
+#define ICON_LIGHT_MODE          "\xEE\x94\x98"  /* U+E518 */
+#define ICON_NETWORK_WIFI_1_BAR  "\xEE\xAF\xA4"  /* U+EBE4 */
+#define ICON_NETWORK_WIFI_2_BAR  "\xEE\xAF\x96"  /* U+EBD6 */
+#define ICON_NETWORK_WIFI_3_BAR  "\xEE\xAF\xA1"  /* U+EBE1 */
+#define ICON_BACKSPACE           "\xEE\x85\x8A"  /* U+E14A */
+#define ICON_REFRESH             "\xEE\x97\x95"  /* U+E5D5 */
+#define ICON_CHEVRON_RIGHT       "\xEE\x97\x8C"  /* U+E5CC */
 
 #ifdef __cplusplus
 } /* extern "C" */

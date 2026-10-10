@@ -13,7 +13,7 @@ then Wi-Fi + Home Assistant.
 
 Status: ☐ not started · ◐ code written, on-device check pending · ☑ done
 
-**Where we are (2026-10-10):** M1–M14, M16 (Dice) and M17 (Level) are
+**Where we are (2026-10-10):** M1–M14, M16 (Dice), M17 (Level) and M18 (quick settings) are
 implemented on this branch. Both firmware envs build with 0 warnings, the
 `lib/` logic passes the host unit tests, and the PC simulator taps through
 every app (`docs/design/firmware-screens.png`). **Nothing has been flashed
@@ -199,6 +199,15 @@ logs 401.
 2×2 tiles, toggle, polling, stale cache after wake.
 
 **On device:** spec acceptance list.
+
+### M18 — Quick settings + Wi-Fi setup ◐ — [spec](apps/quick-settings.md), [Wi-Fi](apps/wifi.md)
+
+Shade pulled down from the menu's status bar with a Wi-Fi row and a live
+brightness bar (5–70 %, saved in NVS); Wi-Fi screen with scan, Nokia-style
+multi-tap keypad (`lib/MultiTap`, host-tested) and a trial join that saves
+the network only once it connects (`core::settings`, `net::join()`).
+
+**On device:** both specs' acceptance lists.
 
 ## Wrap-up
 

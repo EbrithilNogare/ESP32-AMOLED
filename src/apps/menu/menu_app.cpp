@@ -37,7 +37,8 @@ static const char *batteryIcon(int pct, bool charging) {
 void MenuApp::onCreate(lv_obj_t *root) {
   using namespace ui;
 
-  // Status bar: time on the left, Wi-Fi + battery on the right.
+  // Status bar: time on the left, Wi-Fi + battery on the right. Pulling it
+  // down opens the quick settings (created last, so they cover the list).
   lv_obj_t *bar = box(root);
   lv_obj_set_size(bar, LCD_WIDTH - 2 * kMargin, 32);
   lv_obj_set_pos(bar, kMargin, kMargin);
@@ -106,6 +107,7 @@ void MenuApp::onCreate(lv_obj_t *root) {
     label(cell, &font_body, col::textDim, ai.name);
   }
 
+  quick_.create(root, bar, wifiSettings_);
   nextStatusMs_ = millis();
   lv_obj_update_layout(list_);
   applyFocus(list_);
@@ -134,10 +136,15 @@ void MenuApp::onTick(uint32_t nowMs) {
   if (core::reached(nowMs, nextStatusMs_)) {
     nextStatusMs_ = nowMs + 1000;
     updateStatus();
+    if (quick_.isOpen()) quick_.refresh();
   }
 }
 
 bool MenuApp::onBack() {
+  if (quick_.isOpen()) {
+    quick_.close();
+    return true;
+  }
   if (list_) lv_obj_scroll_to_y(list_, 0, LV_ANIM_ON);
   return true;
 }

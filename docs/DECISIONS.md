@@ -5,6 +5,25 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-10 — Quick settings: Wi-Fi and brightness set on the device
+
+**Context:** Changing networks or brightness meant editing `secrets.h` /
+`config.h` and reflashing. The owner asked for an Android-style shade on the
+menu with exactly two settings: Wi-Fi (scan, password on a Nokia-style
+keypad) and brightness (5–70 %, live), both remembered.
+**Decision:** `core::settings` keeps them in NVS (keys `bright`, `wifi`),
+which firmware updates don't touch. A saved network wins over `secrets.h`.
+`net::join()` tries a new network and saves it only once it connects, so a
+typo never replaces a working network. The brightness setting replaces
+`BRIGHTNESS_MAX_BATTERY` / `_CHARGER`: it is the active level on both
+profiles, capped at 70 % (the old charger cap's burn-in reasoning), and
+dimmed is at most half of it. Multi-tap typing is a host-tested library
+(`lib/MultiTap`). The Wi-Fi screen is an `App` that isn't in the menu.
+**Consequences:** The password sits in NVS in plain text (no flash
+encryption), as `secrets.h` sits in the image. "Erase flash" forgets both
+settings. Typing a 20-character password takes a minute; QR or a phone-side
+setup could come later.
+
 ## 2026-10-10 — Review pass: wrap-safe time, shared widgets, warnings on
 
 **Context:** A full review of the PR before merging found the same few

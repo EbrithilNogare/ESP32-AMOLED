@@ -24,8 +24,9 @@ void update();  // every loop
 // Input arrived (touch or button press). Returns true if the screen was
 // already active, i.e. the input should act; false if it only woke it.
 bool onPress();
-void activity();      // ongoing input (e.g. a finger still moving)
-void requestSleep();  // long press: animation, wait for release, deep sleep
+void activity();         // ongoing input (e.g. a finger still moving)
+void applyBrightness();  // the user brightness changed: show it now (no fade)
+void requestSleep();     // long press: animation, wait for release, deep sleep
 
 ::power::Stage stage();
 

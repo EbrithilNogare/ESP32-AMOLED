@@ -23,7 +23,8 @@ switch your lights, time your espresso, roll dice, level a shelf.
 ## What it can do
 
 - **Menu** of round app icons, two per row, scrolling. The status bar shows
-  the time, Wi-Fi and battery.
+  the time, Wi-Fi and battery; pull it down for **quick settings**: pick a
+  Wi-Fi network (typed on a Nokia-style keypad) and set the brightness.
 - **Lights**: four Home Assistant lights as big tap-to-toggle tiles.
 - **Bot face**: a friendly animated face that reacts to taps.
 - **Pomodoro**: 25 / 5 / 15 min focus timer that keeps running in the
@@ -39,6 +40,29 @@ It also looks after itself: it dims and blanks the screen when idle, sleeps
 deeply on battery, keeps the screen on while a timer needs it, shifts the
 picture a few pixels now and then so the AMOLED doesn't burn in, and updates
 over Wi-Fi.
+
+## Quick settings
+
+<img src="docs/design/screens/28-quick-settings.png" width="184" alt="Quick settings">
+<img src="docs/design/screens/29-wifi-networks.png" width="184" alt="Wi-Fi networks">
+<img src="docs/design/screens/30-wifi-password.png" width="184" alt="Typing the password">
+<img src="docs/design/screens/31-wifi-connected.png" width="184" alt="Connected">
+
+In the menu, **drag the status bar down** (or tap it) and a shade slides
+over the menu, like on a phone:
+
+- **Wi-Fi**: shows the network in use. Tap it to pick another: the board
+  scans, you tap a network and type its password on a phone keypad the old
+  way. Tap 2 three times for "c", wait a moment (or press another key) to
+  move on; **#** switches between abc, ABC and 123, **\*** has the symbols,
+  **0** is space, ⌫ deletes. Then **Connect**. The network is remembered
+  only once it actually connects, so a typo can't lock you out of the old
+  one.
+- **Brightness**: one big bar from 5 % to 70 %. Touch or slide along it and
+  the screen follows your finger; it's remembered when you let go.
+
+Both settings stay through restarts, sleep and firmware updates. Drag the
+shade up, tap below it or press a button to close it.
 
 ## The apps
 
@@ -157,7 +181,9 @@ Core (`pip install platformio`).
    ```bash
    cp include/secrets.example.h include/secrets.h
    ```
-   - `WIFI_SSID`, `WIFI_PASSWORD`: your 2.4 GHz Wi-Fi.
+   - `WIFI_SSID`, `WIFI_PASSWORD`: your 2.4 GHz Wi-Fi. Optional: you can also
+     pick the network on the device (quick settings → Wi-Fi), which then
+     wins over these. You still need Wi-Fi for wireless updates and lights.
    - `HA_BASE_URL`, `HA_TOKEN`: your Home Assistant address (e.g.
      `http://192.168.1.10:8123`) and a long-lived access token (HA →
      your profile → Security → Long-lived access tokens).
@@ -223,7 +249,8 @@ Everything you'd want to tweak is in **`include/config.h`**:
 | What | Where |
 | --- | --- |
 | Lights and refresh rate | `HA_LIGHTS`, `HA_POLL_MS` |
-| Screen brightness, dim / black / sleep timings | `BRIGHTNESS_*`, `BAT_IDLE_*`, `CHG_IDLE_*` |
+| Brightness range and default (the level itself is set in quick settings) | `BRIGHTNESS_USER_*` |
+| Dim / black / sleep timings | `BAT_IDLE_*`, `CHG_IDLE_*` |
 | Pomodoro lengths, set size, auto-start, sound | `POMO_*` |
 | Espresso target band | `ESPRESSO_TARGET_MIN_S`, `ESPRESSO_TARGET_MAX_S` |
 | Dice colour and roll time | `DICE_COLOR`, `DICE_ROLL_MS` |
@@ -239,7 +266,9 @@ Rebuild and flash (USB or Wi-Fi) after changing it.
 | Problem | Try |
 | --- | --- |
 | Board doesn't appear as a serial port / upload fails | hold BOOT, replug USB, release BOOT, upload again |
-| Lights show "Connecting…" forever | check `WIFI_SSID` / `WIFI_PASSWORD` (2.4 GHz only) |
+| Lights show "Connecting…" forever | pick the network again in quick settings → Wi-Fi (2.4 GHz only), or check `WIFI_SSID` / `WIFI_PASSWORD` |
+| Wi-Fi: "Couldn't connect" | wrong password (try again, mind ABC / abc), or too far from the router |
+| Forget the saved Wi-Fi and brightness | "ESP: erase flash", then flash again |
 | "HA token rejected" | create a new long-lived token, update `HA_TOKEN` |
 | A light tile is grey | wrong entity ID in `HA_LIGHTS`, or the light is offline in HA |
 | Wireless update: "Wrong password" | `ESP_OTA_PASSWORD` on the PC ≠ `OTA_PASSWORD` on the board |

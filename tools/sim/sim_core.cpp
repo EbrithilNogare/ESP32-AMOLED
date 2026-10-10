@@ -33,6 +33,13 @@ uint8_t otaProgress = 0;
 int haRefreshes = 0;
 std::vector<int> haToggles;
 level::Accel accel{0, 0, 1};
+std::string ssid = "HomeNet";
+std::vector<core::net::Network> networks;
+bool scanDone = true;
+int scans = 0;
+core::net::Join join = core::net::Join::Idle;
+std::string joinSsid, joinPassword;
+int brightnessApplied = 0;
 }  // namespace sim
 
 SimEsp ESP;
@@ -47,6 +54,18 @@ void shutdown() {}
 bool connected() { return sim::wifi; }
 int rssi() { return sim::wifi ? -61 : 0; }
 const char *ip() { return sim::wifi ? "192.168.1.57" : ""; }
+const char *ssid() { return sim::ssid.c_str(); }
+void startScan() { sim::scans++; }
+int scanResults(const Network *&list) {
+  list = sim::networks.data();
+  return sim::scanDone ? int(sim::networks.size()) : -1;
+}
+void join(const char *ssid, const char *password) {
+  sim::joinSsid = ssid;
+  sim::joinPassword = password;
+  sim::join = Join::Trying;
+}
+Join joinState() { return sim::join; }
 }  // namespace net
 
 namespace pmu {
@@ -64,6 +83,7 @@ namespace power {
 ::power::Stage stage() { return sim::stage; }
 void activity() {}
 bool onPress() { return true; }
+void applyBrightness() { sim::brightnessApplied++; }
 }  // namespace power
 
 namespace sound {
