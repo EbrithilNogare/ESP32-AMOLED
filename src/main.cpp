@@ -18,6 +18,7 @@
 #include "apps/timer/timer_app.h"
 #include "apps/wifi/wifi_app.h"
 #include "config.h"
+#include "version.h"
 #include "core/board_init.h"
 #include "core/buttons.h"
 #include "core/display.h"

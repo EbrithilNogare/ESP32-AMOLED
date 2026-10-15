@@ -5,6 +5,7 @@
 
 #include "board.h"
 #include "config.h"
+#include "version.h"
 #include "core/board_init.h"
 #include "core/net.h"
 #include "core/ota.h"
