@@ -55,6 +55,12 @@ Ref nearestRef(float rotation, const Ref *prev) {
   return best;
 }
 
+bool landscapeFor(bool current, View view, float rotation) {
+  if (view != View::Edge) return false;
+  const float d = fabsf(wrap180(rotation + 90.0f));
+  return current ? d <= kLandscapeOutDeg : d <= kLandscapeInDeg;
+}
+
 float percentSlope(float deg) {
   const float p = tanf(deg * kD2R) * 100.0f;
   return p > 9999 ? 9999 : p < -9999 ? -9999 : p;

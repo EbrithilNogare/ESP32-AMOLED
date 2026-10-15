@@ -34,6 +34,12 @@ class App {
   virtual power::Policy backgroundPolicy() const { return power::Policy::Normal; }  // while closed
   virtual uint32_t idleDimMs() const { return 0; }                                  // 0 = profile default
 
+  // Landscape: the manager turns the whole screen (and touch) while this
+  // returns true, so the board's left edge is down, resizes `root` to
+  // 448 × 368 and calls onRotated() to lay the widgets out again.
+  virtual bool landscape() const { return false; }
+  virtual void onRotated() {}
+
   // LowPowerDisplay: draw a sparse, dim view into `layer` (a black overlay)
   // and say when the next redraw is due; the CPU light-sleeps in between.
   virtual void enterMinimal(lv_obj_t *layer) { (void)layer; }

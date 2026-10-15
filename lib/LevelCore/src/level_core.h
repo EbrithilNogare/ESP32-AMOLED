@@ -53,6 +53,13 @@ struct Ref {
 };
 Ref nearestRef(float rotationDeg, const Ref *prev = nullptr);
 
+// Landscape while standing on the left edge (rotation ≈ −90°; the right edge
+// carries the buttons, so the board can't stand on it): entered within
+// kLandscapeInDeg of it, left beyond kLandscapeOutDeg or when lying flat.
+constexpr float kLandscapeInDeg = 35.0f;
+constexpr float kLandscapeOutDeg = 50.0f;
+bool landscapeFor(bool current, View view, float rotationDeg);
+
 float wrap180(float deg);
 float percentSlope(float deg);  // tan(deg) × 100, clamped to ±9999
 // Bubble distance from the vial centre: linear near level, saturating toward

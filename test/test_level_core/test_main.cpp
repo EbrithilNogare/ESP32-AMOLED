@@ -127,6 +127,19 @@ static void test_smoother() {
   TEST_ASSERT_EQUAL_FLOAT(1, s.value().y);
 }
 
+static void test_landscape_only_on_the_left_edge() {
+  TEST_ASSERT_TRUE(landscapeFor(false, View::Edge, -90));
+  TEST_ASSERT_TRUE(landscapeFor(false, View::Edge, -60));
+  TEST_ASSERT_FALSE(landscapeFor(false, View::Edge, -50));  // not yet
+  TEST_ASSERT_TRUE(landscapeFor(true, View::Edge, -45));    // hysteresis: stays
+  TEST_ASSERT_FALSE(landscapeFor(true, View::Edge, -30));
+  TEST_ASSERT_FALSE(landscapeFor(true, View::Edge, -150));
+  TEST_ASSERT_FALSE(landscapeFor(false, View::Edge, 90));   // right edge: never
+  TEST_ASSERT_FALSE(landscapeFor(false, View::Edge, 0));
+  TEST_ASSERT_FALSE(landscapeFor(true, View::Flat, -90));   // lying down
+  TEST_ASSERT_TRUE(landscapeFor(false, View::Edge, 270));   // same as −90
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_flat_face_up_is_level);
@@ -141,5 +154,6 @@ int main() {
   RUN_TEST(test_state_thresholds);
   RUN_TEST(test_percent_and_bubble);
   RUN_TEST(test_smoother);
+  RUN_TEST(test_landscape_only_on_the_left_edge);
   return UNITY_END();
 }

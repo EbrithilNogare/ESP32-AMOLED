@@ -26,8 +26,28 @@ with lean for edge, chosen from five drafts).
 └──────────────────────────┘   └──────────────────────────┘
 ```
 
+Standing on its **left edge** the whole screen turns to landscape
+(448 × 368): the horizon disc on the left, the readouts and Zero / Hold /
+° % stacked in a column on the right.
+
+```
+ Landscape (standing on the left edge)
+┌────────────────────────────────────┐
+│ EDGE · LEVEL                ZEROED │
+│      ╭── scale ──╮     rotation 1.5°│
+│     │ ─── 10 ─── │             1.5° │
+│     │ ═══╦╤╦═══  │            LEVEL │
+│     │╱ horizon ╱ │             2.0° │
+│     │            │          LEAN UP │
+│      ╰───────────╯         [ Zero ] │
+│                            [ Hold ] │
+│                            [ ° | % ]│
+└────────────────────────────────────┘
+```
+
 Simulator frames: `docs/design/screens/22-level-flat.png`,
-`23-level-flat-level.png`, `24-level-edge.png`.
+`23-level-flat-level.png`, `24-level-edge.png`, `50-level-landscape.png`
+(the panel's view, so it shows sideways).
 
 - **Flat — bullseye vial.** The bubble moves toward the high side through
   rings at 1°, 3° and 6° (distance = R · tanh(tilt / 7), so it is precise
@@ -53,6 +73,11 @@ Simulator frames: `docs/design/screens/22-level-flat.png`,
   and 180° is the reference. It switches only once another reference is
   closer by 2°, so the readout doesn't flicker between level and plumb
   around 45°.
+- **Landscape:** only on the left edge (the right edge carries the buttons,
+  so the board doesn't stand on it). Entered within 35° of it, left beyond
+  50° or when lying down (`level::landscapeFor`). Turned, rotation is
+  measured from the left edge, so "level" means the new bottom is level.
+  Hold keeps the orientation too. Back to the menu always turns it back.
 - Zero is kept per view in NVS (`level`), with the unit.
 - A short beep (`LEVEL_BEEP`) when the reading becomes level, at most every
   1.5 s, with a little hysteresis.

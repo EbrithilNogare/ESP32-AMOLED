@@ -5,6 +5,24 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-15 — Landscape for the Level app only, by turning the LVGL display
+
+**Context:** The owner wants the UI to turn to landscape, but only in the
+Level app and only standing on the left edge (the flat one; the buttons are
+on the right). Everything else is laid out for 368 × 448.
+**Decision:** The app manager turns the whole LVGL display
+(`LV_DISPLAY_ROTATION_270`) while the open app's `landscape()` is true, and
+never for the menu or a minimal view. LVGL then lays out 448 × 368 and turns
+touch; the flush callback turns each rendered band into panel orientation
+with `lv_draw_rotate` (one extra 29 KB DMA buffer, allocated on first use).
+Level lays itself out again in `onRotated()`. Not `transform_rotation` on
+the app's root (renders through a full-screen layer) and not rotated glyphs
+(LVGL turns letters, not lines of text).
+**Consequences:** Any app can opt in later with its own landscape layout.
+Leaving the app empties it before the screen turns back, so the landscape
+layout never fades out sideways. The power-off animation sizes itself from
+the current resolution.
+
 ## 2026-10-15 — A month in deep sleep: power the codec down, measure the drain
 
 **Context:** The owner wants the device to last at least a month in deep

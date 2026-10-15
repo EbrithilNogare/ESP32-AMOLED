@@ -34,6 +34,24 @@ App *at(size_t i) { return i < n ? list[i] : nullptr; }
 App *current() { return cur; }
 bool inMenu() { return cur == menu; }
 
+static bool rotated() { return lv_display_get_rotation(lv_display_get_default()) != LV_DISPLAY_ROTATION_0; }
+
+static void setRotation(bool landscape) {
+  lv_display_t *d = lv_display_get_default();
+  lv_display_set_rotation(d, landscape ? LV_DISPLAY_ROTATION_270 : LV_DISPLAY_ROTATION_0);
+  if (appRoot)
+    lv_obj_set_size(appRoot, lv_display_get_horizontal_resolution(d), lv_display_get_vertical_resolution(d));
+  ESP_LOGI(TAG, "%s", landscape ? "landscape" : "portrait");
+}
+
+// Only an open app (never the menu or a minimal view) may turn the screen.
+static void syncRotation() {
+  const bool want = cur != menu && !minimalApp && cur->landscape();
+  if (want == rotated()) return;
+  setRotation(want);
+  cur->onRotated();
+}
+
 static lv_obj_t *makeRoot(lv_obj_t *scr) {
   lv_obj_t *root = ui::box(scr);
   lv_obj_set_size(root, LCD_WIDTH, LCD_HEIGHT);
@@ -64,6 +82,10 @@ void open(App *app) {
 static void closeToMenu() {
   if (cur == menu) return;
   cur->onDestroy();
+  if (rotated()) {  // the landscape layout would show sideways while it fades out
+    lv_obj_clean(appRoot);
+    setRotation(false);
+  }
   cur = menu;
   appRoot = nullptr;
   // auto_del: the app screen is deleted once the fade finishes; the app has
@@ -97,6 +119,7 @@ void tick(uint32_t nowMs) {
   // so the root shift pauses meanwhile.
   if (minimalApp) return;
   cur->onTick(nowMs);
+  syncRotation();
   if (core::reached(nowMs, nextShiftMs)) {
     nextShiftMs = nowMs + PIXEL_SHIFT_PERIOD_MS;
     shift = burnin::pixelShift(++shiftStep, PIXEL_SHIFT_MAX_PX);
@@ -133,6 +156,7 @@ bool enterMinimal() {
   if (minimalApp) return true;
   minimalApp = minimalCandidate();
   if (!minimalApp) return false;
+  syncRotation();  // portrait before the first minimal frame
   minimalLayer = ui::box(lv_layer_top());
   lv_obj_set_size(minimalLayer, LCD_WIDTH, LCD_HEIGHT);
   lv_obj_set_style_bg_color(minimalLayer, lv_color_black(), 0);
@@ -147,6 +171,7 @@ void exitMinimal() {
   lv_obj_delete(minimalLayer);
   minimalLayer = nullptr;
   minimalApp = nullptr;
+  syncRotation();
 }
 
 void minimalTick(uint32_t nowMs) {

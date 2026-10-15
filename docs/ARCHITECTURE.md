@@ -257,6 +257,8 @@ class App {
   virtual uint32_t minimalRefreshMs(uint32_t nowMs) const { return 60000; }
   virtual uint8_t minimalBrightness() const { return 0; }  // 0 = BRIGHTNESS_MINIMAL (Timer: 25 %)
 
+  virtual bool landscape() const { return false; }  // turn the screen (Level on its left edge)
+  virtual void onRotated() {}                       // lay the widgets out again
   virtual void onSleep() {}  // deep sleep is coming: persist what matters
   virtual ~App() = default;
 };

@@ -23,6 +23,8 @@ using level::View;
 static const AppInfo kInfo = {"level", "Level", ICON_STRAIGHTEN, LEVEL_COLOR};
 
 static constexpr int32_t kStageH = 376;   // everything above the bottom bar
+static constexpr int32_t kLandW = LCD_HEIGHT, kLandH = LCD_WIDTH;  // the screen turned
+static constexpr int32_t kColW = 116;     // landscape: readouts and buttons right of the disc
 static constexpr uint32_t kFrameMs = 33;  // at most 30 redraws a second
 static constexpr float kD2R = 0.01745329f;
 static constexpr uint32_t kVial = 0x0B0A06, kVialRim = 0x2E2A1C, kRings = 0x6B5E2E;
@@ -66,11 +68,14 @@ void LevelApp::sample() {
   shown_.view = view_;
   shown_.flat = level::flatAngles(s);
   shown_.edge = level::edgeAngles(s);
+  landscape_ = level::landscapeFor(landscape_, view_, shown_.edge.rotation);
   if (saved_.flatZeroed) shown_.flat.x -= saved_.fx, shown_.flat.y -= saved_.fy;
   if (saved_.edgeZeroed) {
     shown_.edge.rotation = level::wrap180(shown_.edge.rotation - saved_.rot);
     shown_.edge.lean -= saved_.lean;
   }
+  // Turned to landscape, level means the left edge (now the bottom) is level.
+  if (land_) shown_.edge.rotation = level::wrap180(shown_.edge.rotation + 90.0f);
   shown_.ref = level::nearestRef(shown_.edge.rotation, &shown_.ref);
   if (shown_.view == View::Flat)
     beepIfLevel(hypotf(shown_.flat.x, shown_.flat.y));
@@ -119,8 +124,8 @@ void LevelApp::drawHeader(lv_layer_t *layer, float ox, float oy) {
              LV_TEXT_ALIGN_LEFT);
   const char *tag = hold_ ? "HELD" : zeroed() ? "ZEROED" : nullptr;
   if (tag)
-    draw::text(layer, &font_caption, LEVEL_COLOR, LV_OPA_COVER, tag, int32_t(ox) + LCD_WIDTH - ui::kEdge, y, 1,
-               LV_TEXT_ALIGN_RIGHT);
+    draw::text(layer, &font_caption, LEVEL_COLOR, LV_OPA_COVER, tag,
+               int32_t(ox) + (land_ ? kLandW : LCD_WIDTH) - ui::kEdge, y, 1, LV_TEXT_ALIGN_RIGHT);
 }
 
 void LevelApp::drawFlat(lv_layer_t *layer, float ox, float oy) {
@@ -162,7 +167,8 @@ void LevelApp::drawFlat(lv_layer_t *layer, float ox, float oy) {
 // Attitude horizon: rotation tilts the horizon, lean slides it along its
 // normal (5 px per degree), like an aircraft's artificial horizon.
 void LevelApp::drawEdge(lv_layer_t *layer, float ox, float oy) {
-  const float cx = ox + LCD_WIDTH / 2.0f, cy = oy + 214, R = 132, ppd = 5;
+  // Landscape: the disc on the left, readouts in a column on the right.
+  const float cx = land_ ? ox + 160 : ox + LCD_WIDTH / 2.0f, cy = oy + (land_ ? 194 : 214), R = 132, ppd = 5;
   const level::Ref ref = shown_.ref;
   const float lean = shown_.edge.lean, phi = -ref.dev * kD2R;
   const float dx = cosf(phi), dy = sinf(phi);  // along the horizon
@@ -223,20 +229,23 @@ void LevelApp::drawEdge(lv_layer_t *layer, float ox, float oy) {
   draw::line(layer, cx + 22, cy, cx + 10, cy + 10, col, 4, LV_OPA_COVER);
   draw::circle(layer, cx, cy, 4, col, LV_OPA_COVER);
 
-  // Readouts: deviation from level / plumb, and the lean.
+  // Readouts: deviation from level / plumb, and the lean. Portrait: under the
+  // disc, left and right. Landscape: stacked in the right column.
+  const int32_t right = int32_t(ox) + (land_ ? kLandW : LCD_WIDTH) - 24;
+  const int32_t devX = land_ ? right : int32_t(ox + 24), devY = int32_t(oy) + (land_ ? 84 : 338);
+  const int32_t leanY = int32_t(oy) + (land_ ? 144 : 338);
+  const lv_text_align_t devAlign = land_ ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT;
   fmt(buf, sizeof buf, ref.dev, false);
-  draw::text(layer, &font_digits_24, stateColor(ref.dev), LV_OPA_COVER, buf, int32_t(ox + 24), int32_t(oy + 338), 0,
-             LV_TEXT_ALIGN_LEFT);
-  draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, ref.plumb ? "PLUMB" : "LEVEL", int32_t(ox + 24),
-             int32_t(oy + 362), 1, LV_TEXT_ALIGN_LEFT);
+  draw::text(layer, &font_digits_24, stateColor(ref.dev), LV_OPA_COVER, buf, devX, devY, 0, devAlign);
+  draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, ref.plumb ? "PLUMB" : "LEVEL", devX, devY + 24, 1,
+             devAlign);
   fmt(buf, sizeof buf, lean, false);
-  draw::text(layer, &font_digits_24, stateColor(lean), LV_OPA_COVER, buf, int32_t(ox + LCD_WIDTH - 24),
-             int32_t(oy + 338), 0, LV_TEXT_ALIGN_RIGHT);
-  draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, lean >= 0 ? "LEAN UP" : "LEAN DOWN",
-             int32_t(ox + LCD_WIDTH - 24), int32_t(oy + 362), 1, LV_TEXT_ALIGN_RIGHT);
+  draw::text(layer, &font_digits_24, stateColor(lean), LV_OPA_COVER, buf, right, leanY, 0, LV_TEXT_ALIGN_RIGHT);
+  draw::text(layer, &font_caption, ui::col::textDim, LV_OPA_COVER, lean >= 0 ? "LEAN UP" : "LEAN DOWN", right,
+             leanY + 24, 1, LV_TEXT_ALIGN_RIGHT);
   snprintf(buf, sizeof buf, "rotation %.1f\xC2\xB0", fabsf(level::wrap180(shown_.edge.rotation)));
-  draw::text(layer, &font_caption, ui::col::textOff, LV_OPA_COVER, buf, int32_t(ox + 24), int32_t(oy + 52), 0,
-             LV_TEXT_ALIGN_LEFT);
+  draw::text(layer, &font_caption, ui::col::textOff, LV_OPA_COVER, buf, land_ ? right : int32_t(ox + 24),
+             int32_t(oy + 52), 0, devAlign);
 }
 
 void LevelApp::draw(lv_layer_t *layer) {
@@ -274,23 +283,9 @@ void LevelApp::onCreate(lv_obj_t *root) {
     if (core::store::load("level", &s, sizeof s)) saved_ = s;
     loaded_ = true;
   }
-  stage_ = box(root);
-  lv_obj_set_size(stage_, LCD_WIDTH, kStageH);
-  lv_obj_add_event_cb(stage_, onStageDraw, LV_EVENT_DRAW_MAIN, this);
-
-  auto toggleButton = [&](const char *txt, int32_t x, lv_event_cb_t cb) {
-    lv_obj_t *b = textButton(root, txt, col::text, kBtnSmall);
-    lv_obj_set_width(b, 96);
-    lv_obj_align(b, LV_ALIGN_BOTTOM_LEFT, x, -kBarBottom);
-    lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, this);
-    return b;
-  };
-  zeroBtn_ = toggleButton("Zero", kEdge, onZero);
-  holdBtn_ = toggleButton("Hold", kEdge + 96 + 8, onHold);
-
-  static const char *const kUnits[2] = {"\xC2\xB0", "%"};
-  units_ = segmented(root, kUnits, 2, &font_body_medium, 46, onUnit, this);
-  lv_obj_align(units_, LV_ALIGN_BOTTOM_RIGHT, -kEdge, -kBarBottom);
+  root_ = root;
+  landscape_ = false;
+  build();
 
   core::imu::enable(true);
   filter_.reset();
@@ -302,9 +297,49 @@ void LevelApp::onCreate(lv_obj_t *root) {
   syncButtons();
 }
 
+// Portrait: Zero, Hold and the units in a bar under the vial. Landscape
+// (448 × 368): stacked at the bottom of the right column.
+void LevelApp::build() {
+  using namespace ui;
+  land_ = lv_display_get_rotation(lv_obj_get_display(root_)) != LV_DISPLAY_ROTATION_0;
+  stage_ = box(root_);
+  lv_obj_set_size(stage_, land_ ? kLandW : LCD_WIDTH, land_ ? kLandH : kStageH);
+  lv_obj_add_event_cb(stage_, onStageDraw, LV_EVENT_DRAW_MAIN, this);
+
+  const int32_t colX = kLandW - kEdge - kColW;
+  auto toggleButton = [&](const char *txt, int32_t slot, lv_event_cb_t cb) {
+    lv_obj_t *b = textButton(root_, txt, col::text, kBtnSmall);
+    if (land_) {
+      lv_obj_set_width(b, kColW);
+      lv_obj_set_pos(b, colX, kLandH - kBarBottom - 46 - (2 - slot) * (kBtnSmall + 8));
+    } else {
+      lv_obj_set_width(b, 96);
+      lv_obj_align(b, LV_ALIGN_BOTTOM_LEFT, kEdge + slot * (96 + 8), -kBarBottom);
+    }
+    lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, this);
+    return b;
+  };
+  zeroBtn_ = toggleButton("Zero", 0, onZero);
+  holdBtn_ = toggleButton("Hold", 1, onHold);
+
+  static const char *const kUnits[2] = {"\xC2\xB0", "%"};
+  units_ = segmented(root_, kUnits, 2, &font_body_medium, 46, onUnit, this);
+  if (land_) lv_obj_set_width(units_, kColW);
+  lv_obj_align(units_, LV_ALIGN_BOTTOM_RIGHT, -kEdge, -kBarBottom);
+  memset(drawnKey_, 0xFF, sizeof drawnKey_);
+  syncButtons();
+}
+
+void LevelApp::onRotated() {
+  lv_obj_clean(root_);
+  build();
+  sample();  // the readings follow the new orientation
+}
+
 void LevelApp::onDestroy() {
   core::imu::enable(false);
-  stage_ = zeroBtn_ = holdBtn_ = units_ = nullptr;
+  root_ = stage_ = zeroBtn_ = holdBtn_ = units_ = nullptr;
+  land_ = false;
 }
 
 void LevelApp::onTick(uint32_t nowMs) {

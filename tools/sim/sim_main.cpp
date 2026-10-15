@@ -61,7 +61,19 @@ static int failures;
     }                                                        \
   } while (0)
 
-static void flushCb(lv_display_t *d, const lv_area_t *a, uint8_t *px) {
+// Like core::display: a band of the turned (landscape) screen is turned back
+// into panel orientation, so the frames show what the panel shows.
+static void flushCb(lv_display_t *d, const lv_area_t *area, uint8_t *px) {
+  static uint16_t turned[LCD_WIDTH * LCD_HEIGHT];
+  lv_area_t phys = *area;
+  const lv_area_t *a = &phys;
+  const lv_display_rotation_t rot = lv_display_get_rotation(d);
+  if (rot != LV_DISPLAY_ROTATION_0) {
+    const int32_t w = lv_area_get_width(area), h = lv_area_get_height(area);
+    lv_display_rotate_area(d, &phys);
+    lv_draw_rotate(px, turned, w, h, w * 2, lv_area_get_width(&phys) * 2, rot, LV_COLOR_FORMAT_RGB565);
+    px = reinterpret_cast<uint8_t *>(turned);
+  }
   const int32_t w = lv_area_get_width(a);
   const uint16_t *src = reinterpret_cast<const uint16_t *>(px);
   for (int32_t y = a->y1; y <= a->y2; y++) memcpy(&fb[y * LCD_WIDTH + a->x1], src + (y - a->y1) * w, w * 2);
@@ -92,6 +104,15 @@ static void tap(int32_t x, int32_t y) {
   advance(80);
   touchDown = false;
   advance(400);  // let screen transitions finish
+}
+
+// A tap at a point of the screen as laid out (448 × 368 when turned):
+// where the finger lands on the panel. Inverse of LVGL's pointer rotation.
+static void tapScreen(int32_t x, int32_t y) {
+  if (lv_display_get_rotation(nullptr) == LV_DISPLAY_ROTATION_270)
+    tap(LCD_WIDTH - 1 - y, x);
+  else
+    tap(x, y);
 }
 
 static void longPress(int32_t x, int32_t y) {
@@ -149,7 +170,8 @@ static void checkTargets(lv_obj_t *obj, const char *where) {
     lv_area_t a;
     lv_obj_get_coords(obj, &a);
     lv_point_t c{(a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2};
-    if (c.x >= 0 && c.x < LCD_WIDTH && c.y >= 0 && c.y < LCD_HEIGHT) {
+    if (c.x >= 0 && c.x < lv_display_get_horizontal_resolution(nullptr) && c.y >= 0 &&
+        c.y < lv_display_get_vertical_resolution(nullptr)) {
       targetsChecked++;
       lv_obj_t *hit = hitAt(c);
       if (!hit || (!isWithin(hit, obj) && !coveredVisibly(hit, obj))) {
@@ -526,9 +548,32 @@ int main() {
   CHECK(levelApp.zeroed());
   tap(22 + 48, levelBarY);  // Reset
   CHECK(!levelApp.zeroed());
-  apps::manager::back();
+
+  // Standing on the left edge turns the whole screen; the right edge doesn't.
+  sim::accel = level::fromEdge(90, 0);
+  advance(1200);
+  CHECK(lv_display_get_rotation(nullptr) == LV_DISPLAY_ROTATION_0);
+  sim::accel = level::fromEdge(-88.5f, 2);
+  advance(1200);
+  CHECK(levelApp.landscape());
+  CHECK(lv_display_get_rotation(nullptr) == LV_DISPLAY_ROTATION_270);
+  CHECK(lv_display_get_horizontal_resolution(nullptr) == LCD_HEIGHT);
+  capture("50-level-landscape");
+  tapScreen(LCD_HEIGHT - 16 - 58, LCD_WIDTH - 20 - 46 - 112 + 24);  // Zero, top of the right column
+  CHECK(levelApp.zeroed());
+  tapScreen(LCD_HEIGHT - 16 - 58, LCD_WIDTH - 20 - 46 - 112 + 24);  // Reset
+  CHECK(!levelApp.zeroed());
+  sim::accel = level::fromEdge(-30, 0);  // turned back toward the bottom edge
+  advance(1200);
+  CHECK(lv_display_get_rotation(nullptr) == LV_DISPLAY_ROTATION_0);
+  sim::accel = level::fromEdge(-90, 0);
+  advance(1200);
+  CHECK(lv_display_get_rotation(nullptr) == LV_DISPLAY_ROTATION_270);
+  apps::manager::back();  // leaving turns the screen back for the menu
   advance(400);
   CHECK(apps::manager::inMenu());
+  CHECK(lv_display_get_rotation(nullptr) == LV_DISPLAY_ROTATION_0);
+  sim::accel = level::fromFlat(0, 0);
 
   // ---- timer: the clock (and its minimal view), stopwatch, countdown
   tapIcon(&timerApp);

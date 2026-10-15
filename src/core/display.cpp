@@ -52,6 +52,8 @@ static lv_display_t *disp;
 static uint16_t xGap;
 static uint8_t level;
 static volatile bool flushing;
+static uint8_t *turned;  // a band turned for landscape (allocated on first use)
+static size_t bufBytes;
 
 static esp_err_t txParam(uint8_t cmd, const void *data, size_t len) {
   return esp_lcd_panel_io_tx_param(io, (int)((OPCODE_WRITE_CMD << 24) | (uint32_t(cmd) << 8)), data, len);
@@ -67,7 +69,33 @@ static bool onColorDone(esp_lcd_panel_io_handle_t, esp_lcd_panel_io_event_data_t
   return false;
 }
 
+static void send(const lv_area_t *a, uint8_t *px);
+
+// Landscape (lv_display_set_rotation, see apps::manager): LVGL renders the
+// rotated screen in bands, and each band is turned into panel orientation
+// here. LVGL waits for the previous flush before the next, so one spare
+// buffer is enough. The even-aligned window stays even: the panel is 368 wide.
 static void flushCb(lv_display_t *d, const lv_area_t *a, uint8_t *px) {
+  const lv_display_rotation_t rot = lv_display_get_rotation(d);
+  if (rot == LV_DISPLAY_ROTATION_0) {
+    send(a, px);
+    return;
+  }
+  if (!turned) turned = static_cast<uint8_t *>(heap_caps_malloc(bufBytes, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL));
+  if (!turned) {
+    ESP_LOGE(TAG, "no DMA RAM to rotate");
+    lv_display_flush_ready(d);
+    return;
+  }
+  const int32_t w = lv_area_get_width(a), h = lv_area_get_height(a);
+  lv_area_t phys = *a;
+  lv_display_rotate_area(d, &phys);
+  // 16-bit moves: the byte-swapped format turns like plain RGB565.
+  lv_draw_rotate(px, turned, w, h, w * 2, lv_area_get_width(&phys) * 2, rot, LV_COLOR_FORMAT_RGB565);
+  send(&phys, turned);
+}
+
+static void send(const lv_area_t *a, uint8_t *px) {
   const uint16_t x1 = a->x1 + xGap, x2 = a->x2 + xGap;
   const uint8_t caset[4] = {uint8_t(x1 >> 8), uint8_t(x1), uint8_t(x2 >> 8), uint8_t(x2)};
   const uint8_t raset[4] = {uint8_t(a->y1 >> 8), uint8_t(a->y1), uint8_t(a->y2 >> 8), uint8_t(a->y2)};
@@ -78,7 +106,6 @@ static void flushCb(lv_display_t *d, const lv_area_t *a, uint8_t *px) {
   flushing = true;
   const size_t bytes = size_t(lv_area_get_width(a)) * lv_area_get_height(a) * 2;
   esp_lcd_panel_io_tx_color(io, (int)((OPCODE_WRITE_COLOR << 24) | (0x2C << 8)), px, bytes);
-  (void)d;
 }
 
 // CO5300/SH8601 need even-aligned windows: start on an even pixel, end on odd.
@@ -93,7 +120,7 @@ static void rounderCb(lv_event_t *e) {
 bool begin(uint16_t columnOffset) {
   xGap = columnOffset;
   const size_t bufPixels = size_t(LCD_WIDTH) * LCD_DRAW_BUF_LINES;
-  const size_t bufBytes = bufPixels * 2;
+  bufBytes = bufPixels * 2;
 
   spi_bus_config_t bus = {};
   bus.sclk_io_num = PIN_LCD_SCLK;
