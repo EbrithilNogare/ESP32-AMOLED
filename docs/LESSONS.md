@@ -222,3 +222,13 @@ Parsing an HTTP body off `http.getStream()`: `Stream::read()` returns -1 at
 once when the next bytes haven't arrived, which looks like the end of the
 body. Read through `readBytes()` (it honours the stream timeout), and ask for
 HTTP/1.0 (`useHTTP10(true)`) so the body isn't chunked.
+
+## A join locked to the remembered BSSID was refused
+
+Reconnecting with `WiFi.begin(ssid, pass, channel, bssid)` to the last
+access point failed on the board with `ASSOC_FAIL` twice, then `AUTH_FAIL`,
+and the firmware waited the full 8 s timeout; a normal join right after
+connected in 2.7 s. The fast join now passes only the channel (still no
+scan) and gives up on the first disconnect reason instead of waiting.
+The connect log line shows BSSID and channel, to see if the router hands out
+a different access point.

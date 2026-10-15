@@ -198,8 +198,9 @@ static void setLink(bool up, uint32_t now) {
     triedMask = 0;
     fastTried = false;
     strlcpy(ipText, WiFi.localIP().toString().c_str(), sizeof ipText);
-    ESP_LOGI(TAG, "connected to %s, %s, %d dBm, %lu ms%s%s", cur.ssid, ipText, WiFi.RSSI(),
-             (unsigned long)(now - startedMs), curCached ? ", cached channel" : "", curLeaseIp ? ", reused lease" : "");
+    ESP_LOGI(TAG, "connected to %s (%s, channel %d), %s, %d dBm, %lu ms%s%s", cur.ssid, WiFi.BSSIDstr().c_str(),
+             int(WiFi.channel()), ipText, WiFi.RSSI(), (unsigned long)(now - startedMs),
+             curCached ? ", cached channel" : "", curLeaseIp ? ", reused lease" : "");
     if (!sntpStarted) {
       sntp_set_time_sync_notification_cb(onTimeSync);
       configTzTime(TIMEZONE, NTP_SERVER);
@@ -228,14 +229,20 @@ static void startRadio(uint32_t now) {
   } else {
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);  // DHCP (clears a static IP from the last network)
   }
+  // The remembered channel skips the scan. Not the BSSID too: locked to one
+  // access point the router refused the join (ASSOC_FAIL, then AUTH_FAIL) on
+  // the board, while a normal join right after worked.
   if (curCached)
-    WiFi.begin(cur.ssid, cur.password, cur.channel, cur.bssid, true);
+    WiFi.begin(cur.ssid, cur.password, cur.channel, nullptr, true);
   else
     WiFi.begin(cur.ssid, cur.password);
   radioOn = true;
   startedMs = now;
   lastReason = 0;
-  ESP_LOGI(TAG, "connecting to %s%s%s", cur.ssid, curCached ? " (cached channel)" : "", curLeaseIp ? " (reused lease)" : "");
+  if (curCached)
+    ESP_LOGI(TAG, "connecting to %s on channel %u%s", cur.ssid, cur.channel, curLeaseIp ? " (reused lease)" : "");
+  else
+    ESP_LOGI(TAG, "connecting to %s", cur.ssid);
 }
 
 static void stopRadio(uint32_t now) {
@@ -315,17 +322,23 @@ void loop() {
     if (radioOn) stopRadio(now);
   } else if (holders > 0) {
     if (!radioOn && configured() && reached(now, retryAtMs)) startRadio(now);
-    // A stale cached BSSID/channel can make the fast join fail: drop the
-    // cache and retry with a full scan.
+    // A cached join that the router turns down (any disconnect reason) is
+    // given up at once: the normal join is a better bet than the driver's
+    // retries on the same channel.
     const uint32_t timeout = joinSt == Join::Trying ? WIFI_JOIN_TIMEOUT_MS : WIFI_CONNECT_TIMEOUT_MS;
-    if (radioOn && !linkUp && now - startedMs > timeout) {
+    const bool cachedRefused =
+        curCached && joinSt != Join::Trying && lastReason != 0 && lastReason != WIFI_REASON_ASSOC_LEAVE;
+    if (radioOn && !linkUp && !scanning && (now - startedMs > timeout || cachedRefused)) {
       const bool trial = joinSt == Join::Trying;
       stopRadio(now);  // also ends a trial as Failed
       if (trial) {
         ESP_LOGW(TAG, "couldn't join %s; back to the saved network", joinSsid);
         retryAtMs = now;
       } else {
-        ESP_LOGW(TAG, "connect to %s timed out", cur.ssid);
+        if (cachedRefused)
+          ESP_LOGW(TAG, "cached join to %s refused (reason %u); joining normally", cur.ssid, unsigned(lastReason));
+        else
+          ESP_LOGW(TAG, "connect to %s timed out", cur.ssid);
         // After a cached join, or with several known networks: the next try
         // right away (pick() waits once all are tried); else wait first.
         collectKnown();

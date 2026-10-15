@@ -83,9 +83,11 @@ character. Logic: `lib/MultiTap` (host-tested).
   lease (IP, gateway, mask, DNS) with its time. NVS is written only when
   something changed.
 - **Which one it joins:** first the last network, straight on its channel
-  and access point (no scan), reusing its lease as a static IP (no DHCP)
-  while it's younger than `WIFI_LEASE_REUSE_S` and the clock is valid.
-  If that doesn't connect, it falls back: one known network is joined
+  (no scan; not locked to the remembered access point, see LESSONS),
+  reusing its lease as a static IP (no DHCP) while it's younger than
+  `WIFI_LEASE_REUSE_S` and the clock is valid. If the router turns that join
+  down (any disconnect reason) it gives up at once, otherwise after the
+  connect timeout, and falls back: one known network is joined
   normally with DHCP; several are scanned (a scan up to
   `WIFI_SCAN_FRESH_MS` old is reused) and tried strongest in range first;
   when none is left it waits `WIFI_RETRY_MS` and scans again.
