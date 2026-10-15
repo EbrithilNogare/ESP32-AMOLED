@@ -53,6 +53,11 @@ bool read(level::Accel &out) {
   if (!ok || !i2c::read(I2C_ADDR_QMI8658, REG_AX_L, b, sizeof b)) return false;
   const float raw[3] = {int16_t(b[1] << 8 | b[0]) / kLsbPerG, int16_t(b[3] << 8 | b[2]) / kLsbPerG,
                         int16_t(b[5] << 8 | b[4]) / kLsbPerG};
+  static uint32_t lastLogMs;
+  if (millis() - lastLogMs >= 1000) {  // for checking the axis mapping (config.h)
+    lastLogMs = millis();
+    ESP_LOGD(TAG, "raw %+.2f %+.2f %+.2f g", raw[0], raw[1], raw[2]);
+  }
   out = {raw[IMU_SCREEN_X_AXIS] * IMU_SCREEN_X_SIGN, raw[IMU_SCREEN_Y_AXIS] * IMU_SCREEN_Y_SIGN,
          raw[IMU_SCREEN_Z_AXIS] * IMU_SCREEN_Z_SIGN};
   return true;

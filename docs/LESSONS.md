@@ -5,6 +5,19 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## Level: the bubble moved along the wrong axis and the horizon turned backwards
+
+With the QMI8658's axes taken as the screen's, tilting the board flat
+moved the bubble sideways for a forward tilt, and turning it clockwise on
+an edge turned the reading the wrong way. A reversed turning direction
+means the axis mapping is a mirror. A real sensor frame can't be mirrored,
+so swapped X and Y also imply a flipped Z: the chip's Z points into the
+screen. `IMU_SCREEN_*` in `config.h` now swaps X/Y and negates Z. Flat on
+its back the screen frame reads z ≈ +1 g again. The debug build logs the
+raw vector once a second while the Level app runs, so the signs can be
+checked in three poses (face up, left edge lifted, standing on the bottom
+edge).
+
 ## A deadline of 0 never fires once `millis()` passes 2³¹
 
 Deadlines are compared wrap-safe with `core::reached(now, deadline)`

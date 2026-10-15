@@ -149,10 +149,14 @@
 // ---- IMU (QMI8658) axis mapping ----
 // Raw sensor axis (0 = X, 1 = Y, 2 = Z) and sign for each screen axis: x to the
 // right edge, y to the top edge, z out of the screen. Lying face up must read
-// z ≈ +1 g. Not yet checked on the board: see docs/apps/level.md.
-#define IMU_SCREEN_X_AXIS 0
+// z ≈ +1 g. On the board (2026-10-15) the identity mapping moved the flat
+// bubble along the wrong axis and turned the horizon backwards: the chip's X
+// and Y are swapped against the screen, which mirrors the frame, so its Z
+// must point into the screen. The amoled-debug log prints the raw vector
+// ("imu: raw …") once a second while the Level app runs, to re-check.
+#define IMU_SCREEN_X_AXIS 1
 #define IMU_SCREEN_X_SIGN 1
-#define IMU_SCREEN_Y_AXIS 1
+#define IMU_SCREEN_Y_AXIS 0
 #define IMU_SCREEN_Y_SIGN 1
 #define IMU_SCREEN_Z_AXIS 2
-#define IMU_SCREEN_Z_SIGN 1
+#define IMU_SCREEN_Z_SIGN -1
