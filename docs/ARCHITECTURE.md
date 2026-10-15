@@ -567,7 +567,7 @@ partition table would need one USB flash, so it's the last resort.
 
 **v1 — push from the PC (ArduinoOTA / espota):**
 
-- On the device: **System → Wireless update** turns Wi-Fi on, takes a
+- On the device: **System → Update** turns Wi-Fi on, takes a
   `KeepAwake` lock (no dimming or sleep), starts the OTA listener with mDNS
   name `esp32-amoled.local`, and shows host, IP and version.
 - On the PC: VS Code task **"ESP: upload OTA (Wi-Fi)"** →

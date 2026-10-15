@@ -205,7 +205,7 @@ battery it lasts hours, not days. Volume and mute are in quick settings.
 <img src="docs/design/screens/26-wireless-update.png" width="184" alt="Wireless update">
 
 Firmware version, board revision, battery and charging, Wi-Fi signal and IP,
-free memory, uptime. **Wireless update** opens the update screen (see
+free memory, uptime. **Update** opens the wireless update screen (see
 [Updating over Wi-Fi](#updating-over-wi-fi)).
 
 ## Using the device
@@ -265,7 +265,7 @@ Core (`pip install platformio`).
 
 After the first USB flash you can update without a cable.
 
-1. On the board, open **System → Wireless update**. It joins Wi-Fi and shows
+1. On the board, open **System → Update**. It joins Wi-Fi and shows
    **Waiting for upload** with its IP address.
 2. On your PC, in a terminal, set the same password as `OTA_PASSWORD`
    (once per terminal session):
@@ -417,7 +417,7 @@ The build prints the image size and fails above 3.5 MiB (it's ~1.6 MiB).
 | ESP: build | compile |
 | ESP: build & upload & monitor | compile, flash over USB-C, open serial |
 | ESP: upload | compile + flash |
-| ESP: upload OTA (Wi-Fi) | flash over Wi-Fi (open System → Wireless update first, set `ESP_OTA_PASSWORD`) |
+| ESP: upload OTA (Wi-Fi) | flash over Wi-Fi (open System → Update first, set `ESP_OTA_PASSWORD`) |
 | ESP: monitor | serial monitor (115200) |
 | ESP: upload filesystem (data/) | flash the LittleFS image built from `data/` |
 | ESP: clean | delete build output |
