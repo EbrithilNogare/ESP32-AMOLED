@@ -20,6 +20,7 @@
 #include "core/settings.h"
 #include "core/sound.h"
 #include "core/store.h"
+#include "core/touch.h"
 #include "sim.h"
 
 namespace sim {
@@ -44,6 +45,9 @@ int brightnessApplied = 0;
 int volumeApplied = 0;
 int noise = -1;
 std::vector<int> beeps;
+touchcal::Cal touchCal;
+bool touchRaw = false;
+PanelError panel;
 }  // namespace sim
 
 SimEsp ESP;
@@ -79,6 +83,11 @@ Join joinState() { return sim::join; }
 JoinFail joinFail() { return sim::join == Join::Failed ? JoinFail::Password : JoinFail::None; }
 uint8_t joinReason() { return sim::join == Join::Failed ? 15 : 0; }
 }  // namespace net
+
+namespace touch {
+void setCalibration(const touchcal::Cal &c) { sim::touchCal = c; }
+void setRaw(bool on) { sim::touchRaw = on; }
+}  // namespace touch
 
 namespace pmu {
 bool onCharger() { return sim::charger; }

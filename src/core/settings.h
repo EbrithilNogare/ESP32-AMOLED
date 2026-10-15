@@ -1,6 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#include <touch_cal.h>
 
 // User settings changed on the device (quick settings, Wi-Fi screen), kept in
 // NVS so they survive reboots, deep sleep and firmware updates (USB or OTA
@@ -45,5 +46,9 @@ const WifiNet &wifi(int i);
 // Saved immediately, at the front, replacing a network with the same name;
 // past kWifiSaved the oldest one drops off.
 void saveWifi(const WifiNet &net);
+
+// Touch calibration (System → Touch); identity until calibrated.
+const touchcal::Cal &touchCal();
+void saveTouchCal(const touchcal::Cal &c);  // saved immediately
 
 }  // namespace core::settings

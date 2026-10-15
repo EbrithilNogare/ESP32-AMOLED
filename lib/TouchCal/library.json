@@ -1,0 +1,7 @@
+{
+  "name": "TouchCal",
+  "version": "0.1.0",
+  "description": "Touch calibration: per-axis linear fit from tapped targets",
+  "platforms": "*",
+  "frameworks": "*"
+}

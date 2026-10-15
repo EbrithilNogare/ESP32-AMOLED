@@ -200,3 +200,13 @@ every compile command, framework and libraries included. If its value
 changes per commit (like a git version), SCons recompiles the whole tree each
 time. Put changing values in a generated header that only the files that need
 them include — see `tools/version.py` and `include/version.h`.
+
+## Touch is off at the edges while the UI is right
+
+On the board, taps near the edges (Dice die buttons, stepper) had to land a
+bit towards the centre to hit. The simulator's tap-target check (every
+tappable element gets a tap at its own centre on every captured screen)
+passes, so the UI and its hit areas agree: the panel's reported position
+doesn't match the pixels. Fixed with a per-device calibration
+(System → Touch, `lib/TouchCal`), not with hard-coded offsets: the error
+may differ between boards.

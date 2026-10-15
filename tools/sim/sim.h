@@ -8,6 +8,7 @@
 
 #include "core/net.h"
 #include "core/ota.h"
+#include "touch_cal.h"
 
 // Knobs the simulator script turns (see sim_core.cpp).
 namespace sim {
@@ -31,4 +32,12 @@ extern int brightnessApplied;
 extern int volumeApplied;
 extern int noise;               // -1 silent, else the noise::Kind playing
 extern std::vector<int> beeps;  // core::sound::Pattern of every beep played
+// Touch: the correction core::touch applies, raw mode, and a panel error to
+// emulate (raw = (finger - offset) / scale per axis; identity by default).
+extern touchcal::Cal touchCal;
+extern bool touchRaw;
+struct PanelError {
+  double xScale = 1, xOffset = 0, yScale = 1, yOffset = 0;
+};
+extern PanelError panel;
 }  // namespace sim

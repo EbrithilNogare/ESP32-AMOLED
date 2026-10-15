@@ -18,6 +18,8 @@ static volatile bool intFlag;
 static bool down;
 static bool swallowing;
 static int16_t lastX, lastY;
+static touchcal::Cal cal;
+static bool raw;
 
 static void IRAM_ATTR onInt() { intFlag = true; }
 
@@ -33,13 +35,17 @@ static void readCb(lv_indev_t *, lv_indev_data_t *data) {
       if (points >= 1 && points <= 5) {
         lastX = int16_t(((b[3] & 0x0F) << 8) | b[4]);
         lastY = int16_t(((b[5] & 0x0F) << 8) | b[6]);
-        if (lastX >= LCD_WIDTH) lastX = LCD_WIDTH - 1;
-        if (lastY >= LCD_HEIGHT) lastY = LCD_HEIGHT - 1;
+        if (!raw) {
+          lastX = touchcal::mapX(cal, lastX);
+          lastY = touchcal::mapY(cal, lastY);
+        }
+        lastX = lastX < 0 ? 0 : lastX >= LCD_WIDTH ? LCD_WIDTH - 1 : lastX;
+        lastY = lastY < 0 ? 0 : lastY >= LCD_HEIGHT ? LCD_HEIGHT - 1 : lastY;
         pressed = true;
       }
     }
     if (pressed && !down) {
-      ESP_LOGD(TAG, "down %d,%d", lastX, lastY);  // raw panel position, for checking accuracy at the edges
+      ESP_LOGD(TAG, "down %d,%d%s", lastX, lastY, raw ? " (raw)" : "");
       swallowing = pressHook && !pressHook();
     }
     if (pressed && activityHook) activityHook();
@@ -65,6 +71,8 @@ bool begin(uint8_t i2cAddress, bool (*onPress)(), void (*onActivity)()) {
 }
 
 void kick() { intFlag = true; }
+void setCalibration(const touchcal::Cal &c) { cal = c; }
+void setRaw(bool on) { raw = on; }
 
 void sleep() {
   if (!addr) return;

@@ -94,6 +94,7 @@ void setup() {
 
   ui::begin();
   core::touch::begin(core::board::touchAddress(), core::power::onPress, core::power::activity);
+  core::touch::setCalibration(core::settings::touchCal());
   core::buttons::begin(core::power::onPress);
   if (wokeByButton) core::buttons::ignoreHeldPress();
 

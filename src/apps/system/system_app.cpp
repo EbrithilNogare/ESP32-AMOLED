@@ -10,7 +10,9 @@
 #include "core/net.h"
 #include "core/ota.h"
 #include "core/pmu.h"
+#include "core/settings.h"
 #include "core/ticks.h"
+#include "core/touch.h"
 #include "ui/power_anim.h"
 #include "ui/theme.h"
 
@@ -38,6 +40,7 @@ void SystemApp::onCreate(lv_obj_t *root) {
 
 void SystemApp::onDestroy() {
   if (updateView_) core::ota::stop();
+  if (touchView_) finishTouch(false);
   updateView_ = false;
   openUpdate_ = false;
   root_ = arc_ = icon_ = pct_ = status_ = line1_ = nullptr;
@@ -45,6 +48,11 @@ void SystemApp::onDestroy() {
 }
 
 bool SystemApp::onBack() {
+  if (touchView_) {
+    finishTouch(false);
+    showInfo();
+    return true;
+  }
   if (!updateView_) return false;
   core::ota::stop();
   showInfo();
@@ -80,13 +88,19 @@ void SystemApp::showInfo() {
     lv_obj_align(values_[i], LV_ALIGN_RIGHT_MID, 0, 0);
   }
 
-  lv_obj_t *btn = pill(root_, ICON_SYSTEM_UPDATE, "Wireless update", col::text);
-  lv_obj_set_width(btn, LCD_WIDTH - 2 * kEdge);
+  const int32_t half = (LCD_WIDTH - 2 * kEdge - 12) / 2;
+  lv_obj_t *btn = pill(root_, ICON_SYSTEM_UPDATE, "Update", col::text);
+  lv_obj_set_width(btn, half);
   lv_obj_set_style_bg_color(btn, c(mixBlack(kAccent, 18)), 0);
   lv_obj_set_style_border_color(btn, c(kAccent), 0);
   lv_obj_set_style_border_width(btn, 2, 0);
-  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -kBarBottom);
+  lv_obj_align(btn, LV_ALIGN_BOTTOM_LEFT, kEdge, -kBarBottom);
   lv_obj_add_event_cb(btn, onUpdateClicked, LV_EVENT_CLICKED, this);
+  lv_obj_t *touch = pill(root_, ICON_STRAIGHTEN, "Touch", col::text);
+  lv_obj_set_width(touch, half);
+  lv_obj_set_style_bg_color(touch, c(col::surface), 0);
+  lv_obj_align(touch, LV_ALIGN_BOTTOM_RIGHT, -kEdge, -kBarBottom);
+  lv_obj_add_event_cb(touch, onTouchClicked, LV_EVENT_CLICKED, this);
 
   nextInfoMs_ = millis();
   updateInfo();
@@ -205,6 +219,18 @@ void SystemApp::onTick(uint32_t nowMs) {
     openUpdate_ = false;
     showUpdate();
   }
+  const Pending p = pending_;
+  pending_ = Pending::None;
+  switch (p) {
+    case Pending::Touch:
+    case Pending::Redo: showTouch(); break;
+    case Pending::Save:
+      finishTouch(true);
+      showInfo();
+      break;
+    case Pending::None: break;
+  }
+  if (touchView_) return;
   if (updateView_) {
     updateOta(nowMs);
   } else if (core::reached(nowMs, nextInfoMs_)) {
@@ -215,6 +241,135 @@ void SystemApp::onTick(uint32_t nowMs) {
 
 void SystemApp::onUpdateClicked(lv_event_t *e) {
   static_cast<SystemApp *>(lv_event_get_user_data(e))->openUpdate_ = true;
+}
+
+// ---------------------------------------------------------------- touch calibration
+
+// Near the corners, where a panel's error shows most, and the centre.
+static const int16_t kCalX[] = {40, LCD_WIDTH - 40, LCD_WIDTH - 40, 40, LCD_WIDTH / 2};
+static const int16_t kCalY[] = {40, 40, LCD_HEIGHT - 40, LCD_HEIGHT - 40, LCD_HEIGHT / 2};
+static constexpr int32_t kCross = 56, kMaxMissPx = 24;
+
+void SystemApp::onTouchClicked(lv_event_t *e) {
+  static_cast<SystemApp *>(lv_event_get_user_data(e))->pending_ = Pending::Touch;
+}
+
+// The crosses are tapped with the correction off (raw panel positions); the
+// fit is then applied right away, and kept only when saved.
+void SystemApp::showTouch() {
+  using namespace ui;
+  lv_obj_clean(root_);
+  for (auto &v : values_) v = nullptr;
+  touchView_ = true;
+  calStep_ = 0;
+  core::touch::setRaw(true);
+
+  hint_ = label(root_, &font_body, col::text, "Tap the centre of the cross");
+  lv_obj_set_width(hint_, LCD_WIDTH - 2 * 40);
+  lv_obj_set_style_text_align(hint_, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_align(hint_, LV_ALIGN_CENTER, 0, -76);
+  step_ = label(root_, &font_caption, col::textDim, "");
+  lv_obj_align(step_, LV_ALIGN_CENTER, 0, 60);
+
+  cross_ = box(root_);
+  lv_obj_set_size(cross_, kCross, kCross);
+  lv_obj_t *ring = box(cross_);
+  lv_obj_set_size(ring, 28, 28);
+  lv_obj_center(ring);
+  lv_obj_set_style_radius(ring, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_border_width(ring, 2, 0);
+  lv_obj_set_style_border_color(ring, c(kAccent), 0);
+  for (int i = 0; i < 2; i++) {
+    lv_obj_t *bar = box(cross_);
+    lv_obj_set_size(bar, i ? 2 : kCross, i ? kCross : 2);
+    lv_obj_center(bar);
+    lv_obj_set_style_bg_color(bar, c(col::text), 0);
+    lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, 0);
+  }
+
+  dot_ = box(root_);
+  lv_obj_set_size(dot_, 24, 24);
+  lv_obj_set_style_radius(dot_, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_color(dot_, c(kAccent), 0);
+  lv_obj_set_style_bg_opa(dot_, LV_OPA_COVER, 0);
+  lv_obj_set_hidden(dot_, true);
+
+  // The whole screen takes the taps (a tap off the cross still counts), under
+  // the Redo / Save buttons of the check that follows.
+  lv_obj_t *catcher = box(root_);
+  lv_obj_set_size(catcher, LCD_WIDTH, LCD_HEIGHT);
+  lv_obj_set_clickable(catcher, true);
+  lv_obj_add_event_cb(catcher, onCatcher, LV_EVENT_ALL, this);
+
+  buttons_ = box(root_);
+  lv_obj_set_size(buttons_, LCD_WIDTH, kBtn);
+  lv_obj_align(buttons_, LV_ALIGN_BOTTOM_MID, 0, -kBarBottom);
+  const int32_t half = (LCD_WIDTH - 2 * kEdge - 12) / 2;
+  lv_obj_t *redo = textButton(buttons_, "Redo", col::text);
+  lv_obj_set_width(redo, half);
+  lv_obj_align(redo, LV_ALIGN_LEFT_MID, kEdge, 0);
+  lv_obj_add_event_cb(redo, onTouchButton, LV_EVENT_CLICKED, this);
+  lv_obj_t *save = textButton(buttons_, "Save", mixBlack(kAccent, 15));
+  lv_obj_set_style_bg_color(save, c(kAccent), 0);
+  lv_obj_set_width(save, half);
+  lv_obj_align(save, LV_ALIGN_RIGHT_MID, -kEdge, 0);
+  lv_obj_set_user_data(save, reinterpret_cast<void *>(1));
+  lv_obj_add_event_cb(save, onTouchButton, LV_EVENT_CLICKED, this);
+  lv_obj_set_hidden(buttons_, true);
+  placeCross();
+}
+
+void SystemApp::placeCross() {
+  lv_obj_set_pos(cross_, kCalX[calStep_] - kCross / 2, kCalY[calStep_] - kCross / 2);
+  ui::setTextFmt(step_, "%d / %d", calStep_ + 1, kCalTargets);
+}
+
+void SystemApp::onCatcher(lv_event_t *e) {
+  auto *self = static_cast<SystemApp *>(lv_event_get_user_data(e));
+  const lv_event_code_t code = lv_event_get_code(e);
+  lv_point_t p{0, 0};
+  lv_indev_get_point(lv_indev_active(), &p);
+  if (self->calStep_ == kCalTargets) {  // checking: the dot follows the finger
+    if (code == LV_EVENT_PRESSED || code == LV_EVENT_PRESSING) {
+      lv_obj_set_pos(self->dot_, p.x - 12, p.y - 12);
+      lv_obj_set_hidden(self->dot_, false);
+    }
+    return;
+  }
+  if (code != LV_EVENT_RELEASED) return;
+  const int i = self->calStep_;
+  self->samples_[i] = {int16_t(p.x), int16_t(p.y), kCalX[i], kCalY[i]};
+  if (++self->calStep_ < kCalTargets) {
+    self->placeCross();
+    return;
+  }
+  if (!touchcal::fit(self->samples_, kCalTargets, kMaxMissPx, self->cal_)) {
+    self->calStep_ = 0;
+    self->placeCross();
+    ui::setText(self->hint_, "That didn't line up. Tap each cross again");
+    return;
+  }
+  core::touch::setCalibration(self->cal_);
+  core::touch::setRaw(false);
+  lv_obj_set_hidden(self->cross_, true);
+  lv_obj_set_hidden(self->step_, true);
+  lv_obj_set_hidden(self->buttons_, false);
+  ui::setText(self->hint_, "Drag around: the dot should follow your finger");
+}
+
+void SystemApp::onTouchButton(lv_event_t *e) {
+  auto *self = static_cast<SystemApp *>(lv_event_get_user_data(e));
+  const bool save = lv_obj_get_user_data(static_cast<lv_obj_t *>(lv_event_get_current_target(e))) != nullptr;
+  self->pending_ = save ? Pending::Save : Pending::Redo;
+}
+
+// Leaves calibration: keeps the new correction, or goes back to the saved one.
+void SystemApp::finishTouch(bool save) {
+  touchView_ = false;
+  core::touch::setRaw(false);
+  if (save) core::settings::saveTouchCal(cal_);
+  core::touch::setCalibration(core::settings::touchCal());
+  cross_ = dot_ = hint_ = step_ = buttons_ = nullptr;
 }
 
 }  // namespace apps

@@ -66,9 +66,12 @@ static void flushCb(lv_display_t *d, const lv_area_t *a, uint8_t *px) {
   lv_display_flush_ready(d);
 }
 
+// Like core::touch: the panel's (emulated) raw position, corrected unless in raw mode.
 static void readCb(lv_indev_t *, lv_indev_data_t *data) {
-  data->point.x = touchX;
-  data->point.y = touchY;
+  const sim::PanelError &e = sim::panel;
+  const int16_t rawX = int16_t((touchX - e.xOffset) / e.xScale + 0.5), rawY = int16_t((touchY - e.yOffset) / e.yScale + 0.5);
+  data->point.x = sim::touchRaw ? rawX : touchcal::mapX(sim::touchCal, rawX);
+  data->point.y = sim::touchRaw ? rawY : touchcal::mapY(sim::touchCal, rawY);
   data->state = touchDown ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
 }
 
@@ -113,7 +116,52 @@ static void drag(int32_t x, int32_t y0, int32_t y1) {
   advance(800);
 }
 
+// Every tappable element on screen must get a tap at its own centre: nothing
+// on top of it, nothing between the drawing and the hit area. Elements that
+// stay clickable only to pass drags on (no event callback) are skipped, and
+// so are elements covered by something visible (the open quick-settings
+// shade and its scrim over the menu): an invisible object taking the tap is
+// the bug this looks for.
+static int targetsChecked;
+static bool isWithin(lv_obj_t *o, lv_obj_t *ancestor) {
+  for (; o; o = lv_obj_get_parent(o))
+    if (o == ancestor) return true;
+  return false;
+}
+// Whether `hit`, or one of its ancestors that isn't also an ancestor of
+// `target`, has a background you can see.
+static bool coveredVisibly(lv_obj_t *hit, lv_obj_t *target) {
+  for (lv_obj_t *o = hit; o && !isWithin(target, o); o = lv_obj_get_parent(o))
+    if (lv_obj_get_style_bg_opa(o, LV_PART_MAIN) > LV_OPA_TRANSP && lv_obj_get_style_opa(o, LV_PART_MAIN) > LV_OPA_TRANSP)
+      return true;
+  return false;
+}
+static lv_obj_t *hitAt(const lv_point_t &p) {
+  for (lv_obj_t *layer : {lv_layer_sys(), lv_layer_top(), lv_screen_active()})
+    if (lv_obj_t *hit = lv_indev_search_obj(layer, const_cast<lv_point_t *>(&p))) return hit;
+  return nullptr;
+}
+static void checkTargets(lv_obj_t *obj, const char *where) {
+  if (lv_obj_is_hidden(obj)) return;
+  if (lv_obj_is_clickable(obj) && lv_obj_get_event_count(obj) > 0 && lv_obj_is_visible(obj)) {
+    lv_area_t a;
+    lv_obj_get_coords(obj, &a);
+    lv_point_t c{(a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2};
+    if (c.x >= 0 && c.x < LCD_WIDTH && c.y >= 0 && c.y < LCD_HEIGHT) {
+      targetsChecked++;
+      lv_obj_t *hit = hitAt(c);
+      if (!hit || (!isWithin(hit, obj) && !coveredVisibly(hit, obj))) {
+        printf("FAIL %s: tap at the centre (%d,%d) of a %dx%d target hits %s\n", where, int(c.x), int(c.y),
+               int(lv_area_get_width(&a)), int(lv_area_get_height(&a)), hit ? "another object" : "nothing");
+        failures++;
+      }
+    }
+  }
+  for (uint32_t i = 0; i < lv_obj_get_child_count(obj); i++) checkTargets(lv_obj_get_child(obj, int32_t(i)), where);
+}
+
 static void capture(const char *name) {
+  for (lv_obj_t *layer : {lv_screen_active(), lv_layer_top(), lv_layer_sys()}) checkTargets(layer, name);
   lv_obj_invalidate(lv_screen_active());
   lv_refr_now(nullptr);
   const std::string path = outDir + "/" + name + ".ppm";
@@ -512,7 +560,7 @@ int main() {
   tapIcon(&systemApp);
   CHECK(apps::manager::current() == &systemApp);
   capture("25-system");
-  tap(184, LCD_HEIGHT - 22 - 28);  // "Wireless update"
+  tap(24 + 77, LCD_HEIGHT - 22 - 28);  // "Update"
   CHECK(systemApp.powerPolicy() == power::Policy::KeepAwake);
   sim::otaState = core::ota::State::Receiving;
   sim::otaProgress = 42;
@@ -526,6 +574,37 @@ int main() {
   apps::manager::back();  // leaves the update view
   advance(100);
   CHECK(systemApp.powerPolicy() == power::Policy::Normal);
+
+  // ---- touch calibration, on a panel that reads 8 % wide and 15 px off on x, 6 % short on y
+  sim::panel = {0.92, 15, 1.06, -12};
+  tap(LCD_WIDTH - 24 - 77, LCD_HEIGHT - 22 - 28);  // "Touch" (still hit despite the error)
+  CHECK(sim::touchRaw);
+  capture("44-touch-calibration");
+  static const int16_t kCx[] = {40, LCD_WIDTH - 40, LCD_WIDTH - 40, 40, LCD_WIDTH / 2};
+  static const int16_t kCy[] = {40, 40, LCD_HEIGHT - 40, LCD_HEIGHT - 40, LCD_HEIGHT / 2};
+  tap(kCx[0], kCy[0]);
+  tap(kCx[1] - 60, kCy[1] + 50);  // a sloppy tap: the fit is refused, back to the first cross
+  for (int i = 2; i < 5; i++) tap(kCx[i], kCy[i]);
+  CHECK(sim::touchRaw);
+  for (int i = 0; i < 5; i++) tap(kCx[i], kCy[i]);  // fingers on the crosses
+  CHECK(!sim::touchRaw);                            // fitted and applied for the check
+  touchX = 300;
+  touchY = 120;
+  touchDown = true;
+  advance(50);
+  capture("45-touch-check");  // the dot under the finger
+  lv_point_t p;
+  lv_indev_get_point(lv_indev_get_next(nullptr), &p);
+  CHECK(LV_ABS(p.x - 300) <= 2 && LV_ABS(p.y - 120) <= 2);
+  touchDown = false;
+  advance(100);
+  tap(LCD_WIDTH - 24 - 77, LCD_HEIGHT - 22 - 28);  // Save
+  CHECK(core::settings::touchCal().xOffset == sim::touchCal.xOffset && sim::touchCal.xScale != 65536);
+  CHECK(LV_ABS(core::settings::touchCal().xOffset - 15) <= 1 && LV_ABS(core::settings::touchCal().yOffset + 12) <= 1);
+  sim::panel = {};  // back to a perfect panel for the rest
+  core::settings::saveTouchCal(touchcal::Cal{});
+  sim::touchCal = {};
+
   apps::manager::home();
   advance(400);
 
@@ -675,6 +754,7 @@ int main() {
   advance(700);
   CHECK(animDone);
 
+  printf("%d tap targets checked\n", targetsChecked);
   printf("%s: %d failure(s)\n", failures ? "FAILED" : "OK", failures);
   return failures ? 1 : 0;
 }

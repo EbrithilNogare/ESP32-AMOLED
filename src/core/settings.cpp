@@ -21,6 +21,7 @@ static uint8_t brightness = BRIGHTNESS_USER_DEFAULT_PCT;
 static Sound sound{SOUND_VOLUME_DEFAULT_PCT, 0};
 static WifiNet wifis[kWifiSaved];
 static int nWifi;
+static touchcal::Cal touch;
 static const WifiNet kNone{};
 
 static uint8_t clampPct(int pct) {
@@ -34,6 +35,8 @@ void begin() {
   if (store::load("bright", &b, sizeof b)) brightness = clampPct(b);
   Sound v;
   if (store::load("volume", &v, sizeof v)) sound = {uint8_t(v.volume > 100 ? 100 : v.volume), uint8_t(v.muted != 0)};
+  touchcal::Cal t;
+  if (store::load("touchcal", &t, sizeof t) && touchcal::plausible(t)) touch = t;
   if (!store::load("wifinets", wifis, sizeof wifis)) {  // else from older firmware: names and passwords only
     WifiV1 old[kWifiSaved] = {};
     if (!store::load("wifis", old, sizeof old) && !store::load("wifi", &old[0], sizeof old[0])) return;
@@ -75,6 +78,12 @@ void saveWifi(const WifiNet &net) {
   for (int i = at; i > 0; i--) wifis[i] = wifis[i - 1];
   wifis[0] = w;
   store::save("wifinets", wifis, sizeof wifis);
+}
+
+const touchcal::Cal &touchCal() { return touch; }
+void saveTouchCal(const touchcal::Cal &c) {
+  touch = c;
+  store::save("touchcal", &touch, sizeof touch);
 }
 
 }  // namespace core::settings
