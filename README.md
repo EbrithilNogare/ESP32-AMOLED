@@ -245,15 +245,15 @@ Core (`pip install platformio`).
      pick the network on the device (quick settings → Wi-Fi), which then
      wins over these. You still need Wi-Fi for wireless updates and lights.
    - `HA_BASE_URL`, `HA_TOKEN`: your Home Assistant address (e.g.
-     `http://192.168.1.10:8123`) and a long-lived access token (HA →
-     your profile → Security → Long-lived access tokens).
+     `http://192.168.1.10:8123` or `http://homeassistant.local:8123`) and a
+     long-lived access token (HA → your profile → Security → Long-lived
+     access tokens). The lights are loaded from Home Assistant: every
+     `light.*` entity, by name.
    - `OTA_PASSWORD`: any password; it protects wireless updates.
 
    `secrets.h` is ignored by git, so it never gets committed. Without it the
    firmware still builds but stays offline.
-3. **Pick your lights.** Set the four entity IDs and names in `HA_LIGHTS` in
-   `include/config.h`.
-4. **Flash over USB** (the first time has to be USB):
+3. **Flash over USB** (the first time has to be USB):
    ```bash
    pio run -e amoled -t upload -t monitor
    ```
@@ -308,7 +308,7 @@ Everything you'd want to tweak is in **`include/config.h`**:
 
 | What | Where |
 | --- | --- |
-| Lights and refresh rate | `HA_LIGHTS`, `HA_POLL_MS` |
+| How many lights, refresh rates | `HA_MAX_LIGHTS`, `HA_POLL_MS`, `HA_LIST_MS` |
 | Brightness range and default (the level itself is set in quick settings) | `BRIGHTNESS_USER_*` |
 | Dim / black / sleep timings | `BAT_IDLE_*`, `CHG_IDLE_*` |
 | Pomodoro lengths, set size, auto-start, sound | `POMO_*` |
@@ -334,7 +334,10 @@ Rebuild and flash (USB or Wi-Fi) after changing it.
 | Forget the saved Wi-Fi, brightness and volume | "ESP: erase flash", then flash again |
 | No sound at all | quick settings: is the speaker button red (muted), or the volume at 0 %? |
 | "HA token rejected" | create a new long-lived token, update `HA_TOKEN` |
-| A light tile is grey | wrong entity ID in `HA_LIGHTS`, or the light is offline in HA |
+| A light tile is grey | the light is offline (unavailable) in HA |
+| Lights: "Home Assistant not found" | `HA_BASE_URL`: use the IP address, or `homeassistant.local` |
+| Lights: "Can't reach Home Assistant" | wrong port in `HA_BASE_URL` (usually 8123), HA down, or the board is on a different network |
+| A light is missing | only the first `HA_MAX_LIGHTS` by name are shown; renamed or new lights appear within `HA_LIST_MS` |
 | Wireless update: "Wrong password" | `ESP_OTA_PASSWORD` on the PC ≠ `OTA_PASSWORD` on the board |
 | Wireless update: no device found | use `--upload-port <IP from the screen>`; PC and board on the same network |
 | Level reads wrong axes | see the axis check in [docs/apps/level.md](docs/apps/level.md) |

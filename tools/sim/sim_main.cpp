@@ -287,33 +287,70 @@ int main() {
   CHECK(apps::manager::inMenu());
   capture("01-menu");
 
-  // ---- lights: open, receive states, toggle one
+  // ---- lights: open, load the list from HA, receive states, toggle one
+  auto lightInfo = [](const char *entity, const char *name, ha::LightState st) {
+    ha::LightInfo l{};
+    strlcpy(l.entity, entity, sizeof l.entity);
+    strlcpy(l.name, name, sizeof l.name);
+    l.state = st;
+    return l;
+  };
   tap(iconX(0), iconY(0));
   CHECK(apps::manager::current() == &haApp);
-  capture("02-lights-loading");
   advance(100);
-  CHECK(sim::haRefreshes >= 1);
-  haApp.onResult(0, ha::LightState::On, ha::Result::Ok, false);
-  haApp.onResult(1, ha::LightState::Off, ha::Result::Ok, false);
-  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok, false);
-  haApp.onResult(3, ha::LightState::Unknown, ha::Result::NotFound, false);
-  advance(50);
-  tap(4 + 176 + 8 + 88, 4 + 216 + 8 + 108);  // bottom-left is index 2; this is bottom-right (n/a): no request
+  CHECK(sim::haListLoads == 1 && haApp.tileCount() == 0);  // the list first; nothing cached yet
+  capture("02-lights-loading");
+  // Sorted by name, as Home Assistant's list is parsed: TL, TR, BL, BR.
+  sim::haLoaded = {lightInfo("light.bedroom", "Bedroom", ha::LightState::On),
+                   lightInfo("light.hallway", "Hallway", ha::LightState::Off),
+                   lightInfo("light.kitchen", "Kitchen", ha::LightState::Off),
+                   lightInfo("light.porch", "Porch", ha::LightState::Unavailable)};
+  haApp.onLights(ha::Result::Ok);
+  CHECK(haApp.tileCount() == 4);
+  const uint8_t gen = apps::ha_client::generation();
+  advance(3100);
+  CHECK(sim::haRefreshes >= 1);  // then the states poll
+  tap(4 + 176 + 8 + 88, 4 + 216 + 8 + 108);  // bottom-right: Porch (n/a), no request
   CHECK(sim::haToggles.empty());
-  tap(4 + 88, 4 + 216 + 8 + 108);  // bottom-left: Bedroom
+  tap(4 + 88, 4 + 216 + 8 + 108);  // bottom-left: Kitchen
   CHECK(sim::haToggles.size() == 1 && sim::haToggles[0] == 2);
   capture("03-lights-toggling");
-  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok, false);  // a poll queued before the tap
+  haApp.onResult(2, ha::LightState::Off, ha::Result::Ok, false, gen);  // a poll queued before the tap
   CHECK(haApp.pending(2));
-  haApp.onResult(2, ha::LightState::On, ha::Result::Ok, true);
+  haApp.onResult(2, ha::LightState::On, ha::Result::Ok, true, uint8_t(gen + 1));  // for an old list: ignored
+  CHECK(haApp.pending(2));
+  haApp.onResult(2, ha::LightState::On, ha::Result::Ok, true, gen);
   CHECK(!haApp.pending(2));
   advance(300);
   capture("04-lights");
-  haApp.onResult(0, ha::LightState::On, ha::Result::Unauthorized, false);
-  haApp.onResult(1, ha::LightState::Off, ha::Result::NetworkError, false);  // keeps the banner
+  haApp.onResult(0, ha::LightState::On, ha::Result::Unauthorized, false, gen);
+  haApp.onResult(1, ha::LightState::Off, ha::Result::NetworkError, false, gen);  // keeps the banner
   advance(50);
   capture("05-lights-unauthorized");
-  haApp.onResult(0, ha::LightState::On, ha::Result::Ok, false);
+  haApp.onResult(0, ha::LightState::On, ha::Result::Ok, false, gen);
+
+  // More than four lights: a scrolling grid. The list is cached for next time.
+  static const char *const kNames[] = {"Bedroom", "Desk", "Garden", "Hallway", "Kitchen", "Living room", "Porch"};
+  sim::haLoaded.clear();
+  for (int i = 0; i < 7; i++) {
+    char id[32];
+    snprintf(id, sizeof id, "light.l%d", i);
+    sim::haLoaded.push_back(lightInfo(id, kNames[i], i % 3 ? ha::LightState::Off : ha::LightState::On));
+  }
+  haApp.onLights(ha::Result::Ok);
+  advance(100);
+  CHECK(haApp.tileCount() == 7);
+  capture("46-lights-many");
+  haApp.onLights(ha::Result::HostNotFound);  // a later reload fails: tiles stay, banner explains
+  advance(50);
+  CHECK(haApp.tileCount() == 7);
+  capture("47-lights-not-found");
+  apps::manager::back();
+  advance(400);
+  CHECK(apps::manager::inMenu());
+  tap(iconX(0), iconY(0));  // reopened: the cached list is there at once
+  advance(100);
+  CHECK(haApp.tileCount() == 7);
   apps::manager::back();
   advance(400);
   CHECK(apps::manager::inMenu());

@@ -210,6 +210,57 @@ static void test_names() {
   TEST_ASSERT_EQUAL_STRING("bad response", resultName(Result::BadResponse));
 }
 
+// ---- parseLightList ----
+
+static int lights(const char *s, LightInfo *out, int max) { return parseLightList(s, strlen(s), out, max); }
+
+static void test_light_list_keeps_lights_sorted_by_name() {
+  const char *body =
+      R"([{"entity_id":"sun.sun","state":"above_horizon","attributes":{"friendly_name":"Sun"}},)"
+      R"({"entity_id":"light.kitchen","state":"on","attributes":{"brightness":200,"friendly_name":"Kitchen",)"
+      R"("effect_list":["a","b"],"nested":{"deep":[{"x":1}]}},"context":{"id":"x"}},)"
+      R"({"entity_id":"switch.fan","state":"off","attributes":{}},)"
+      R"({"entity_id":"light.bed_lamp","state":"off","attributes":{"friendly_name":"bedroom lamp"}},)"
+      R"({"entity_id":"light.porch","state":"unavailable","attributes":{}}])";
+  LightInfo l[8];
+  TEST_ASSERT_EQUAL_INT(3, lights(body, l, 8));
+  TEST_ASSERT_EQUAL_STRING("bedroom lamp", l[0].name);  // case-insensitive order
+  TEST_ASSERT_EQUAL_STRING("light.bed_lamp", l[0].entity);
+  TEST_ASSERT_EQUAL(LightState::Off, l[0].state);
+  TEST_ASSERT_EQUAL_STRING("Kitchen", l[1].name);
+  TEST_ASSERT_EQUAL(LightState::On, l[1].state);
+  TEST_ASSERT_EQUAL_STRING("porch", l[2].name);  // no friendly_name: the id
+  TEST_ASSERT_EQUAL(LightState::Unavailable, l[2].state);
+}
+
+static void test_light_list_keeps_the_first_by_name_when_full() {
+  const char *body = R"([{"entity_id":"light.c","state":"on"},{"entity_id":"light.a","state":"on"},)"
+                     R"({"entity_id":"light.d","state":"on"},{"entity_id":"light.b","state":"off"}])";
+  LightInfo l[2];
+  TEST_ASSERT_EQUAL_INT(2, lights(body, l, 2));
+  TEST_ASSERT_EQUAL_STRING("light.a", l[0].entity);
+  TEST_ASSERT_EQUAL_STRING("light.b", l[1].entity);
+}
+
+static void test_light_list_edge_cases() {
+  LightInfo l[4];
+  TEST_ASSERT_EQUAL_INT(0, lights("[]", l, 4));
+  TEST_ASSERT_EQUAL_INT(0, lights(" [ ] ", l, 4));
+  TEST_ASSERT_EQUAL_INT(-1, lights("{}", l, 4));
+  TEST_ASSERT_EQUAL_INT(-1, lights(R"([{"entity_id":"light.a","state":"on"})", l, 4));  // cut off
+  TEST_ASSERT_EQUAL_INT(-1, lights(R"([{"entity_id":"light.a"} {"entity_id":"light.b"}])", l, 4));
+  TEST_ASSERT_EQUAL_INT(-1, lights("[1,2]", l, 4));
+  TEST_ASSERT_EQUAL_INT(-1, lights("", l, 4));
+  // An id too long to toggle is skipped; a long name is cut.
+  TEST_ASSERT_EQUAL_INT(
+      1, lights(R"([{"entity_id":"light.a_very_long_entity_id_that_goes_past_the_limit_x","state":"on"},)"
+                R"({"entity_id":"light.ok","state":"on","attributes":{"friendly_name":)"
+                R"("A name that is far too long to fit on a tile"}}])",
+                l, 4));
+  TEST_ASSERT_EQUAL_STRING("light.ok", l[0].entity);
+  TEST_ASSERT_EQUAL_size_t(kNameMax - 1, strlen(l[0].name));
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_parse_basic_states);
@@ -229,5 +280,8 @@ int main() {
   RUN_TEST(test_build_toggle_body_rejects_bad_input);
   RUN_TEST(test_map_http_status);
   RUN_TEST(test_names);
+  RUN_TEST(test_light_list_keeps_lights_sorted_by_name);
+  RUN_TEST(test_light_list_keeps_the_first_by_name_when_full);
+  RUN_TEST(test_light_list_edge_cases);
   return UNITY_END();
 }

@@ -10,7 +10,7 @@ namespace core::store {
 
 struct RtcState {
   uint32_t magic;
-  uint8_t haStates[4];  // ha::LightState, shown as "stale" after wake
+  uint8_t haStates[16];  // ha::LightState by list position (HA_MAX_LIGHTS), shown as "stale" after wake
 };
 
 void begin();

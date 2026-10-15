@@ -9,6 +9,7 @@
 #include "core/net.h"
 #include "core/ota.h"
 #include "touch_cal.h"
+#include "ha_parse.h"
 
 // Knobs the simulator script turns (see sim_core.cpp).
 namespace sim {
@@ -20,6 +21,8 @@ extern power::Stage stage;
 extern core::ota::State otaState;
 extern uint8_t otaProgress;
 extern int haRefreshes;
+extern int haListLoads;
+extern std::vector<ha::LightInfo> haLoaded;  // what loadLights() "returns" (then onLights(Ok))
 extern std::vector<int> haToggles;
 extern level::Accel accel;                        // IMU reading (screen axes, g)
 extern std::string ssid;                          // the network net joins

@@ -95,13 +95,11 @@
 #define SOUND_ALARM_MS 30000  // a finished countdown beeps this long unless dismissed
 
 // ---- home assistant ----
-// Exactly 4 lights, in screen order: top-left, top-right, bottom-left, bottom-right.
-#define HA_LIGHTS                                                                                     \
-  {                                                                                                   \
-    {"light.living_room", "Living room"}, {"light.kitchen", "Kitchen"}, {"light.bedroom", "Bedroom"}, \
-        {"light.hallway", "Hallway"},                                                                 \
-  }
-#define HA_POLL_MS 3000
+// The lights are loaded from Home Assistant (every light.* entity, by name).
+#define HA_MAX_LIGHTS 16          // the first ones by name are shown
+#define HA_POLL_MS 3000           // light states while the app is open
+#define HA_LIST_MS 60000          // the light list again (new or renamed lights)
+#define HA_RETRY_MAX_MS 30000     // polling backs off up to this while HA can't be reached
 #define HA_HTTP_TIMEOUT_MS 1500
 
 // ---- pomodoro ----

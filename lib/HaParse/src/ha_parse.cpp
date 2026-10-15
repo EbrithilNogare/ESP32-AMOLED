@@ -88,6 +88,59 @@ Result mapHttpStatus(int code) {
   return Result::BadResponse;
 }
 
+static int lowerCmp(const char *a, const char *b) {
+  for (;; a++, b++) {
+    const int x = (*a >= 'A' && *a <= 'Z') ? *a + 32 : *a, y = (*b >= 'A' && *b <= 'Z') ? *b + 32 : *b;
+    if (x != y || !x) return x - y;
+  }
+}
+
+bool lightBefore(const LightInfo &a, const LightInfo &b) {
+  const int c = lowerCmp(a.name, b.name);
+  return c ? c < 0 : strcmp(a.entity, b.entity) < 0;
+}
+
+int insertLight(LightInfo *list, int n, int max, const LightInfo &l) {
+  if (max <= 0) return 0;
+  int at = n;
+  while (at > 0 && lightBefore(l, list[at - 1])) at--;
+  if (at >= max) return n;  // sorts after everything kept, and the list is full
+  if (n == max) n--;        // the last one drops off
+  for (int i = n; i > at; i--) list[i] = list[i - 1];
+  list[at] = l;
+  return n + 1;
+}
+
+bool lightFromState(JsonObjectConst o, LightInfo &l) {
+  const char *id = o["entity_id"];
+  if (!id || strncmp(id, "light.", 6) != 0 || strlen(id) >= kEntityMax) return false;
+  memcpy(l.entity, id, strlen(id) + 1);
+  const char *name = o["attributes"]["friendly_name"];
+  if (!name || !*name) name = id + 6;
+  strncpy(l.name, name, kNameMax - 1);
+  l.name[kNameMax - 1] = '\0';
+  l.state = fromString(o["state"].as<const char *>());
+  return true;
+}
+
+namespace {
+struct BufferReader {  // what deserializeJson needs from a stream
+  const char *p, *end;
+  int read() { return p < end ? static_cast<unsigned char>(*p++) : -1; }
+  size_t readBytes(char *buf, size_t n) {
+    size_t i = 0;
+    for (; i < n && p < end; i++) buf[i] = *p++;
+    return i;
+  }
+};
+}  // namespace
+
+int parseLightList(const char *json, size_t len, LightInfo *out, int max) {
+  if (!json) return -1;
+  BufferReader r{json, json + len};
+  return parseLightList(r, out, max);
+}
+
 const char *lightStateName(LightState s) {
   switch (s) {
     case LightState::Unknown: return "unknown";
@@ -106,6 +159,7 @@ const char *resultName(Result r) {
     case Result::NetworkError: return "network error";
     case Result::ServerError: return "server error";
     case Result::BadResponse: return "bad response";
+    case Result::HostNotFound: return "host not found";
   }
   return "?";
 }

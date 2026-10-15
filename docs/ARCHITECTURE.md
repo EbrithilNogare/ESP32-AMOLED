@@ -474,7 +474,8 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 
 | What | Where | Survives |
 | --- | --- | --- |
-| cached HA states | `RTC_DATA_ATTR RtcState` | deep sleep |
+| cached HA states (by list position) | `RTC_DATA_ATTR RtcState` | deep sleep |
+| the Home Assistant light list (`halights`) | NVS | power-off and firmware updates |
 | same, written on "deep off" / power-off | NVS (`Store`) | power-off |
 | espresso shot history, pomodoro counters/settings | NVS | power-off |
 | brightness, saved Wi-Fi networks with channel / BSSID / lease (`bright`, `wifinets`; `wifis` and `wifi` from older firmware are read once) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |

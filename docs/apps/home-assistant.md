@@ -2,8 +2,9 @@
 
 ## Purpose
 
-Toggle four preconfigured Home Assistant lights on the local network from a
-2×2 grid.
+Toggle the Home Assistant lights on the local network. The lights aren't
+configured on the device: every `light.*` entity is loaded from Home
+Assistant, sorted by name.
 
 ## Screens
 
@@ -20,8 +21,16 @@ Toggle four preconfigured Home Assistant lights on the local network from a
 └────────────┴────────────┘
 ```
 
-A thin banner over the grid shows "Connecting…", "No Wi-Fi", or
-"HA token rejected" when relevant.
+Up to four lights fill the 2×2 grid above; with more, the tiles are 148 px
+tall (smaller icon, one-line name with "…") in a scrolling two-column grid
+(`46-lights-many.png`). At most `HA_MAX_LIGHTS` (16), the first by name.
+Before the first list: "Loading lights…"; an empty list: "No lights in Home
+Assistant".
+
+A chip at the bottom explains a problem: "Connecting…" (no Wi-Fi), "Home
+Assistant not found" (the host name doesn't resolve), "Can't reach Home
+Assistant" (no answer, wrong port, server error), "HA token rejected —
+check secrets.h" (`47-lights-not-found.png`).
 
 ## Interaction
 
@@ -38,6 +47,7 @@ Home Assistant REST API, plain HTTP on the LAN, long-lived access token
 
 | Action | Request |
 | --- | --- |
+| Load the lights | `GET {HA_BASE_URL}/api/states` → every entity; the `light.*` ones are kept, with `friendly_name` and state |
 | Read a light | `GET {HA_BASE_URL}/api/states/<entity_id>` → `{"state":"on",…}` |
 | Toggle | `POST {HA_BASE_URL}/api/services/light/toggle` body `{"entity_id":"<entity_id>"}` |
 
@@ -45,8 +55,20 @@ Headers: `Authorization: Bearer {HA_TOKEN}`, `Content-Type: application/json`.
 
 - `ha_client` runs in its own FreeRTOS task: requests go in a queue, results
   come back as `Ev::HaResult` events; the UI never blocks on the network.
-- On resume (and when Wi-Fi comes up): fetch all 4 states. While visible:
-  poll every `HA_POLL_MS`.
+- On resume (and when Wi-Fi comes up): load the light list, which carries
+  every state too. While visible: poll the states every `HA_POLL_MS` (one
+  GET per light over a kept-alive connection) and reload the list every
+  `HA_LIST_MS` for new or renamed lights.
+- The list body can be large (every entity of the house), so it is read with
+  HTTP/1.0 (no chunked encoding) and parsed straight off the socket one
+  entity at a time (`ha::parseLightList`); only the lights are kept.
+- Host: `HA_BASE_URL` may be an IP, a `.local` name, or a bare name; a bare
+  name the router's DNS doesn't know is tried as `<name>.local` (lwIP's mDNS
+  lookup). The address is kept until a request fails.
+- While Home Assistant can't be reached, polling backs off, doubling up to
+  `HA_RETRY_MAX_MS`.
+- Results carry the list generation they were asked for; results for a list
+  that has since been replaced are dropped.
 - Toggle → the POST returns the changed states; if the entity is missing from
   the response, follow up with a GET. On failure the tile keeps its old state
   and shakes. While a toggle is pending, poll results for that light are
@@ -64,8 +86,10 @@ instant updates when the device is on the charger and stays awake.
 
 ## Persistence
 
-Last known state of each light in `RtcState`. When the app is opened after a
-wake they're shown immediately, marked *stale*, until the first refresh. Target: fresh states
+The light list (ids and names) in NVS (`halights`), written only when it
+changes, so the tiles are there at once after a reboot. The last known state
+of each light in `RtcState`. When the app is opened after a wake they're
+shown immediately, marked *stale*, until the first refresh. Target: fresh states
 ≤ 1.5 s after wake, using a fast Wi-Fi reconnect: the network's remembered
 channel and BSSID plus its remembered DHCP lease (or `WIFI_STATIC_IP`).
 
@@ -74,19 +98,15 @@ channel and BSSID plus its remembered DHCP lease (or `WIFI_STATIC_IP`).
 `config.h`:
 
 ```cpp
-// ---- home assistant ----
-#define HA_LIGHTS { \
-    {"light.living_room", "Living room"}, \
-    {"light.kitchen",     "Kitchen"},     \
-    {"light.bedroom",     "Bedroom"},     \
-    {"light.hallway",     "Hallway"},     \
-}                                   // exactly 4, order: TL, TR, BL, BR
-#define HA_POLL_MS          3000
-#define HA_HTTP_TIMEOUT_MS  1500
+#define HA_MAX_LIGHTS 16          // the first ones by name are shown
+#define HA_POLL_MS 3000           // light states while the app is open
+#define HA_LIST_MS 60000          // the light list again (new or renamed lights)
+#define HA_RETRY_MAX_MS 30000     // polling backs off up to this while HA can't be reached
+#define HA_HTTP_TIMEOUT_MS 1500
 ```
 
 `secrets.h`: `WIFI_SSID`, `WIFI_PASSWORD`, `HA_BASE_URL`
-(e.g. `http://192.168.1.10:8123`), `HA_TOKEN`, optional `WIFI_STATIC_IP`,
+(e.g. `http://192.168.1.10:8123` or `http://homeassistant.local:8123`), `HA_TOKEN`, optional `WIFI_STATIC_IP`,
 `WIFI_GATEWAY`, `WIFI_SUBNET`, `WIFI_DNS`.
 
 ## Errors
@@ -94,7 +114,8 @@ channel and BSSID plus its remembered DHCP lease (or `WIFI_STATIC_IP`).
 | Situation | Shown |
 | --- | --- |
 | No Wi-Fi | banner "Connecting…", tiles stale, retry in background |
-| HA unreachable / timeout | tiles stale, retry on next poll |
+| Host name doesn't resolve | banner "Home Assistant not found", retry with back-off |
+| HA unreachable / timeout / 5xx | banner "Can't reach Home Assistant", tiles stale, retry with back-off |
 | HTTP 401 | banner "HA token rejected — check secrets.h" (until a request succeeds; network errors keep it) |
 | 404 / `unavailable` | that tile "n/a" |
 
@@ -107,6 +128,9 @@ fine on a trusted LAN; HTTPS can come later.
 
 ## Acceptance (on device)
 
+- [ ] The tiles are the HA lights, by name, without configuring any
+- [ ] `HA_BASE_URL` with a bare host name finds HA through `.local`
+- [ ] A light added or renamed in HA shows up within `HA_LIST_MS`
 - [ ] Each tile toggles the right light; the HA web UI agrees
 - [ ] A change made in HA shows up within one poll
 - [ ] Wrong token → 401 banner, UI stays responsive
@@ -115,5 +139,5 @@ fine on a trusted LAN; HTTPS can come later.
 
 ## Later
 
-Brightness/colour, more lights via pages, scenes, other entity types
+Brightness/colour, choosing which lights (or an HA area / label), scenes, other entity types
 (switches, covers), WebSocket push updates.

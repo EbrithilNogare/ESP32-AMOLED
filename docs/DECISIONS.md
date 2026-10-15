@@ -305,3 +305,19 @@ sleep and power-off alike.
 confirmed with the router, so an IP clash is possible if the router reassigns
 it within 12 h; a DHCP reservation avoids that. NVS is written on a connect
 only when the channel, BSSID or lease changed (at most about once per lease).
+
+## 2026-10-15 — Lights come from Home Assistant, not from config.h
+
+**Context:** `HA_LIGHTS` in `config.h` had to list exactly four entity ids by
+hand, and a bare `HA_BASE_URL` host ("homeassistant") never resolved.
+**Decision:** The app loads every `light.*` entity from `GET /api/states`
+(names from `friendly_name`, sorted by name, the first `HA_MAX_LIGHTS` = 16),
+reloads it every `HA_LIST_MS`, and caches it in NVS. The body is read with
+HTTP/1.0 and parsed off the socket one entity at a time, so a big house costs
+no memory. Not `POST /api/template` (a tiny answer, but it needs an admin
+token, and the device should use a non-admin user) and not the WebSocket API
+(later, for push updates). A bare host name that DNS doesn't know is tried as
+`<name>.local`.
+**Consequences:** No light configuration on the device; all lights show
+(choosing some, e.g. by HA area or label, is for later). The list request
+transfers the whole state list, so it runs once a minute, not every poll.

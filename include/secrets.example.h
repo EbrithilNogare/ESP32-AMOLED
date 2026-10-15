@@ -20,8 +20,10 @@
 
 // Home Assistant: base URL and a long-lived access token
 // (HA → Profile → Security → Long-lived access tokens). Use a dedicated HA user.
-// Plain http on the LAN (no TLS client is built in); an IP address avoids
-// relying on mDNS for "homeassistant.local".
+// Plain http on the LAN (no TLS client is built in). The host can be an IP
+// address (most reliable), "homeassistant.local" (mDNS), or a bare name like
+// "homeassistant", which is tried as "homeassistant.local" when the router's
+// DNS doesn't know it. The lights themselves are loaded from Home Assistant.
 #define HA_BASE_URL "http://192.168.1.10:8123"
 #define HA_TOKEN ""
 

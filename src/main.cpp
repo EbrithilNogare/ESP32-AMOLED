@@ -61,8 +61,9 @@ static void dispatch(const core::Event &e) {
       break;
     case Ev::HaResult:
       haApp.onResult(int(e.a), apps::ha_client::stateOf(e.b), apps::ha_client::resultOf(e.b),
-                     apps::ha_client::isToggle(e.b));
+                     apps::ha_client::isToggle(e.b), apps::ha_client::generationOf(e.b));
       break;
+    case Ev::HaLights: haApp.onLights(ha::Result(e.b)); break;
     case Ev::WifiChanged: haApp.onWifiChanged(); break;
     case Ev::TimeSynced: core::clock::onNtpSynced(); break;
   }

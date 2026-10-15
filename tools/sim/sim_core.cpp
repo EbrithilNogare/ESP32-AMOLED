@@ -33,6 +33,8 @@ power::Stage stage = power::Stage::Active;
 core::ota::State otaState = core::ota::State::Waiting;
 uint8_t otaProgress = 0;
 int haRefreshes = 0;
+int haListLoads = 0;
+std::vector<ha::LightInfo> haLoaded;
 std::vector<int> haToggles;
 level::Accel accel{0, 0, 1};
 std::string ssid = "HomeNet";
@@ -161,10 +163,15 @@ const char *error() { return "Wrong password"; }
 }  // namespace core
 
 namespace apps::ha_client {
-static const Light kTable[kLights] = HA_LIGHTS;
-const Light &light(int i) { return kTable[i]; }
+static ha::LightInfo list[kMaxLights];
+static int n;
+static uint8_t gen;
 void begin() {}
-bool refreshAll() {
+bool loadLights() {
+  sim::haListLoads++;
+  return true;
+}
+bool refresh() {
   sim::haRefreshes++;
   return true;
 }
@@ -173,4 +180,21 @@ bool toggle(int i) {
   return true;
 }
 bool busy() { return false; }
+int count() { return n; }
+const ha::LightInfo &light(int i) { return list[i]; }
+uint8_t generation() { return gen; }
+void setList(const ha::LightInfo *l, int count) {
+  n = count;
+  for (int i = 0; i < n; i++) list[i] = l[i];
+  gen++;
+}
+bool adopt(ha::Result r) {
+  if (r != ha::Result::Ok) return false;
+  bool changed = int(sim::haLoaded.size()) != n;
+  for (int i = 0; !changed && i < n; i++) changed = strcmp(list[i].entity, sim::haLoaded[size_t(i)].entity) != 0;
+  n = int(sim::haLoaded.size());
+  for (int i = 0; i < n; i++) list[i] = sim::haLoaded[size_t(i)];
+  if (changed) gen++;
+  return changed;
+}
 }  // namespace apps::ha_client

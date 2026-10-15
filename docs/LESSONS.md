@@ -210,3 +210,15 @@ passes, so the UI and its hit areas agree: the panel's reported position
 doesn't match the pixels. Fixed with a per-device calibration
 (System → Touch, `lib/TouchCal`), not with hard-coded offsets: the error
 may differ between boards.
+
+## A bare host name doesn't resolve; Stream::read() doesn't wait
+
+`HA_BASE_URL` with `http://homeassistant:8123` fails with `DNSFailed … -54`:
+most routers' DNS doesn't know the name. lwIP here resolves `*.local` names
+by mDNS (`CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES`), so `homeassistant.local`
+works; `ha_client` tries that by itself.
+
+Parsing an HTTP body off `http.getStream()`: `Stream::read()` returns -1 at
+once when the next bytes haven't arrived, which looks like the end of the
+body. Read through `readBytes()` (it honours the stream timeout), and ask for
+HTTP/1.0 (`useHTTP10(true)`) so the body isn't chunked.

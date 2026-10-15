@@ -11,7 +11,8 @@ enum class Ev : uint8_t {
   Home,         // Home button short press
   LongPress,    // either button held: power-off request
   WifiChanged,  // a = 1 when connected; net::connected() already reflects it
-  HaResult,     // a = light index, b = (LightState << 8) | Result
+  HaResult,     // a = light index, b = ha_client::pack(): state, result, toggle, list generation
+  HaLights,     // the light list was loaded (or not): b = ha::Result
   TimeSynced,   // SNTP set the clock
 };
 
