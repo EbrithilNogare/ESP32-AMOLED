@@ -334,5 +334,6 @@ landed faces, numbers and totals on top. Not a bigger LVGL draw buffer (no
 internal RAM to spare, and the per-pixel cost stays) and not dropping the
 hidden edges (they carry the 3D look).
 **Consequences:** ~220 KB of PSRAM while Dice is open (freed on leaving).
-Host benchmark 3.5 → 0.8 ms per frame. The buffer is in the display's pixel
-format, so the copy needs no conversion.
+Host benchmark 3.5 → 0.8 ms per frame; on the board 2 × 10 d12 (also 30
+edges per die) went from about 2 to 16.7 fps. The buffer is in the display's
+pixel format, so the copy needs no conversion.
