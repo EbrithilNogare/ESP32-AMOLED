@@ -192,3 +192,11 @@ edges. Route the whole area to the nearest target with one transparent pad
 (see `WifiApp::onPad`) instead of making each key its own click target. The
 debug build logs every touch-down position (`touch: down x,y`) so you can
 check how the panel behaves at the edges.
+
+## A changing -D flag rebuilds everything
+
+A define added to the build environment (`env.Append(CPPDEFINES=...)`) is on
+every compile command, framework and libraries included. If its value
+changes per commit (like a git version), SCons recompiles the whole tree each
+time. Put changing values in a generated header that only the files that need
+them include — see `tools/version.py` and `include/version.h`.
