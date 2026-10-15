@@ -515,7 +515,7 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 
 - Every module logs through `ESP_LOGx(TAG, …)` with a per-module tag
   (`board`, `display`, `power`, `ha`, …); the level comes from
-  `CORE_DEBUG_LEVEL` (release: errors only, debug: verbose).
+  `CORE_DEBUG_LEVEL` (release: errors only, debug: debug level — verbose would log every I2C transfer).
 - Missing peripherals (touch, IMU, codec) → log and continue without that
   feature. Only a missing display is fatal.
 - App-specific failures are described in each app spec.

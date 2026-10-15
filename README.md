@@ -391,7 +391,7 @@ ESP32-AMOLED/
 | Env | Purpose |
 | --- | --- |
 | `amoled` | release (default): logs errors only |
-| `amoled-debug` | debug: verbose logs, LVGL warnings |
+| `amoled-debug` | debug: debug-level logs, LVGL warnings |
 | `amoled-ota` | the release build, uploaded over Wi-Fi |
 | `native` | host unit tests for `lib/` |
 | `sim` | PC simulator + UI flow test |

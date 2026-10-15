@@ -20,7 +20,8 @@ bool rtcValid() { return state.magic == kMagic; }
 void rtcCommit() { state.magic = kMagic; }
 
 bool load(const char *key, void *data, size_t len) {
-  return prefsOpen && prefs.getBytesLength(key) == len && prefs.getBytes(key, data, len) == len;
+  // isKey() first: getBytesLength() logs an error for a key that was never saved.
+  return prefsOpen && prefs.isKey(key) && prefs.getBytesLength(key) == len && prefs.getBytes(key, data, len) == len;
 }
 
 bool save(const char *key, const void *data, size_t len) { return prefsOpen && prefs.putBytes(key, data, len) == len; }
