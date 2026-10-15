@@ -30,6 +30,7 @@ static int scanCount = -1;
 static Network networks[kMaxNetworks];
 static Join joinSt = Join::Idle;
 static char joinSsid[settings::kSsidMax + 1], joinPassword[settings::kPasswordMax + 1];
+static uint32_t scanAtMs;  // when the last scan finished (0: none, or stale)
 static volatile uint8_t lastReason;  // last STA disconnect reason, written by the Wi-Fi event task
 static uint8_t failReason;           // lastReason when a join on trial failed
 
@@ -50,15 +51,57 @@ static JoinFail classify(uint8_t reason) {
 
 static void onTimeSync(timeval *) { events::post({Ev::TimeSynced, 0, 0}); }
 
-// A network being tried comes first, then the one saved on the device, then
-// the one compiled in.
-static const char *wifiSsid() {
-  return joinSt == Join::Trying ? joinSsid : settings::hasWifi() ? settings::wifiSsid() : WIFI_SSID;
+// ------------------------------------------------------------ known networks
+
+struct Cred {
+  const char *ssid, *password;
+};
+// secrets.h: WIFI_SSID, plus optional WIFI_EXTRA_NETWORKS as {"ssid", "password"} pairs.
+static const Cred kCompiled[] = {
+    {WIFI_SSID, WIFI_PASSWORD},
+#ifdef WIFI_EXTRA_NETWORKS
+    WIFI_EXTRA_NETWORKS
+#endif
+};
+static constexpr int kMaxKnown = settings::kWifiSaved + int(sizeof kCompiled / sizeof kCompiled[0]);
+static_assert(kMaxKnown <= 32, "triedMask is 32 bits");
+
+// Saved on the device first (newest password wins), then secrets.h; one entry
+// per name. Rebuilt on use: pointers into settings move when one is saved.
+static Cred known_[kMaxKnown];
+static int nKnown;
+static void collectKnown() {
+  nKnown = 0;
+  auto add = [](const char *ssid, const char *password) {
+    if (!ssid || !ssid[0]) return;
+    for (int i = 0; i < nKnown; i++)
+      if (strcmp(known_[i].ssid, ssid) == 0) return;
+    known_[nKnown++] = {ssid, password ? password : ""};
+  };
+  for (int i = 0; i < settings::wifiCount(); i++) add(settings::wifiSsid(i), settings::wifiPassword(i));
+  for (const Cred &c : kCompiled) add(c.ssid, c.password);
 }
-static const char *wifiPassword() {
-  return joinSt == Join::Trying ? joinPassword : settings::hasWifi() ? settings::wifiPassword() : WIFI_PASSWORD;
+static int knownIndex(const char *ssid) {
+  collectKnown();
+  for (int i = 0; i < nKnown; i++)
+    if (strcmp(known_[i].ssid, ssid) == 0) return i;
+  return -1;
 }
-static bool configured() { return wifiSsid()[0] != '\0'; }
+static bool configured() {
+  collectKnown();
+  return nKnown > 0;
+}
+
+// The network on the radio now (or last), copied: settings may reorder.
+static char curSsid[settings::kSsidMax + 1], curPassword[settings::kPasswordMax + 1];
+static uint32_t triedMask;  // known networks tried since the last scan, by index
+
+static bool scanFresh(uint32_t now) { return scanAtMs && scanCount >= 0 && now - scanAtMs < WIFI_SCAN_FRESH_MS; }
+static int scannedRssi(const char *ssid) {
+  for (int i = 0; i < scanCount; i++)
+    if (strcmp(networks[i].ssid, ssid) == 0) return networks[i].rssi;
+  return INT32_MIN;  // not in range
+}
 
 // The one place linkUp changes, so connected() is already current when an
 // app handles the WifiChanged event (posted from the UI task, not the Wi-Fi
@@ -67,14 +110,16 @@ static void setLink(bool up, uint32_t now) {
   if (up == linkUp) return;
   linkUp = up;
   if (up && joinSt == Join::Trying) {
-    settings::setWifi(joinSsid, joinPassword);  // it works: keep it
+    settings::saveWifi(joinSsid, joinPassword);  // it works: keep it
     joinSt = Join::Joined;
   }
   if (up) {
+    triedMask = 0;
     strlcpy(ipText, WiFi.localIP().toString().c_str(), sizeof ipText);
     store::RtcState &rtc = store::rtc();
     rtc.wifiChannel = uint8_t(WiFi.channel());
     memcpy(rtc.wifiBssid, WiFi.BSSID(), 6);
+    strlcpy(rtc.wifiSsid, curSsid, sizeof rtc.wifiSsid);
     store::rtcCommit();
     ESP_LOGI(TAG, "connected, %s, %d dBm, %lu ms", ipText, WiFi.RSSI(), (unsigned long)(now - startedMs));
     if (!sntpStarted) {
@@ -92,7 +137,57 @@ static void setLink(bool up, uint32_t now) {
   events::post({Ev::WifiChanged, up ? 1u : 0u, 0});
 }
 
-static void startRadio() {
+// Picks the network to join: the one on trial; after deep sleep the cached
+// one (channel / BSSID known, no scan); a single known network as is; else
+// the strongest known network in a fresh scan not tried yet — scanning first
+// if there is no fresh scan. Returns false when there is nothing to try now.
+static bool pick(uint32_t now, const uint8_t *&bssid, uint8_t &channel) {
+  bssid = nullptr;
+  channel = 0;
+  if (joinSt == Join::Trying) {
+    strlcpy(curSsid, joinSsid, sizeof curSsid);
+    strlcpy(curPassword, joinPassword, sizeof curPassword);
+    return true;
+  }
+  collectKnown();
+  int best = -1;
+  store::RtcState &rtc = store::rtc();
+  if (store::rtcValid() && rtc.wifiChannel && (best = knownIndex(rtc.wifiSsid)) >= 0) {
+    bssid = rtc.wifiBssid;
+    channel = rtc.wifiChannel;
+  } else if (nKnown == 1) {
+    best = 0;
+  } else {
+    if (!scanFresh(now)) {
+      startScan();  // the loop comes back here when it's done
+      return false;
+    }
+    int32_t bestRssi = INT32_MIN;
+    for (int i = 0; i < nKnown; i++) {
+      const int32_t rssi = scannedRssi(known_[i].ssid);
+      if (!(triedMask & (1u << i)) && rssi > bestRssi) {
+        best = i;
+        bestRssi = rssi;
+      }
+    }
+    if (best < 0) {  // none in range, or all tried: wait, then scan again
+      ESP_LOGW(TAG, "no known network in range");
+      triedMask = 0;
+      scanAtMs = 0;
+      retryAtMs = now + WIFI_RETRY_MS;
+      return false;
+    }
+    triedMask |= 1u << best;
+  }
+  strlcpy(curSsid, known_[best].ssid, sizeof curSsid);
+  strlcpy(curPassword, known_[best].password, sizeof curPassword);
+  return true;
+}
+
+static void startRadio(uint32_t now) {
+  const uint8_t *bssid;
+  uint8_t channel;
+  if (!pick(now, bssid, channel)) return;
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(true);
   WiFi.setAutoReconnect(true);
@@ -101,17 +196,14 @@ static void startRadio() {
     if (!dns.fromString(WIFI_DNS)) dns = gw;
     WiFi.config(ip, gw, mask, dns);
   }
-  // After deep sleep, joining the cached channel/BSSID skips the scan.
-  store::RtcState &rtc = store::rtc();
-  if (store::rtcValid() && rtc.wifiChannel) {
-    WiFi.begin(wifiSsid(), wifiPassword(), rtc.wifiChannel, rtc.wifiBssid, true);
-  } else {
-    WiFi.begin(wifiSsid(), wifiPassword());
-  }
+  if (bssid)
+    WiFi.begin(curSsid, curPassword, channel, bssid, true);
+  else
+    WiFi.begin(curSsid, curPassword);
   radioOn = true;
-  startedMs = millis();
+  startedMs = now;
   lastReason = 0;
-  ESP_LOGI(TAG, "connecting to %s", wifiSsid());
+  ESP_LOGI(TAG, "connecting to %s%s", curSsid, bssid ? " (cached channel)" : "");
 }
 
 static void stopRadio(uint32_t now) {
@@ -176,6 +268,8 @@ void loop() {
     if (found == WIFI_SCAN_RUNNING) return;  // leave the radio alone meanwhile
     scanning = false;
     collectScan(found > 0 ? found : 0);
+    scanAtMs = now ? now : 1;
+    triedMask = 0;
     ESP_LOGI(TAG, "scan: %d networks", scanCount);
     // A connection attempt was paused (or the radio started just for the
     // scan): start over, so the join below runs normally again.
@@ -188,7 +282,7 @@ void loop() {
   if (suspended) {
     if (radioOn) stopRadio(now);
   } else if (holders > 0) {
-    if (!radioOn && configured() && reached(now, retryAtMs)) startRadio();
+    if (!radioOn && configured() && reached(now, retryAtMs)) startRadio(now);
     // A stale cached BSSID/channel can make the fast join fail: drop the
     // cache and retry with a full scan.
     const uint32_t timeout = joinSt == Join::Trying ? WIFI_JOIN_TIMEOUT_MS : WIFI_CONNECT_TIMEOUT_MS;
@@ -200,8 +294,11 @@ void loop() {
         ESP_LOGW(TAG, "couldn't join %s; back to the saved network", joinSsid);
         retryAtMs = now;
       } else {
-        ESP_LOGW(TAG, "connect timed out; retrying");
-        retryAtMs = now + WIFI_RETRY_MS;
+        ESP_LOGW(TAG, "connect to %s timed out", curSsid);
+        // Several known networks: the next one in range right away (pick()
+        // waits once all are tried); just one: wait before trying it again.
+        collectKnown();
+        retryAtMs = nKnown > 1 ? now : now + WIFI_RETRY_MS;
       }
     }
   } else if (radioOn && now - releasedMs > WIFI_GRACE_MS) {
@@ -231,8 +328,12 @@ void suspend(bool on) {
 }
 
 void join(const char *ssid, const char *password) {
+  if (!password) {
+    const int i = knownIndex(ssid);
+    password = i >= 0 ? known_[i].password : "";
+  }
+  strlcpy(joinPassword, password, sizeof joinPassword);
   strlcpy(joinSsid, ssid, sizeof joinSsid);
-  strlcpy(joinPassword, password ? password : "", sizeof joinPassword);
   store::rtc().wifiChannel = 0;  // the cached channel / BSSID belong to the old network
   if (radioOn) stopRadio(millis());
   joinSt = Join::Trying;
@@ -266,7 +367,14 @@ int scanResults(const Network *&list) {
   return scanning ? -1 : scanCount;
 }
 
-const char *ssid() { return wifiSsid(); }
+const char *ssid() {
+  if (joinSt == Join::Trying) return joinSsid;
+  if (curSsid[0]) return curSsid;
+  collectKnown();
+  return nKnown ? known_[0].ssid : "";
+}
+
+bool known(const char *ssid) { return knownIndex(ssid) >= 0; }
 
 bool connected() { return linkUp; }
 int rssi() { return linkUp ? WiFi.RSSI() : 0; }

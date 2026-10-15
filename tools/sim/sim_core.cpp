@@ -64,9 +64,15 @@ int scanResults(const Network *&list) {
   list = sim::networks.data();
   return sim::scanDone ? int(sim::networks.size()) : -1;
 }
+bool known(const char *ssid) {
+  if (sim::ssid == ssid) return true;
+  for (int i = 0; i < settings::wifiCount(); i++)
+    if (strcmp(settings::wifiSsid(i), ssid) == 0) return true;
+  return false;
+}
 void join(const char *ssid, const char *password) {
   sim::joinSsid = ssid;
-  sim::joinPassword = password;
+  sim::joinPassword = password ? password : "(saved)";
   sim::join = Join::Trying;
 }
 Join joinState() { return sim::join; }

@@ -354,11 +354,13 @@ power-off). When Wi-Fi is up, SNTP corrects it. Timezone is a POSIX TZ
 string in `config.h` (`TIMEZONE`, e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`).
 
 **Settings.** Compile-time defaults in `config.h`. The settings changed on
-the device, brightness, volume + mute and the Wi-Fi network, live in
+the device, brightness, volume + mute and the Wi-Fi networks, live in
 `core::settings` (NVS)
 and are set from the [quick settings](apps/quick-settings.md) shade and the
-[Wi-Fi screen](apps/wifi.md). A saved network wins over `WIFI_SSID` in
-`secrets.h`; a new one is saved only after it connects (`net::join()`).
+[Wi-Fi screen](apps/wifi.md). Up to five networks are saved on the device
+(most recent first) and come before `WIFI_SSID` / `WIFI_EXTRA_NETWORKS` in
+`secrets.h`; with several known networks `net` scans and joins the strongest
+one in range. A new one is saved only after it connects (`net::join()`).
 Everything else is read from `config.h` directly.
 
 **Conventions.** C++17, one namespace per area (`core::`, `apps::`, `ui::`),
@@ -472,7 +474,7 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 | Wi-Fi channel/BSSID, cached HA states | `RTC_DATA_ATTR RtcState` | deep sleep |
 | same, written on "deep off" / power-off | NVS (`Store`) | power-off |
 | espresso shot history, pomodoro counters/settings | NVS | power-off |
-| brightness, saved Wi-Fi network (`bright`, `wifi`) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
+| brightness, saved Wi-Fi networks (`bright`, `wifis`; `wifi` from older firmware is read once) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
 
 NVS writes happen only on sleep/shutdown or on user actions, never
 periodically (flash wear).

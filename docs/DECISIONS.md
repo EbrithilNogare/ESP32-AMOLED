@@ -271,3 +271,18 @@ empty and `net` never starts the radio without one.
 **Consequences:** Builds never fail on missing secrets; every new secret must
 get a placeholder in `secrets.example.h`. A build without secrets stays
 offline instead of retrying a fake network.
+
+## 2026-10-15 — Several known Wi-Fi networks, strongest in range first
+
+**Context:** One saved network (plus `WIFI_SSID`) wasn't enough for a device
+that moves between home, office and a phone hotspot.
+**Decision:** Up to five networks in NVS (`wifis`, most recently joined
+first) plus `WIFI_SSID` and an optional `WIFI_EXTRA_NETWORKS` list in
+`secrets.h`. With one known network `net` joins it directly (no scan, as
+before); with several it scans and tries them strongest first, then waits
+`WIFI_RETRY_MS` before scanning again. After deep sleep the cached channel /
+BSSID of the last network skips the scan. Not Arduino's `WiFiMulti`: its
+`run()` blocks for the whole scan and connect, and the UI loop must not.
+**Consequences:** With several networks a cold connect costs one scan
+(~2–3 s) more. The old single `wifi` blob is read once and replaced by
+`wifis` on the next save.

@@ -4,9 +4,12 @@
 // Wi-Fi on demand. Apps call acquire()/release(); the radio is on only while
 // someone holds it (plus a short grace period so switching apps doesn't
 // reconnect). Connecting never blocks the UI: link up/down transitions arrive
-// as WifiChanged events. The network is the one saved on the device
-// (core::settings, Wi-Fi screen), else WIFI_SSID from secrets.h; with neither
-// the radio never starts.
+// as WifiChanged events.
+//
+// Known networks: the ones saved on the device (core::settings, Wi-Fi
+// screen, most recent first), then WIFI_SSID and WIFI_EXTRA_NETWORKS from
+// secrets.h. With one it connects straight away; with several it scans and
+// tries them strongest first. With none the radio never starts.
 namespace core::net {
 
 struct Network {
@@ -27,11 +30,13 @@ void suspend(bool on);
 bool connected();
 int rssi();
 const char *ip();    // "" when not connected
-const char *ssid();  // the network it joins ("" if none is set up)
+const char *ssid();  // the network it is on or trying ("" if none is set up)
+bool known(const char *ssid);
 
 // Try another network (Wi-Fi screen). It is saved to the device only once
 // it connects; if it doesn't within WIFI_JOIN_TIMEOUT_MS, the saved network
-// comes back. Needs a holder, like any connection.
+// comes back. Needs a holder, like any connection. password nullptr: the one
+// it knows for `ssid`.
 enum class Join : uint8_t { Idle, Trying, Joined, Failed };
 void join(const char *ssid, const char *password);
 Join joinState();

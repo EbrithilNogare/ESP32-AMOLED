@@ -5,11 +5,12 @@
 // User settings changed on the device (quick settings, Wi-Fi screen), kept in
 // NVS so they survive reboots, deep sleep and firmware updates (USB or OTA
 // rewrite only the app partition). Only "erase flash" clears them.
-// Saved Wi-Fi credentials take precedence over WIFI_SSID in secrets.h.
+// Saved Wi-Fi networks come before the ones in secrets.h (core::net).
 namespace core::settings {
 
 constexpr size_t kSsidMax = 32;      // 802.11 limit
 constexpr size_t kPasswordMax = 63;  // WPA2 passphrase limit
+constexpr int kWifiSaved = 5;        // networks remembered on the device
 
 void begin();  // after store::begin()
 
@@ -27,9 +28,11 @@ void saveVolume();               // persist volume and mute (on release, not whi
 bool muted();
 void setMuted(bool on);  // saved immediately
 
-bool hasWifi();  // credentials saved on the device
-const char *wifiSsid();
-const char *wifiPassword();
-void setWifi(const char *ssid, const char *password);  // saved immediately
+// Wi-Fi networks saved on the device, most recently joined first.
+int wifiCount();
+const char *wifiSsid(int i);
+const char *wifiPassword(int i);
+// Saved immediately, at the front; past kWifiSaved the oldest one drops off.
+void saveWifi(const char *ssid, const char *password);
 
 }  // namespace core::settings

@@ -133,10 +133,11 @@ void WifiApp::renderList() {
     return;
   }
   setText(status_, nNets_ ? "" : "No networks found");
-  const char *current = core::net::ssid();
+  const char *current = core::net::connected() ? core::net::ssid() : "";
   for (int i = 0; i < nNets_; i++) {
     const core::net::Network &n = nets_[i];
     const bool cur = strcmp(n.ssid, current) == 0;
+    const bool saved = core::net::known(n.ssid);
     lv_obj_t *row = box(list_);
     lv_obj_set_size(row, LV_PCT(100), 56);
     lv_obj_set_style_radius(row, 16, 0);
@@ -153,9 +154,9 @@ void WifiApp::renderList() {
     lv_obj_t *name = label(row, &font_body, cur ? kAccent : col::text, n.ssid);
     lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
     lv_obj_set_width(name, LCD_WIDTH - 2 * kPad - 28 - 120);
-    lv_obj_align(name, LV_ALIGN_LEFT_MID, 40, cur ? -9 : 0);
-    if (cur) {
-      lv_obj_t *s = label(row, &font_caption, col::textDim, core::net::connected() ? "Connected" : "Saved");
+    lv_obj_align(name, LV_ALIGN_LEFT_MID, 40, cur || saved ? -9 : 0);
+    if (cur || saved) {
+      lv_obj_t *s = label(row, &font_caption, col::textDim, cur ? "Connected" : "Saved");
       lv_obj_align(s, LV_ALIGN_LEFT_MID, 40, 12);
     }
     if (n.secure) lv_obj_align(label(row, &font_icon_18, col::textOff, ICON_LOCK), LV_ALIGN_RIGHT_MID, 0, 0);
@@ -165,10 +166,15 @@ void WifiApp::renderList() {
 void WifiApp::onNetwork(lv_event_t *e) {
   auto *self = static_cast<WifiApp *>(lv_event_get_user_data(e));
   const core::net::Network &n = self->nets_[ui::eventIndex(e)];
+  if (core::net::connected() && strcmp(n.ssid, core::net::ssid()) == 0) return;  // already on it
   strlcpy(self->ssid_, n.ssid, sizeof self->ssid_);
   self->secure_ = n.secure;
   self->typer_.clear();
-  if (n.secure) {
+  if (core::net::known(n.ssid)) {  // saved or in secrets.h: no keypad
+    core::net::join(self->ssid_, nullptr);
+    self->join_ = Join::Idle;
+    self->go(View::Joining);
+  } else if (n.secure) {
     self->go(View::Password);
   } else {
     self->connect();

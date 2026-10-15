@@ -12,6 +12,7 @@ struct RtcState {
   uint32_t magic;
   uint8_t wifiChannel;
   uint8_t wifiBssid[6];
+  char wifiSsid[33];    // the network the cached channel / BSSID belong to
   uint8_t haStates[4];  // ha::LightState, shown as "stale" after wake
 };
 

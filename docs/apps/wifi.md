@@ -5,7 +5,7 @@
 Join a Wi-Fi network from the device itself: pick it from a scan and type
 the password on a Nokia-style keypad. Opened from the
 [quick settings](quick-settings.md), not from the menu. The network is saved
-on the device once it connects.
+on the device once it connects; up to five are kept.
 
 ## Screens
 
@@ -31,7 +31,8 @@ Simulator frames: `docs/design/screens/29-wifi-networks.png`,
 `30-wifi-password.png`, `31-wifi-connected.png`.
 
 - **Networks:** unique names, strongest first, signal bars, a lock for
-  secured networks; the network in use is blue ("Connected" or "Saved").
+  secured networks; the network in use is blue ("Connected"), other known
+  networks (saved, or in `secrets.h`) say "Saved".
 - **Password:** the network's name, the typed text (the letter still
   cycling in blue, underlined, then the cursor), the mode (`abc` / `ABC` /
   `123`) top right. Long passwords scroll so the end stays visible.
@@ -55,7 +56,7 @@ character. Logic: `lib/MultiTap` (host-tested).
 
 | Input | Effect |
 | --- | --- |
-| Tap a network | secured: password screen; open: connect right away |
+| Tap a network | known (saved / `secrets.h`): connect with its password; secured: password screen; open: connect right away; the one in use: nothing |
 | Scan again | new scan |
 | Connect | needs 8+ characters (WPA2), else a hint; then the connecting screen |
 | Back (BOOT) | password → networks; failed → password (text kept); connecting → networks (the attempt carries on); connected / networks → menu |
@@ -67,12 +68,20 @@ character. Logic: `lib/MultiTap` (host-tested).
 - A scan pauses a connection attempt in progress (the driver can't do both)
   and restarts it afterwards; it runs alongside an established connection.
 - **Saved only if it works:** `core::net::join()` tries the new network; once
-  it connects, the name and password are written to NVS (`wifi`). If it
+  it connects, the name and password are written to NVS (`wifis`). If it
   doesn't connect within `WIFI_JOIN_TIMEOUT_MS` (15 s), or the radio goes
-  off first, the previously saved network is used again. A typo never
-  replaces a working network.
-- A saved network takes precedence over `WIFI_SSID` in `secrets.h`;
-  `secrets.h` is only the fallback for a fresh device.
+  off first, the known networks are used again. A typo never replaces a
+  working network; a wrong password for a saved network can be retyped
+  ("Try again" opens the keypad).
+- **Several networks:** up to five are saved on the device, most recently
+  joined first; joining a saved one again moves it to the front with the new
+  password, and past five the oldest drops off. Then come `WIFI_SSID` and
+  `WIFI_EXTRA_NETWORKS` (`{"ssid", "password"}` pairs) from `secrets.h`.
+- **Which one it joins:** with one known network, that one, straight away.
+  With several, it scans (a scan up to `WIFI_SCAN_FRESH_MS` old is reused)
+  and tries the strongest known network in range, then the next; when none
+  is left it waits `WIFI_RETRY_MS` and scans again. After deep sleep it
+  rejoins the last network on its cached channel, without a scan.
 
 ## Security
 
@@ -85,6 +94,7 @@ board and a USB cable can read both.
 | Macro | Default | Meaning |
 | --- | --- | --- |
 | `WIFI_JOIN_TIMEOUT_MS` | 15000 | how long a newly picked network gets to connect |
+| `WIFI_SCAN_FRESH_MS` | 30000 | with several known networks, how old a scan may be to pick one |
 
 ## Acceptance (on device)
 
@@ -95,3 +105,6 @@ board and a USB cable can read both.
 - [ ] A wrong password ends in "Couldn't connect" within ~15 s and the old
       network still works
 - [ ] An open network connects without the keypad
+- [ ] With two known networks (one saved, one in `WIFI_EXTRA_NETWORKS`), it
+      joins whichever is in range, and the stronger one when both are
+- [ ] Tapping a saved network connects without the keypad

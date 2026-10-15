@@ -630,6 +630,34 @@ int main() {
   tap(184, LCD_HEIGHT - 20 - 28);  // Done
   CHECK(apps::manager::inMenu());
 
+  // ---- saved networks: newest first, at most kWifiSaved
+  core::settings::saveWifi("Old", "x");
+  for (int i = 0; i < core::settings::kWifiSaved; i++) {
+    char name[8];
+    snprintf(name, sizeof name, "Net%d", i);
+    core::settings::saveWifi(name, "pw");
+  }
+  CHECK(core::settings::wifiCount() == core::settings::kWifiSaved);
+  CHECK(strcmp(core::settings::wifiSsid(0), "Net4") == 0 && strcmp(core::settings::wifiSsid(4), "Net0") == 0);
+  core::settings::saveWifi("Net2", "new");  // joined again: to the front, new password, no duplicate
+  CHECK(strcmp(core::settings::wifiSsid(0), "Net2") == 0 && strcmp(core::settings::wifiPassword(0), "new") == 0);
+  CHECK(strcmp(core::settings::wifiSsid(1), "Net4") == 0 && strcmp(core::settings::wifiSsid(2), "Net3") == 0);
+  CHECK(core::settings::wifiCount() == core::settings::kWifiSaved);
+
+  // A saved network joins without the keypad.
+  core::settings::saveWifi("Neighbour 5G", "pass1234");
+  sim::join = core::net::Join::Idle;
+  apps::manager::open(&wifiApp);
+  advance(400);
+  CHECK(core::net::known("Neighbour 5G") && !core::net::known("Cafe Guest"));
+  tap(184, 60 + 56 + 6 + 28);  // "Neighbour 5G"
+  CHECK(wifiApp.view() == apps::WifiApp::View::Joining);
+  CHECK(sim::joinSsid == "Neighbour 5G" && sim::joinPassword == "(saved)");
+  sim::join = core::net::Join::Joined;
+  advance(200);
+  tap(184, LCD_HEIGHT - 20 - 28);  // Done
+  CHECK(apps::manager::inMenu());
+
   // ---- power-off animation
   static bool animDone;
   ui::power_anim::off([]() { animDone = true; });
