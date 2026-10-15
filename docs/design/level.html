@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Approved Level app design (A flat + B edge with lean). Open in a browser; the firmware is src/apps/level/. -->
+</head>
+<body>
+<title>Level App Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: same lab bench as ui-mockup.html and the dice drafts: a sensor panel up top, five live screens, comparison in the sixth cell. */
+:root {
+  --bg: #E9ECEF;
+  --panel: #F7F8F9;
+  --ink: #14181D;
+  --muted: #5A6470;
+  --line: #CDD3DA;
+  --accent: #0A7584;
+  --accent-ink: #FFFFFF;
+  --chip: #DDE3E8;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+    --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+  --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 32px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 600; text-wrap: balance; }
+h2 { font-size: 18px; line-height: 1.25; margin: 0; font-weight: 600; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 72ch; margin: 0; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 14px; min-width: 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 26px; align-items: end; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field[hidden] { display: none; }
+.field > span { font: 500 12px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink); font: 500 14px var(--body); padding: 7px 12px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.slider { display: flex; align-items: center; gap: 10px; }
+.slider input { width: 150px; accent-color: var(--accent); }
+.slider output { min-width: 56px; font: 500 14px var(--mono); font-variant-numeric: tabular-nums; }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; height: 36px; }
+.mini { height: 36px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--ink); font: 500 13px var(--body); padding: 0 12px; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rule { margin: 0; color: var(--muted); font-size: 14px; max-width: 86ch; }
+
+.designs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 32px 28px; }
+.card { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.screen { width: 100%; max-width: 352px; justify-self: center; }
+.bezel { padding: 10px; border-radius: 32px; background: linear-gradient(145deg, #2B2F35, #15181C 60%, #0D0F12); box-shadow: inset 0 0 0 1px #3A4048, 0 14px 30px rgba(0,0,0,.22); }
+.glassbox { position: relative; width: 100%; aspect-ratio: 368 / 448; border-radius: 22px; overflow: hidden; background: #000; touch-action: none; }
+.glass { position: absolute; left: 0; top: 0; width: 368px; height: 448px; transform-origin: 0 0; }
+.glass canvas { position: absolute; inset: 0; width: 368px; height: 448px; display: block; cursor: grab; }
+.meta { display: grid; gap: 6px; min-width: 0; }
+.meta p { margin: 0; }
+.meta .device { color: var(--muted); font-size: 14px; }
+.meta .device b { color: var(--ink); font-weight: 500; }
+
+/* on-screen controls, in device pixels with the firmware tokens */
+.glass .bar { position: absolute; left: 22px; right: 22px; bottom: 16px; display: flex; justify-content: space-between; gap: 8px; }
+.glass .pill { height: 48px; border: 0; border-radius: 24px; background: #141414; color: #EDEDED; font: 600 15px/1 Inter, system-ui, sans-serif; padding: 0 18px; cursor: pointer; }
+.glass .pill[aria-pressed="true"] { background: #FFD54F; color: #261E00; }
+.glass .units { display: flex; height: 48px; padding: 4px; border-radius: 24px; background: #141414; }
+.glass .units button { border: 0; border-radius: 20px; background: transparent; color: #9A9A9A; font: 600 15px/1 Inter, system-ui, sans-serif; padding: 0 14px; cursor: pointer; }
+.glass .units button[aria-pressed="true"] { background: #2A2A2A; color: #EDEDED; }
+.glass button:focus-visible { outline: 2px solid #FFD54F; outline-offset: 1px; }
+
+.glance { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 11px/1.2 var(--mono); letter-spacing: .03em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.dots { font-family: var(--mono); letter-spacing: .1em; color: var(--accent); white-space: nowrap; }
+.glance .note { margin: 0; color: var(--muted); font-size: 14px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">ESP32-AMOLED · Level app · chosen design, revision 2</p>
+    <h1>Bullseye and horizon</h1>
+    <p class="lede">One app, two views. Lying flat it is the round bubble vial (design A); stood on an edge it switches to the attitude horizon (design B), which now shows both angles: the rotation (level or plumb) and the up / down lean, as horizon tilt and pitch ladder. Both screens below are live at 368 × 448 and follow the same simulated sensor. Drag on a screen to tilt it, or use the panel.</p>
+  </header>
+
+  <section class="panel" aria-label="Simulated sensor">
+    <div class="controls">
+      <div class="field" id="f-x"><span>Tilt left / right</span><div class="slider"><input type="range" id="g-x" min="-30" max="30" step="0.1" value="2.4"><output id="o-x"></output></div></div>
+      <div class="field" id="f-y"><span>Tilt front / back</span><div class="slider"><input type="range" id="g-y" min="-30" max="30" step="0.1" value="-1.1"><output id="o-y"></output></div></div>
+      <div class="field" id="f-a"><span>Edge rotation</span><div class="slider"><input type="range" id="g-a" min="-180" max="180" step="0.1" value="12"><output id="o-a"></output></div></div>
+      <div class="field" id="f-p"><span>Edge lean up / down</span><div class="slider"><input type="range" id="g-p" min="-45" max="45" step="0.1" value="4"><output id="o-p"></output></div></div>
+      <label class="check"><input type="checkbox" id="g-wobble" checked> Hand tremor</label>
+      <button class="mini" id="g-level">Set level</button>
+    </div>
+    <p class="rule">The flat sliders drive the left screen, the edge sliders the right one. Green means level (within 0.3°), yellow means close (within 2°). On the device the accelerometer is read at about 100 Hz and smoothed, and the gyroscope steadies it while the board moves, so the bubble glides instead of jittering. A short beep can confirm when it reaches level, and Zero is remembered across sleeps.</p>
+  </section>
+
+  <section class="designs" id="designs" aria-label="Designs"></section>
+</div>
+
+<script>
+const W = 368, H = 448, TOP = 64, BOT = 376;
+const C = { bg:'#000', surface:'#141414', track:'#1E1E1E', outline:'#3A3A3A', text:'#EDEDED', dim:'#9A9A9A', off:'#5A5A5A',
+            ok:'#4CD07D', near:'#FFD54F', accent:'#FFD54F', err:'#FF5A5F' };
+const MONO = '"Roboto Mono", ui-monospace, monospace', SANS = 'Inter, system-ui, sans-serif';
+const D2R = Math.PI / 180;
+const LEVEL = 0.3, NEAR = 2;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- simulated sensor ---------- */
+const S = { x: 2.4, y: -1.1, a: 12, p: 4, wobble: true };
+function sensor(t) {
+  const w = S.wobble && !reduced ? 1 : 0;
+  const n1 = w * (Math.sin(t / 830) * .18 + Math.sin(t / 211) * .05), n2 = w * (Math.sin(t / 1170 + 1) * .16 + Math.sin(t / 173) * .04);
+  return { x: S.x + n1, y: S.y + n2, a: S.a + n1, p: S.p + n2 * .8 };
+}
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const fmt = (v, unit) => {
+  if (unit === '%') { const p = Math.tan(clamp(Math.abs(v), 0, 89.9) * D2R) * 100 * Math.sign(v); return (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(Math.abs(p) < 100 ? 1 : 0) + '%'; }
+  return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '°';
+};
+const fmtAbs = (v, unit) => unit === '%' ? (Math.tan(clamp(Math.abs(v), 0, 89.9) * D2R) * 100).toFixed(1) + '%' : Math.abs(v).toFixed(1) + '°';
+const stateColor = dev => Math.abs(dev) <= LEVEL ? C.ok : Math.abs(dev) <= NEAR ? C.near : C.text;
+// Edge mode: the nearest of level (0°/180°) or plumb (±90°), and how far from it.
+function edgeRef(a) {
+  let n = ((a % 360) + 540) % 360 - 180;              // -180..180
+  const refs = [0, 90, -90, 180, -180];
+  let best = 0, dev = 999;
+  for (const r of refs) { const d = n - r; if (Math.abs(d) < Math.abs(dev)) { dev = d; best = r; } }
+  return { norm: n, ref: best, dev, plumb: Math.abs(best) === 90 };
+}
+
+/* ---------- drawing helpers ---------- */
+function text(ctx, s, x, y, font, color, align = 'center', spacing = 0) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+  ctx.fillText(s, x, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function header(ctx, scr, r) {
+  const edge = r.mode === 'edge';
+  text(ctx, edge ? (edgeRef(r.a).plumb ? 'EDGE · PLUMB' : 'EDGE · LEVEL') : 'SURFACE', 24, 30, `600 12px ${SANS}`, C.dim, 'left', 1.2);
+  if (scr.zero) text(ctx, 'ZEROED', W - 24, 30, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+  else if (scr.hold) text(ctx, 'HELD', W - 24, 30, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+}
+function ticks(ctx, cx, cy, r0, r1, a0, a1, step, color, lw = 1) {
+  ctx.beginPath();
+  for (let a = a0; a <= a1 + 1e-6; a += step) { const c = Math.cos(a * D2R), s = Math.sin(a * D2R); ctx.moveTo(cx + c * r0, cy + s * r0); ctx.lineTo(cx + c * r1, cy + s * r1); }
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
+}
+
+/* ---------- screen base: smoothing, zero, hold, units ---------- */
+class Screen {
+  constructor(host, def) {
+    this.def = def; this.glass = host; this.mode = def.mode;
+    this.canvas = document.createElement('canvas'); this.canvas.width = W * 2; this.canvas.height = H * 2;
+    this.ctx = this.canvas.getContext('2d'); host.appendChild(this.canvas);
+    this.zero = null; this.hold = null; this.unit = '°';
+    this.sm = { x: S.x, y: S.y, a: S.a, p: S.p }; this.last = 0;
+    this.init?.();
+  }
+  reading(t) {
+    if (this.hold) return this.hold;
+    const raw = sensor(t), z = this.zero || { x: 0, y: 0, a: 0, p: 0 };
+    const k = reduced ? 1 : .14;
+    this.sm.x += (raw.x - z.x - this.sm.x) * k; this.sm.y += (raw.y - z.y - this.sm.y) * k; this.sm.p += (raw.p - z.p - this.sm.p) * k;
+    let da = raw.a - z.a - this.sm.a; da = ((da + 540) % 360) - 180; this.sm.a += da * k;
+    return { mode: this.mode, x: this.sm.x, y: this.sm.y, a: this.sm.a, p: this.sm.p };
+  }
+  tick(now) {
+    const dt = Math.min(50, now - (this.last || now)); this.last = now;
+    const r = this.reading(now), c = this.ctx;
+    c.setTransform(2, 0, 0, 2, 0, 0); c.fillStyle = C.bg; c.fillRect(0, 0, W, H);
+    header(c, this, r);
+    if (r.mode === 'flat') this.flat(c, r, dt); else this.edge(c, r, dt);
+  }
+}
+
+/* ===================== A · Bullseye ===================== */
+class Bullseye extends Screen {
+  flat(ctx, r) {
+    const cx = W / 2, cy = 214, R = 118, mag = Math.hypot(r.x, r.y), col = stateColor(mag);
+    // vial
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#0B0A06'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#2E2A1C'; ctx.stroke();
+    for (const [deg, a] of [[1, .9], [3, .5], [6, .3]]) { ctx.beginPath(); ctx.arc(cx, cy, this.rad(deg, R), 0, Math.PI * 2); ctx.strokeStyle = `rgba(255,213,79,${a * .35})`; ctx.lineWidth = 1.2; ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
+    // target ring
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.strokeStyle = Math.abs(mag) <= LEVEL ? C.ok : '#6B5E2E'; ctx.lineWidth = 2; ctx.stroke();
+    // bubble: towards the high side
+    const d = this.rad(mag, R - 30), ang = Math.atan2(-r.y, -r.x);
+    const bx = cx + (mag > 1e-3 ? Math.cos(ang) * d : 0), by = cy + (mag > 1e-3 ? Math.sin(ang) * d : 0);
+    const g = ctx.createRadialGradient(bx - 8, by - 9, 3, bx, by, 26);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(.25, col); g.addColorStop(1, col);
+    ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(bx, by, 25, 0, Math.PI * 2); ctx.fillStyle = g;
+    ctx.shadowColor = col; ctx.shadowBlur = 18; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    // readouts
+    text(ctx, 'X', 24, 62, `600 11px ${SANS}`, C.dim, 'left', 1); text(ctx, fmt(r.x, this.unit), 40, 62, `500 16px ${MONO}`, stateColor(r.x), 'left');
+    text(ctx, 'Y', W - 24, 62, `600 11px ${SANS}`, C.dim, 'right', 1); text(ctx, fmt(r.y, this.unit), W - 40, 62, `500 16px ${MONO}`, stateColor(r.y), 'right');
+    text(ctx, fmtAbs(mag, this.unit), cx, 356, `500 30px ${MONO}`, col);
+  }
+  rad(deg, R) { return R * Math.tanh(Math.abs(deg) / 7); }
+  edge(ctx, r) {
+    const e = edgeRef(r.a), cx = W / 2, cy = 80, R = 250, col = stateColor(e.dev);
+    // curved vial (a smile) with the bubble at the top of the arc
+    const span = 34;
+    ctx.beginPath(); ctx.arc(cx, cy, R, (90 - span) * D2R, (90 + span) * D2R); ctx.lineWidth = 46; ctx.lineCap = 'round'; ctx.strokeStyle = '#0B0A06'; ctx.stroke();
+    ctx.lineWidth = 48; ctx.globalCompositeOperation = 'destination-over'; ctx.strokeStyle = '#2E2A1C'; ctx.stroke(); ctx.globalCompositeOperation = 'source-over';
+    ticks(ctx, cx, cy, R - 23, R + 23, 90 - 2.2, 90 + 2.2, 4.4, '#6B5E2E', 2);
+    const off = clamp(e.dev, -span + 3, span - 3), ba = (90 - off) * D2R;
+    const bx = cx + Math.cos(ba) * R, by = cy + Math.sin(ba) * R;
+    ctx.beginPath(); ctx.ellipse(bx, by, 26, 17, ba - Math.PI / 2, 0, Math.PI * 2); ctx.fillStyle = col; ctx.globalAlpha = .92; ctx.shadowColor = col; ctx.shadowBlur = 18; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    text(ctx, fmtAbs(e.dev, this.unit), cx, 150, `500 64px ${MONO}`, col);
+    text(ctx, e.plumb ? 'from vertical' : 'from horizontal', cx, 196, `500 15px ${SANS}`, C.dim);
+    text(ctx, `angle ${Math.abs(e.norm).toFixed(1)}°`, cx, 222, `500 13px ${MONO}`, C.off);
+  }
+}
+
+/* ===================== B · Horizon ===================== */
+class Horizon extends Screen {
+  draw(ctx, pitch, roll, label1, v1, label2, v2, dev1 = pitch, dev2 = roll) {
+    const cx = W / 2, cy = 214, R = 132, ppd = 5;            // pixels per degree of pitch
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(cx, cy); ctx.rotate(-roll * D2R); ctx.translate(0, pitch * ppd);
+    ctx.fillStyle = '#1C1604'; ctx.fillRect(-400, 0, 800, 600);                  // ground
+    const gr = ctx.createLinearGradient(0, 0, 0, -220); gr.addColorStop(0, '#0B1420'); gr.addColorStop(1, '#000');
+    ctx.fillStyle = gr; ctx.fillRect(-400, -600, 800, 600);                      // sky
+    ctx.beginPath(); ctx.moveTo(-400, 0); ctx.lineTo(400, 0); ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.stroke();
+    for (let p = -60; p <= 60; p += 5) {
+      if (!p) continue;
+      const y = -p * ppd, w = p % 10 ? 22 : 46;
+      ctx.beginPath(); ctx.moveTo(-w, y); ctx.lineTo(w, y); ctx.strokeStyle = 'rgba(237,237,237,.55)'; ctx.lineWidth = p % 10 ? 1 : 1.5; ctx.stroke();
+      if (!(p % 10)) { text(ctx, String(Math.abs(p)), -w - 14, y, `500 11px ${MONO}`, C.dim); text(ctx, String(Math.abs(p)), w + 14, y, `500 11px ${MONO}`, C.dim); }
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = C.outline; ctx.lineWidth = 2; ctx.stroke();
+    // roll scale
+    for (const a of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+      const t = (a - 90) * D2R, len = a % 30 ? 7 : 12;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(t) * (R + 4), cy + Math.sin(t) * (R + 4)); ctx.lineTo(cx + Math.cos(t) * (R + 4 + len), cy + Math.sin(t) * (R + 4 + len));
+      ctx.strokeStyle = a ? C.dim : C.text; ctx.lineWidth = 2; ctx.stroke();
+    }
+    const t = (-roll - 90) * D2R, px = cx + Math.cos(t) * (R - 2), py = cy + Math.sin(t) * (R - 2);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(t + Math.PI / 2);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, 12); ctx.lineTo(8, 12); ctx.closePath(); ctx.fillStyle = stateColor(roll); ctx.fill(); ctx.restore();
+    // fixed aircraft symbol
+    const col = stateColor(Math.hypot(pitch, roll));
+    ctx.beginPath(); ctx.moveTo(cx - 62, cy); ctx.lineTo(cx - 22, cy); ctx.lineTo(cx - 10, cy + 10); ctx.moveTo(cx + 62, cy); ctx.lineTo(cx + 22, cy); ctx.lineTo(cx + 10, cy + 10);
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    // readouts
+    text(ctx, label1, 24, 360, `600 11px ${SANS}`, C.dim, 'left', 1); text(ctx, v1, 24, 340, `500 22px ${MONO}`, stateColor(dev1), 'left');
+    text(ctx, label2, W - 24, 360, `600 11px ${SANS}`, C.dim, 'right', 1); text(ctx, v2, W - 24, 340, `500 22px ${MONO}`, dev2 === null ? C.dim : stateColor(dev2), 'right');
+  }
+  flat(ctx, r) { this.draw(ctx, r.y, r.x, 'PITCH', fmt(r.y, this.unit), 'ROLL', fmt(r.x, this.unit)); }
+  edge(ctx, r) { const e = edgeRef(r.a); this.draw(ctx, 0, e.dev, e.plumb ? 'PLUMB' : 'LEVEL', fmtAbs(e.dev, this.unit), 'ANGLE', Math.abs(e.norm).toFixed(1) + '°', e.dev, null); }
+}
+
+/* ===================== C · Carpenter ===================== */
+class Carpenter extends Screen {
+  tube(ctx, x, y, w, h, dev, range) {
+    const horiz = w > h, col = stateColor(dev);
+    rr(ctx, x, y, w, h, Math.min(w, h) / 2);
+    const g = horiz ? ctx.createLinearGradient(0, y, 0, y + h) : ctx.createLinearGradient(x, 0, x + w, 0);
+    g.addColorStop(0, '#1E2608'); g.addColorStop(.5, '#2C3A0C'); g.addColorStop(1, '#141A05');
+    ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#4A5A22'; ctx.stroke();
+    const len = horiz ? w : h, mid = horiz ? x + w / 2 : y + h / 2, gap = (horiz ? h : w) * 1.05;
+    ctx.beginPath();
+    for (const s of [-1, 1]) {
+      const p = mid + s * gap / 2 + s * 4;
+      if (horiz) { ctx.moveTo(p, y + 4); ctx.lineTo(p, y + h - 4); } else { ctx.moveTo(x + 4, p); ctx.lineTo(x + w - 4, p); }
+    }
+    ctx.strokeStyle = '#0D0F04'; ctx.lineWidth = 3; ctx.stroke();
+    const travel = (len - gap) / 2 - 6, off = travel * Math.tanh(-dev / range);
+    const bl = gap * .92, bw = (horiz ? h : w) - 10, bx = horiz ? mid + off - bl / 2 : x + 5, by = horiz ? y + 5 : mid + off - bl / 2;
+    ctx.save(); rr(ctx, x, y, w, h, Math.min(w, h) / 2); ctx.clip();
+    rr(ctx, bx, by, horiz ? bl : bw, horiz ? bw : bl, bw / 2);
+    const bg = horiz ? ctx.createLinearGradient(0, by, 0, by + bw) : ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    bg.addColorStop(0, '#FFFFFF'); bg.addColorStop(.35, col); bg.addColorStop(1, col);
+    ctx.globalAlpha = .88; ctx.fillStyle = bg; ctx.shadowColor = col; ctx.shadowBlur = 14; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+  flat(ctx, r) {
+    this.tube(ctx, 24, 300, 252, 48, r.x, 4);
+    this.tube(ctx, 296, 70, 48, 278, r.y, 4);
+    text(ctx, 'LEFT / RIGHT', 24, 80, `600 11px ${SANS}`, C.dim, 'left', 1);
+    text(ctx, fmt(r.x, this.unit), 24, 116, `500 40px ${MONO}`, stateColor(r.x), 'left');
+    text(ctx, 'FRONT / BACK', 24, 168, `600 11px ${SANS}`, C.dim, 'left', 1);
+    text(ctx, fmt(r.y, this.unit), 24, 204, `500 40px ${MONO}`, stateColor(r.y), 'left');
+    const ok = Math.hypot(r.x, r.y) <= LEVEL;
+    text(ctx, ok ? 'LEVEL' : '', 24, 262, `600 14px ${SANS}`, C.ok, 'left', 1.4);
+  }
+  edge(ctx, r) {
+    const e = edgeRef(r.a);
+    const n = e.norm, levelDev = Math.abs(n) > 90 ? n - Math.sign(n) * 180 : n, plumbDev = n - Math.sign(n || 1) * 90;
+    text(ctx, fmtAbs(e.dev, this.unit), W / 2, 108, `500 60px ${MONO}`, stateColor(e.dev));
+    text(ctx, e.plumb ? 'from vertical' : 'from horizontal', W / 2, 150, `500 15px ${SANS}`, C.dim);
+    // level vial across, plumb vial upright; the one that applies is lit
+    ctx.globalAlpha = e.plumb ? .3 : 1; this.tube(ctx, 24, 186, 320, 56, levelDev, 3); ctx.globalAlpha = 1;
+    ctx.globalAlpha = e.plumb ? 1 : .3; this.tube(ctx, 160, 262, 48, 104, plumbDev, 3); ctx.globalAlpha = 1;
+    text(ctx, 'LEVEL', 24, 262, `600 11px ${SANS}`, e.plumb ? C.off : C.dim, 'left', 1);
+    text(ctx, 'PLUMB', 228, 314, `600 11px ${SANS}`, e.plumb ? C.dim : C.off, 'left', 1);
+    text(ctx, `angle ${Math.abs(n).toFixed(1)}°`, W - 24, 262, `500 13px ${MONO}`, C.off, 'right');
+  }
+}
+
+/* ===================== D · Protractor ===================== */
+class Protractor extends Screen {
+  scale(ctx, cx, cy, R, from, to, labelEvery) {
+    ticks(ctx, cx, cy, R - 6, R, from, to, 1, '#3A3A3A', 1);
+    ticks(ctx, cx, cy, R - 12, R, from, to, 5, '#5A5A5A', 1.2);
+    ticks(ctx, cx, cy, R - 18, R, from, to, 10, '#9A9A9A', 1.6);
+    for (let a = from; a <= to; a += labelEvery) {
+      const v = Math.round(Math.abs(a + 90)); const t = a * D2R;
+      text(ctx, String(v), cx + Math.cos(t) * (R - 32), cy + Math.sin(t) * (R - 32), `500 11px ${MONO}`, '#7A7A7A');
+    }
+  }
+  needle(ctx, cx, cy, R, deg, col) {
+    const t = (deg - 90) * D2R;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(t) * (R - 4), cy + Math.sin(t) * (R - 4));
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(cx, cy, 7, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+  }
+  edge(ctx, r) {
+    const e = edgeRef(r.a), cx = W / 2, cy = 236, R = 150, col = stateColor(e.dev);
+    this.scale(ctx, cx, cy, R, -180, 0, 10);
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.strokeStyle = '#3A3A3A'; ctx.lineWidth = 1.5; ctx.stroke();
+    const shown = clamp(e.norm, -90, 90);                      // the plumb line hangs straight down = needle
+    this.needle(ctx, cx, cy, R, shown, col);
+    text(ctx, fmtAbs(e.dev, this.unit), cx, cy + 56, `500 54px ${MONO}`, col);
+    text(ctx, e.plumb ? 'from vertical' : 'from horizontal', cx, cy + 96, `500 14px ${SANS}`, C.dim);
+  }
+  flat(ctx, r) {
+    const mag = Math.hypot(r.x, r.y), col = stateColor(mag), cx = W / 2, cy = 214, R = 112;
+    // compass ring: where the high side is
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = '#2A2A2A'; ctx.lineWidth = 2; ctx.stroke();
+    ticks(ctx, cx, cy, R - 8, R, 0, 350, 10, '#3A3A3A', 1.2); ticks(ctx, cx, cy, R - 14, R, 0, 270, 90, '#7A7A7A', 2);
+    const dir = Math.atan2(r.y, r.x);                            // points to the low side
+    if (mag > LEVEL) {
+      const a0 = dir - .35, a1 = dir + .35;
+      ctx.beginPath(); ctx.arc(cx, cy, R, a0, a1); ctx.strokeStyle = col; ctx.lineWidth = 6; ctx.lineCap = 'round'; ctx.stroke();
+      ctx.save(); ctx.translate(cx + Math.cos(dir) * (R - 30), cy + Math.sin(dir) * (R - 30)); ctx.rotate(dir);
+      ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-6, -10); ctx.lineTo(-6, 10); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); ctx.restore();
+    }
+    text(ctx, fmtAbs(mag, this.unit), cx, cy - 6, `500 50px ${MONO}`, col);
+    // plain-language advice: which side to raise
+    let advice = 'Level';
+    if (mag > LEVEL) {
+      const sides = [];
+      if (Math.abs(r.y) > LEVEL) sides.push(r.y > 0 ? 'front' : 'back');
+      if (Math.abs(r.x) > LEVEL) sides.push(r.x > 0 ? 'right' : 'left');
+      advice = 'Raise the ' + sides.join('-') + (sides.length > 1 ? ' corner' : ' side');
+    }
+    text(ctx, advice, cx, cy + 34, `500 15px ${SANS}`, mag <= LEVEL ? C.ok : C.dim);
+    text(ctx, `X ${fmt(r.x, this.unit)}   Y ${fmt(r.y, this.unit)}`, cx, 352, `500 14px ${MONO}`, C.dim);
+  }
+}
+
+/* ===================== E · Marble ===================== */
+class Marble extends Screen {
+  init() { this.b = { x: 0, y: 0, vx: 0, vy: 0 }; this.e = { x: 0, v: 0 }; }
+  flat(ctx, r, dt) {
+    const cx = W / 2, cy = 210, R = 132, br = 18, b = this.b, g = .0016;
+    if (!this.hold) {
+      b.vx += -Math.sin(r.x * D2R) * g * dt * 9; b.vy += -Math.sin(r.y * D2R) * g * dt * 9;
+      b.vx *= Math.pow(.985, dt / 16); b.vy *= Math.pow(.985, dt / 16);
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      const d = Math.hypot(b.x, b.y), lim = R - br - 4;
+      if (d > lim) { const nx = b.x / d, ny = b.y / d; b.x = nx * lim; b.y = ny * lim; const vn = b.vx * nx + b.vy * ny; if (vn > 0) { b.vx -= 1.5 * vn * nx; b.vy -= 1.5 * vn * ny; } }
+    }
+    const mag = Math.hypot(r.x, r.y), inside = Math.hypot(b.x, b.y) < 26, ok = mag <= LEVEL;
+    // dish
+    const dg = ctx.createRadialGradient(cx, cy, 10, cx, cy, R); dg.addColorStop(0, '#15130B'); dg.addColorStop(1, '#070707');
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = dg; ctx.fill(); ctx.strokeStyle = '#2A2618'; ctx.lineWidth = 2; ctx.stroke();
+    for (const rad of [60, 100]) { ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(255,213,79,.08)'; ctx.lineWidth = 1; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(cx, cy, 26, 0, Math.PI * 2); ctx.strokeStyle = ok ? C.ok : '#6B5E2E'; ctx.lineWidth = ok ? 3 : 2;
+    if (ok) { ctx.shadowColor = C.ok; ctx.shadowBlur = 16; } ctx.stroke(); ctx.shadowBlur = 0;
+    // marble
+    const mx = cx + b.x, my = cy + b.y, col = stateColor(mag);
+    ctx.beginPath(); ctx.ellipse(mx + 4, my + 6, br, br * .8, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fill();
+    const mg = ctx.createRadialGradient(mx - 6, my - 7, 2, mx, my, br); mg.addColorStop(0, '#FFFFFF'); mg.addColorStop(.3, col); mg.addColorStop(1, '#2A2306');
+    ctx.beginPath(); ctx.arc(mx, my, br, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill();
+    text(ctx, ok ? (inside ? 'Level · marble centred' : 'Level') : fmtAbs(mag, this.unit), cx, 362, `500 ${ok ? 16 : 26}px ${ok ? SANS : MONO}`, ok ? C.ok : col);
+  }
+  edge(ctx, r, dt) {
+    const e = edgeRef(r.a), s = this.e, cx = W / 2, y = 250, half = 150;
+    if (!this.hold) {
+      s.v += -Math.sin(e.dev * D2R) * .0016 * dt * 9; s.v *= Math.pow(.985, dt / 16); s.x += s.v * dt;
+      if (Math.abs(s.x) > half - 24) { s.x = Math.sign(s.x) * (half - 24); s.v *= -.5; }
+    }
+    // a gently curved track
+    ctx.beginPath(); for (let i = -half; i <= half; i += 6) { const yy = y + (i * i) / 1800; i === -half ? ctx.moveTo(cx + i, yy) : ctx.lineTo(cx + i, yy); }
+    ctx.strokeStyle = '#2A2618'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 18, y - 24); ctx.lineTo(cx - 18, y + 6); ctx.moveTo(cx + 18, y - 24); ctx.lineTo(cx + 18, y + 6);
+    ctx.strokeStyle = Math.abs(e.dev) <= LEVEL ? C.ok : '#6B5E2E'; ctx.lineWidth = 2; ctx.stroke();
+    const col = stateColor(e.dev), mx = cx + s.x, my = y + (s.x * s.x) / 1800 - 23;
+    const mg = ctx.createRadialGradient(mx - 6, my - 7, 2, mx, my, 18); mg.addColorStop(0, '#FFFFFF'); mg.addColorStop(.3, col); mg.addColorStop(1, '#2A2306');
+    ctx.beginPath(); ctx.arc(mx, my, 18, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill();
+    text(ctx, fmtAbs(e.dev, this.unit), cx, 132, `500 56px ${MONO}`, col);
+    text(ctx, e.plumb ? 'from vertical' : 'from horizontal', cx, 174, `500 15px ${SANS}`, C.dim);
+  }
+}
+
+/* ===================== chosen: A flat + B edge with lean ===================== */
+class LevelApp extends Screen {
+  flat(ctx, r) { Bullseye.prototype.flat.call(this, ctx, r); }
+  rad(deg, R) { return Bullseye.prototype.rad.call(this, deg, R); }
+  edge(ctx, r) {
+    const e = edgeRef(r.a);
+    text(ctx, `rotation ${Math.abs(e.norm).toFixed(1)}°`, 24, 50, `500 12px ${MONO}`, C.off, 'left');
+    Horizon.prototype.draw.call(this, ctx, r.p, e.dev, e.plumb ? 'PLUMB' : 'LEVEL', fmtAbs(e.dev, this.unit),
+                                r.p >= 0 ? 'LEAN UP' : 'LEAN DOWN', fmtAbs(r.p, this.unit), e.dev, r.p);
+  }
+}
+
+/* ===================== cards ===================== */
+const DESIGNS = [
+  { mode: 'flat', eyebrow: 'Lying flat · design A', name: 'Bullseye vial',
+    desc: 'The round vial: the bubble glides toward the high side through rings at 1°, 3° and 6°, yellow when close and green when level. Left / right and front / back are shown at the top, the total tilt under the vial.',
+    device: 'Shown while gravity points mostly through the screen (the board is lying on its back or face). Only the bubble’s area redraws.' },
+  { mode: 'edge', eyebrow: 'On its edge · design B', name: 'Attitude horizon',
+    desc: 'The horizon rotates with the board (the roll scale on top and the LEVEL / PLUMB readout show how far it is from level or vertical) and now also slides up and down with the lean, read on the pitch ladder every 5° and as LEAN UP / LEAN DOWN. The centre mark turns green only when both are within 0.3°.',
+    device: 'Shown while the board stands on any edge. Rotation is the angle in the screen plane; lean is how far the screen tips toward the sky or the floor. Zero and Hold apply to both angles.' },
+];
+const screens = [], designsEl = document.getElementById('designs');
+DESIGNS.forEach(d => {
+  const card = document.createElement('article'); card.className = 'card';
+  card.innerHTML = `<div class="screen"><div class="bezel"><div class="glassbox"><div class="glass"></div></div></div></div>
+    <div class="meta"><p class="eyebrow">${d.eyebrow}</p><h2>${d.name}</h2><p>${d.desc}</p><p class="device"><b>On the device:</b> ${d.device}</p></div>`;
+  designsEl.appendChild(card);
+  const glass = card.querySelector('.glass'), scr = new LevelApp(glass, d);
+  glass.insertAdjacentHTML('beforeend', `<div class="bar">
+      <button class="pill" data-act="zero" aria-pressed="false">Zero</button>
+      <button class="pill" data-act="hold" aria-pressed="false">Hold</button>
+      <div class="units" role="group" aria-label="Units"><button data-unit="°" aria-pressed="true">°</button><button data-unit="%" aria-pressed="false">%</button></div>
+    </div>`);
+  const zb = glass.querySelector('[data-act="zero"]'), hb = glass.querySelector('[data-act="hold"]');
+  zb.addEventListener('click', () => {
+    if (scr.zero) { scr.zero = null; zb.textContent = 'Zero'; zb.setAttribute('aria-pressed', 'false'); }
+    else { const raw = sensor(performance.now()); scr.zero = { x: raw.x, y: raw.y, a: raw.a, p: raw.p }; zb.textContent = 'Reset'; zb.setAttribute('aria-pressed', 'true'); }
+  });
+  hb.addEventListener('click', () => { scr.hold = scr.hold ? null : scr.reading(performance.now()); hb.setAttribute('aria-pressed', String(!!scr.hold)); });
+  glass.querySelectorAll('[data-unit]').forEach(b => b.addEventListener('click', () => {
+    scr.unit = b.dataset.unit; glass.querySelectorAll('[data-unit]').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  }));
+  // drag on the screen tilts the simulated board
+  let drag = null;
+  scr.canvas.addEventListener('pointerdown', ev => { drag = { x0: ev.clientX, y0: ev.clientY, sx: S.x, sy: S.y, sa: S.a, sp: S.p }; scr.canvas.setPointerCapture(ev.pointerId); });
+  scr.canvas.addEventListener('pointermove', ev => {
+    if (!drag) return;
+    const dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+    if (scr.mode === 'flat') { S.x = clamp(drag.sx + dx * .08, -30, 30); S.y = clamp(drag.sy + dy * .08, -30, 30); }
+    else { S.a = clamp(drag.sa + dx * .25, -180, 180); S.p = clamp(drag.sp - dy * .15, -45, 45); }
+    syncPanel();
+  });
+  scr.canvas.addEventListener('pointerup', () => { drag = null; });
+  const box = card.querySelector('.glassbox');
+  new ResizeObserver(() => { glass.style.transform = `scale(${box.clientWidth / W})`; }).observe(box);
+  screens.push(scr);
+});
+
+const glance = document.createElement('aside'); glance.className = 'glance';
+glance.innerHTML = `<p class="eyebrow">How it behaves</p><h2>One app, switching by itself</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Board</th><th>View</th><th>Reads</th></tr></thead>
+    <tbody>
+      <tr><td>Flat on its back</td><td>Bullseye</td><td>left / right, front / back, total tilt</td></tr>
+      <tr><td>On any edge</td><td>Horizon</td><td>rotation from level or plumb, lean up / down</td></tr>
+    </tbody></table></div>
+  <p class="note">The switch happens when the screen is more than about 45° from flat, with a few degrees of hysteresis so it doesn’t flicker in between. Zero, Hold and ° / % stay in the bottom bar in both views; Zero is kept per view and survives sleep.</p>`;
+designsEl.appendChild(glance);
+
+/* ---------- panel ---------- */
+const $ = id => document.getElementById(id);
+function syncPanel() {
+  $('g-x').value = S.x; $('g-y').value = S.y; $('g-a').value = S.a; $('g-p').value = S.p;
+  $('o-x').textContent = fmt(S.x, '°'); $('o-y').textContent = fmt(S.y, '°'); $('o-a').textContent = fmt(S.a, '°'); $('o-p').textContent = fmt(S.p, '°');
+}
+$('g-x').addEventListener('input', e => { S.x = +e.target.value; syncPanel(); });
+$('g-y').addEventListener('input', e => { S.y = +e.target.value; syncPanel(); });
+$('g-a').addEventListener('input', e => { S.a = +e.target.value; syncPanel(); });
+$('g-p').addEventListener('input', e => { S.p = +e.target.value; syncPanel(); });
+$('g-wobble').addEventListener('change', e => { S.wobble = e.target.checked; });
+$('g-level').addEventListener('click', () => { S.x = 0; S.y = 0; S.a = Math.round(S.a / 90) * 90; S.p = 0; syncPanel(); });
+syncPanel();
+function frame(now) { screens.forEach(s => s.tick(now)); requestAnimationFrame(frame); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

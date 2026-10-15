@@ -1,0 +1,7 @@
+{
+  "name": "PowerFsm",
+  "version": "0.1.0",
+  "description": "Idle timeline state machine: power stage and brightness from idle time, profile and app policy",
+  "platforms": "*",
+  "frameworks": "*"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "ButtonLogic",
+  "version": "0.1.0",
+  "description": "Debounced button with press, short and long press events",
+  "platforms": "*",
+  "frameworks": "*"
+}

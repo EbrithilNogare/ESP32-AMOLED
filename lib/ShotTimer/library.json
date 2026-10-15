@@ -1,0 +1,7 @@
+{
+  "name": "ShotTimer",
+  "version": "0.1.0",
+  "description": "Espresso shot stopwatch with target zones and history",
+  "platforms": "*",
+  "frameworks": "*"
+}

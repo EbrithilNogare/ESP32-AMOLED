@@ -1,0 +1,7 @@
+{
+  "name": "PomodoroCore",
+  "version": "0.1.0",
+  "description": "Pomodoro timer logic based on absolute timestamps",
+  "platforms": "*",
+  "frameworks": "*"
+}

@@ -1,0 +1,2269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Clickable mock of the firmware UI: every app and the quick settings. Open this file in a
+     browser. Tokens, fonts and sizes follow docs/UI_DESIGN.md; the firmware renders the real thing
+     (docs/design/firmware-screens.png from the PC simulator). -->
+<title>ESP32-AMOLED Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
+<style>
+/* Layout: lab bench — live device on the left, readout panel on the right, screen gallery below. */
+:root {
+  --bg: #E9ECEF;
+  --panel: #F7F8F9;
+  --ink: #14181D;
+  --muted: #5A6470;
+  --line: #CDD3DA;
+  --accent: #0A7584;
+  --accent-ink: #FFFFFF;
+  --chip: #DDE3E8;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+    --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1114; --panel: #161A1F; --ink: #E6EAEE; --muted: #96A0AB;
+  --line: #2A3038; --accent: #4FD1E0; --accent-ink: #062126; --chip: #222830;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 56px; display: grid; gap: 36px; }
+header { display: grid; gap: 6px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; font-weight: 600; text-wrap: balance; }
+h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
+.lede { color: var(--muted); max-width: 64ch; margin: 0; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+.bench { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 820px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- device ---------- */
+.dev-host { width: 100%; max-width: 470px; justify-self: center; }
+.dev-scale { position: relative; }
+.device {
+  position: absolute; top: 0; left: 0; width: 470px; height: 500px; transform-origin: top left;
+}
+.body {
+  position: absolute; left: 0; top: 0; width: 404px; height: 500px; border-radius: 44px;
+  background: linear-gradient(145deg, #2B2F35, #15181C 60%, #0D0F12);
+  box-shadow: inset 0 0 0 1px #3A4048, 0 18px 40px rgba(0,0,0,.28);
+}
+.glass {
+  position: absolute; left: 18px; top: 26px; width: 368px; height: 448px; border-radius: 22px;
+  background: #000; overflow: hidden; box-shadow: 0 0 0 2px #050607;
+}
+.crt { position: absolute; inset: 0; }
+.crt.off { animation: crtOff 1s ease-in forwards; }
+.crt.dead { transform: scale(0, 0); opacity: 0; }
+.crt.on { animation: crtOn .6s ease-out; }
+@keyframes crtOff {
+  0% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+  45% { transform: scale(1, .006); filter: brightness(2.2); opacity: 1; }
+  75% { transform: scale(.02, .006); filter: brightness(3); opacity: 1; }
+  100% { transform: scale(0, 0); opacity: 0; }
+}
+@keyframes crtOn {
+  0% { transform: scale(.02, .006); filter: brightness(3); opacity: 1; }
+  40% { transform: scale(1, .006); filter: brightness(2); }
+  100% { transform: scale(1, 1); filter: brightness(1); }
+}
+.content { position: absolute; inset: 0; }
+.dimmer { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .3s linear; }
+.swallow { position: absolute; inset: 0; cursor: pointer; }
+.hint {
+  position: absolute; inset: auto 0 40px; text-align: center; color: #9A9A9A;
+  font: 500 16px Inter, system-ui, sans-serif;
+}
+
+.sidebtn {
+  position: absolute; left: 402px; width: 12px; height: 64px; border-radius: 0 6px 6px 0;
+  background: linear-gradient(90deg, #1B1E22, #3A4048); border: 0; padding: 0; cursor: pointer;
+  box-shadow: inset 0 0 0 1px #4A515A; overflow: hidden;
+}
+.sidebtn::after { content: ""; position: absolute; inset: auto 0 0 0; height: 0; background: var(--accent); }
+.sidebtn.holding::after { animation: hold 1s linear forwards; }
+@keyframes hold { to { height: 100%; } }
+.sidebtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.sidebtn.back { top: 132px; }
+.sidebtn.home { top: 236px; }
+.btnlabel { position: absolute; left: 424px; font: 500 12px/1.25 var(--mono); color: var(--muted); }
+.btnlabel b { display: block; color: var(--ink); font-weight: 500; font-family: var(--body); font-size: 14px; }
+.btnlabel.back { top: 144px; }
+.btnlabel.home { top: 248px; }
+
+/* ---------- side panel ---------- */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 20px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { border: 0; background: transparent; color: var(--ink); font: 500 14px var(--body); padding: 7px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button:focus-visible, .ctl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ctl { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
+.readout { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; font-size: 14px; }
+.readout dt { color: var(--muted); }
+.readout dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.stage-pill { display: inline-block; padding: 1px 9px; border-radius: 99px; background: var(--chip); font-family: var(--body); font-weight: 500; }
+.timeline { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.timeline span { font: 500 11px/1.2 var(--mono); color: var(--muted); padding: 6px 6px 0; border-top: 4px solid var(--line); }
+.timeline span.now { color: var(--ink); border-top-color: var(--accent); }
+.howto { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--muted); font-size: 14px; }
+.howto b { color: var(--ink); font-weight: 500; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+
+/* ---------- gallery ---------- */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); gap: 24px 20px; }
+.thumb { display: grid; gap: 8px; justify-items: start; }
+.thumb .frame { width: 184px; height: 224px; border-radius: 12px; overflow: hidden; position: relative; background: #000; box-shadow: 0 0 0 1px var(--line); }
+.thumb .frame > .inner { position: absolute; left: 0; top: 0; width: 368px; height: 448px; transform: scale(.5); transform-origin: top left; }
+.thumb figcaption { font-size: 13px; line-height: 1.35; }
+.thumb figcaption span { display: block; color: var(--muted); }
+
+/* ---------- device screen (AMOLED, always dark) ---------- */
+.scr { position: absolute; inset: 0; width: 368px; height: 448px; background: #000; color: #EDEDED; overflow: hidden;
+  font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; user-select: none; transition: transform .22s ease-out, opacity .22s ease-out; }
+.scr.enter { transform: scale(.92); opacity: 0; }
+.scr.leave { transform: scale(1.06); opacity: 0; pointer-events: none; }
+.scr button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ms { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal;
+  text-transform: none; display: inline-block; white-space: nowrap; direction: ltr; font-feature-settings: "liga"; -webkit-font-smoothing: antialiased; }
+
+.statusbar { position: absolute; top: 4px; left: 4px; right: 4px; height: 32px; display: flex; justify-content: space-between; align-items: center;
+  padding: 0 16px; font: 500 16px Inter, sans-serif; color: #9A9A9A; z-index: 2; font-variant-numeric: tabular-nums; }
+.statusbar .r { display: flex; align-items: center; gap: 8px; }
+.menu-list { position: absolute; top: 36px; left: 0; right: 0; bottom: 0; overflow-y: auto; scroll-snap-type: y mandatory;
+  scrollbar-width: none; padding: 8px 0 140px; scroll-padding-top: 8px; }
+.menu-list::-webkit-scrollbar { display: none; }
+.menu-row { display: flex; justify-content: center; gap: 40px; height: 176px; scroll-snap-align: start; transform-origin: center; }
+.scr .app { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 128px; }
+.app-disc { width: 128px; height: 128px; border-radius: 50%; display: grid; place-items: center; background: var(--accdim);
+  box-shadow: inset 0 0 0 2px var(--acc); color: var(--acc); transition: transform .12s ease-out, background .12s; }
+.scr .app:active .app-disc { transform: scale(.94); background: var(--accmid); }
+.app-name { font: 400 20px/1.2 Inter, sans-serif; color: #9A9A9A; white-space: nowrap; }
+
+.tiles { position: absolute; inset: 4px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; }
+.scr .tile { border-radius: 24px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 20px 18px 18px;
+  text-align: left; transition: background .22s, color .22s, transform .12s; }
+.scr .tile:active { transform: scale(.96); }
+.scr .tile.on { background: #FFB300; color: #1E1500; }
+.scr .tile.off { background: #141414; color: #EDEDED; }
+.scr .tile.off .tile-ic { color: #5A5A5A; }
+.scr .tile.na { background: #000; box-shadow: inset 0 0 0 2px #3A3A3A; color: #5A5A5A; }
+.tile-lab { font: 600 26px/1.15 Inter, sans-serif; text-wrap: balance; }
+.tile-st { font: 500 16px Inter, sans-serif; letter-spacing: .04em; text-transform: uppercase; opacity: .8; height: 20px; display: flex; align-items: center; gap: 8px; }
+.scr .tile.shake { animation: shake .3s; }
+@keyframes shake { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; display: inline-block; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.pomo-top { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; justify-content: space-between; align-items: center;
+  font: 500 16px Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+.dots { display: flex; gap: 8px; }
+.dots i { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 2px currentColor; }
+.dots i.f { background: currentColor; }
+.pomo-ring { position: absolute; left: 34px; top: 66px; width: 300px; height: 300px; }
+.pomo-center { position: absolute; left: 34px; top: 66px; width: 300px; height: 300px; display: grid; place-content: center; text-align: center; gap: 4px; }
+.digits { font: 500 80px/1 "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.sub { font: 400 16px Inter, sans-serif; color: #9A9A9A; }
+.pomo-btns { position: absolute; left: 0; right: 0; bottom: 22px; display: flex; justify-content: center; gap: 16px; }
+.scr .pill { height: 56px; padding: 0 22px; border-radius: 28px; background: #141414; display: inline-flex; align-items: center; gap: 8px; font: 500 20px Inter, sans-serif; }
+.scr .round { width: 56px; height: 56px; border-radius: 50%; background: #141414; display: inline-grid; place-items: center; color: #9A9A9A; }
+.scr .pill:active, .scr .round:active { background: #242424; }
+.toast { position: absolute; left: 50%; bottom: 92px; transform: translateX(-50%); background: #242424; padding: 8px 14px; border-radius: 12px; font: 500 16px Inter, sans-serif; white-space: nowrap; }
+.flash { position: absolute; inset: 0; pointer-events: none; animation: flash .8s; }
+@keyframes flash { 0%, 100% { opacity: 0; } 30% { opacity: .35; } }
+
+.esp-top { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; justify-content: space-between; font: 500 16px Inter, sans-serif; color: #9A9A9A; letter-spacing: .08em; text-transform: uppercase; }
+.esp-digits { position: absolute; left: 0; right: 0; top: 112px; text-align: center; font: 500 120px/1 "Roboto Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -.03em; transition: color .2s; }
+.esp-bar { position: absolute; left: 34px; right: 34px; top: 268px; height: 12px; border-radius: 6px; background: #141414; }
+.esp-band { position: absolute; top: -6px; bottom: -6px; border-radius: 4px; background: rgba(76, 208, 125, .18); box-shadow: inset 0 0 0 1px rgba(76, 208, 125, .5); }
+.esp-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
+.esp-ticks { position: absolute; left: 34px; right: 34px; top: 290px; height: 20px; font: 500 14px Inter, sans-serif; color: #5A5A5A; }
+.esp-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.esp-msg { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font: 500 20px Inter, sans-serif; }
+.esp-hist { position: absolute; left: 24px; right: 24px; bottom: 22px; display: flex; justify-content: center; gap: 8px; }
+.esp-hist span { padding: 6px 10px; border-radius: 10px; background: #141414; font: 500 16px "Roboto Mono", monospace; font-variant-numeric: tabular-nums; }
+
+.sys-title { position: absolute; top: 22px; left: 24px; font: 600 28px Inter, sans-serif; }
+.sys-list { position: absolute; top: 74px; left: 20px; right: 20px; display: grid; gap: 2px; }
+.sys-list div { display: flex; justify-content: space-between; gap: 12px; padding: 6px 4px; border-bottom: 1px solid #1C1C1C; font: 400 17px/1.3 Inter, sans-serif; }
+.sys-list div span:first-child { color: #9A9A9A; }
+.sys-list div span:last-child { font-variant-numeric: tabular-nums; text-align: right; }
+.scr .sys-btn { position: absolute; left: 24px; right: 24px; bottom: 22px; height: 56px; border-radius: 28px; display: flex; align-items: center; justify-content: center; gap: 10px;
+  background: #18202A; box-shadow: inset 0 0 0 2px #8FA3BF; color: #C9D6E8; font: 500 20px Inter, sans-serif; }
+.ota-center { position: absolute; left: 54px; top: 70px; width: 260px; height: 260px; display: grid; place-content: center; text-align: center; gap: 6px; }
+.ota-pct { font: 500 56px/1 "Roboto Mono", monospace; font-variant-numeric: tabular-nums; }
+.ota-info { position: absolute; left: 24px; right: 24px; top: 344px; text-align: center; display: grid; gap: 4px; font: 400 18px Inter, sans-serif; color: #9A9A9A; }
+.ota-info b { color: #EDEDED; font-weight: 500; }
+
+.later { display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; }
+.later p { margin: 0; font: 400 20px Inter, sans-serif; color: #9A9A9A; }
+
+.minimal .m-dig { position: absolute; font: 500 44px/1 "Roboto Mono", monospace; text-align: center; width: 140px; }
+.minimal svg { position: absolute; }
+
+/* ---------- quick settings shade (menu) ---------- */
+.statusbar { touch-action: none; cursor: ns-resize; }
+.qs-scrim { position: absolute; inset: 0; background: #000; opacity: 0; z-index: 5; }
+.qs-shade { position: absolute; left: 0; right: 0; top: 0; height: 312px; transform: translateY(-312px); background: #141414;
+  border-radius: 0 0 28px 28px; z-index: 6; touch-action: none; }
+.qs-shade.anim, .qs-scrim.anim { transition: transform .22s ease-out, opacity .22s ease-out; }
+.qs-time { position: absolute; left: 24px; top: 18px; font: 600 28px Inter, sans-serif; font-variant-numeric: tabular-nums; }
+.qs-bat { position: absolute; right: 24px; top: 28px; font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+.scr .qs-row { position: absolute; left: 16px; right: 16px; height: 64px; border-radius: 20px; background: #242424; display: flex;
+  align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; font: 500 20px Inter, sans-serif; }
+.scr .qs-wifi { top: 72px; }
+.scr .qs-wifi:active { transform: scale(.97); }
+.qs-wifi .nm { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qs-bar { overflow: hidden; touch-action: none; cursor: ew-resize; }
+.scr .qs-bright { top: 148px; }
+.scr .qs-vol { top: 224px; left: 92px; justify-content: flex-end; }
+.scr .qs-mute { top: 224px; right: auto; width: 64px; padding: 0; justify-content: center; }
+.scr .qs-mute:active { transform: scale(.94); }
+.qs-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #2F5F96; }
+.qs-bar > :not(.qs-fill) { position: relative; }
+.qs-grip { position: absolute; left: 50%; bottom: 10px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: #3A3A3A; }
+
+/* ---------- Wi-Fi screen ---------- */
+.wf-head { position: absolute; top: 24px; left: 24px; right: 24px; display: flex; justify-content: space-between;
+  font: 500 16px Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #9A9A9A; }
+.wf-head .mode { color: #4DA3FF; letter-spacing: .04em; text-transform: none; }
+.wf-list { position: absolute; top: 60px; left: 16px; right: 16px; bottom: 80px; overflow-y: auto; display: grid; align-content: start;
+  gap: 6px; scrollbar-width: none; }
+.scr .wf-net { height: 56px; border-radius: 16px; background: #141414; display: flex; align-items: center; gap: 12px; padding: 0 14px; text-align: left; }
+.scr .wf-net:active { background: #242424; }
+.wf-net .nm { flex: 1; min-width: 0; display: grid; font: 400 20px/1.15 Inter, sans-serif; }
+.wf-net .nm span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-net .nm small { font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+.wf-net.cur { color: #4DA3FF; }
+.wf-net .sig { color: #9A9A9A; }
+.wf-net.cur .sig { color: #4DA3FF; }
+.scr .wf-scan { position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); height: 48px; padding: 0 22px; border-radius: 24px;
+  background: #141414; display: inline-flex; align-items: center; gap: 8px; font: 500 20px Inter, sans-serif; white-space: nowrap; }
+.wf-ssid { position: absolute; top: 44px; left: 24px; right: 24px; font: 400 17px Inter, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf-field { position: absolute; left: 16px; right: 16px; top: 72px; height: 52px; border-radius: 14px; background: #242424; display: flex;
+  align-items: center; padding: 0 16px; font: 500 20px Inter, sans-serif; white-space: pre; overflow: hidden; }
+.wf-field .pend { color: #4DA3FF; box-shadow: inset 0 -2px 0 #4DA3FF; }
+.wf-field .caret { display: inline-block; flex: none; width: 2px; height: 24px; margin-left: 2px; background: #EDEDED; }
+.wf-field .ph { color: #5A5A5A; }
+.wf-keys { position: absolute; left: 16px; right: 16px; top: 136px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 8px; }
+.scr .wf-key { height: 54px; border-radius: 14px; background: #141414; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 14px; }
+.scr .wf-key:active { background: #242424; transform: scale(.96); }
+.wf-key b { font: 600 28px Inter, sans-serif; }
+.wf-key span { font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+.wf-bottom { position: absolute; left: 16px; right: 16px; bottom: 20px; display: grid; grid-template-columns: 106fr 222fr; gap: 8px; }
+.scr .wf-del { height: 48px; border-radius: 24px; background: #141414; display: grid; place-items: center; }
+.scr .wf-ok { height: 48px; border-radius: 24px; background: #4DA3FF; color: #0B1826; font: 500 20px Inter, sans-serif; }
+.scr .wf-del:active, .scr .wf-ok:active { transform: scale(.96); }
+.wf-hint { position: absolute; left: 50%; top: 132px; transform: translateX(-50%); background: #242424; padding: 8px 14px; border-radius: 12px;
+  font: 500 16px Inter, sans-serif; white-space: nowrap; z-index: 1; }
+.wf-ring { position: absolute; left: 118px; top: 92px; width: 132px; height: 132px; }
+.wf-ring.spinning { animation: spin 1s linear infinite; }
+.wf-icon { position: absolute; left: 0; right: 0; top: 130px; text-align: center; }
+.wf-title { position: absolute; left: 0; right: 0; top: 236px; text-align: center; font: 600 28px Inter, sans-serif; }
+.wf-sub { position: absolute; left: 24px; right: 24px; top: 280px; text-align: center; font: 400 20px/1.35 Inter, sans-serif; color: #9A9A9A; }
+.scr .wf-btn { position: absolute; left: 84px; right: 84px; bottom: 20px; height: 56px; border-radius: 28px; background: #141414; font: 500 20px Inter, sans-serif; }
+
+/* ---------- Dice ---------- */
+.dice-canvas, .lv-canvas { position: absolute; left: 0; top: 0; width: 368px; height: 448px; }
+.dice-strip { position: absolute; top: 9px; left: 24px; right: 24px; height: 56px; display: flex; justify-content: space-between; }
+.scr .dice-die { width: 42px; height: 56px; border-radius: 14px; display: grid; justify-items: center; align-content: center; gap: 1px;
+  color: #5A5A5A; font: 500 16px Inter, sans-serif; }
+.dice-die svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: .1; stroke-linejoin: round; }
+.scr .dice-die.on { background: #26170A; color: #FF8A1F; }
+.dice-hit { position: absolute; left: 0; right: 0; top: 70px; height: 306px; cursor: pointer; }
+.dice-step { position: absolute; left: 24px; bottom: 20px; width: 142px; height: 48px; border-radius: 24px; background: #141414; display: flex;
+  align-items: center; justify-content: space-between; font: 500 20px Inter, sans-serif; font-variant-numeric: tabular-nums; }
+.scr .dice-step button { width: 42px; height: 48px; font: 600 28px Inter, sans-serif; }
+.scr .dice-step button:disabled { color: #3A3A3A; cursor: default; }
+.seg2 { position: absolute; right: 24px; bottom: 20px; height: 48px; padding: 4px; gap: 2px; border-radius: 24px; background: #141414; display: flex; }
+.scr .seg2 button { padding: 0 14px; border-radius: 20px; font: 500 16px Inter, sans-serif; color: #9A9A9A; }
+
+/* ---------- Level ---------- */
+.lv-hit { position: absolute; left: 0; right: 0; top: 70px; height: 300px; touch-action: none; cursor: grab; }
+.scr .lv-btn { position: absolute; bottom: 20px; width: 96px; height: 48px; border-radius: 24px; background: #141414; font: 500 20px Inter, sans-serif; }
+.scr .lv-btn.on { background: #FFD54F; color: #261F0C; }
+.scr .seg2.units button { width: 46px; padding: 0; font-size: 20px; }
+
+/* ---------- Timer ---------- */
+.tm-tabs { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); height: 48px; padding: 4px; gap: 2px; border-radius: 24px;
+  background: #141414; display: flex; }
+.scr .tm-tabs button { padding: 0 14px; border-radius: 20px; font: 500 16px Inter, sans-serif; color: #9A9A9A; white-space: nowrap; }
+.tm-big { position: absolute; left: 0; right: 0; height: 160px; pointer-events: none; text-align: center; font: 500 160px/1 "Roboto Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tm-date { position: absolute; left: 0; right: 0; top: 386px; text-align: center; font: 400 20px/24px Inter, sans-serif; color: #9A9A9A; }
+.tm-sw { position: absolute; left: 0; right: 0; top: 164px; display: flex; justify-content: center; align-items: baseline; }
+.tm-sw small { font: 500 44px/1 "Roboto Mono", monospace; color: #9A9A9A; }
+.tm-cap { position: absolute; left: 0; right: 0; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; }
+.tm-tap { position: absolute; left: 0; right: 0; cursor: pointer; }
+.tm-col { position: absolute; top: 92px; width: 120px; height: 236px; display: grid; grid-template-rows: 40px 1fr 40px; justify-items: center;
+  align-items: center; color: #9A9A9A; touch-action: none; cursor: ns-resize; }
+.tm-col .digits { color: #EDEDED; }
+.tm-colon { position: absolute; left: 0; right: 0; top: 170px; text-align: center; color: #9A9A9A; pointer-events: none; }
+.tm-ring { position: absolute; left: 51px; top: 85px; }
+.tm-ring svg circle { transition: stroke .2s; }
+.tm-mid { position: absolute; left: 0; right: 0; top: 170px; text-align: center; pointer-events: none; }
+
+/* ---------- Noise ---------- */
+.nz-canvas { position: absolute; left: 0; top: 0; width: 368px; height: 448px; }
+.nz-hit { position: absolute; inset: 0; touch-action: none; cursor: pointer; }
+.nz-title { position: absolute; left: 0; right: 0; top: 24px; text-align: center; font: 600 28px/34px Inter, sans-serif; pointer-events: none; }
+.nz-state { position: absolute; left: 0; right: 0; top: 64px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; white-space: pre; pointer-events: none; }
+.nz-play { position: absolute; left: 128px; top: 168px; width: 112px; height: 112px; border-radius: 50%; background: rgba(20, 20, 20, .8);
+  display: grid; place-items: center; pointer-events: none; }
+.nz-muted { position: absolute; left: 0; right: 0; bottom: 54px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #FFB020; pointer-events: none; }
+.nz-dots { position: absolute; left: 0; right: 0; top: 416px; display: flex; justify-content: center; gap: 10px; pointer-events: none; }
+.nz-dots i { width: 8px; height: 8px; border-radius: 50%; background: #3A3A3A; }
+.nz-chrome { transition: opacity .4s; }
+.nz-chrome.hide { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .scr, .tile, .dimmer { transition: none; }
+  .crt.off, .crt.on { animation-duration: .01s; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Waveshare ESP32-S3-Touch-AMOLED-1.8 · 368 × 448 · firmware mock</span>
+    <h1>ESP32-AMOLED screens</h1>
+    <p class="lede">Every screen of the current firmware, clickable, at the panel's real pixel size with its tokens, fonts and icons: the nine apps, the quick settings you pull down from the menu's status bar, and the Wi-Fi setup with its phone keypad. The side buttons behave like the device: Back steps back, Home returns to the menu, holding either for 1 s powers off. The idle timeline runs for real.</p>
+  </header>
+
+  <section class="bench" aria-label="Interactive device">
+    <div class="dev-host" id="devHost">
+      <div class="dev-scale" id="devScale">
+        <div class="device" id="device">
+          <div class="body"></div>
+          <div class="glass" id="glass">
+            <div class="crt" id="crt">
+              <div class="content" id="content"></div>
+              <div class="dimmer" id="dimmer"></div>
+              <div class="swallow" id="swallow" hidden></div>
+            </div>
+            <div class="hint" id="hint" hidden>Release the button</div>
+          </div>
+          <button class="sidebtn back" id="btnBack" aria-label="Back button (BOOT). Hold 1 second to power off."></button>
+          <button class="sidebtn home" id="btnHome" aria-label="Home button (PWR). Hold 1 second to power off."></button>
+          <div class="btnlabel back"><b>Back</b>BOOT</div>
+          <div class="btnlabel home"><b>Home</b>PWR</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="row">
+        <span class="eyebrow">Power</span>
+        <div class="seg" role="group" aria-label="Power source">
+          <button id="pBat" aria-pressed="true">Battery</button>
+          <button id="pChg" aria-pressed="false">Charger</button>
+        </div>
+        <label class="ctl"><input type="checkbox" id="pause"> Pause idle timer</label>
+      </div>
+      <div class="row">
+        <span class="eyebrow">Sensor</span>
+        <div class="seg" role="group" aria-label="Level: board orientation">
+          <button id="sFlat" aria-pressed="true">Lying flat</button>
+          <button id="sEdge" aria-pressed="false">On an edge</button>
+        </div>
+      </div>
+
+      <dl class="readout">
+        <dt>Screen</dt><dd><span class="stage-pill" id="rStage">Active</span></dd>
+        <dt>Idle</dt><dd id="rIdle">0.0 s</dd>
+        <dt>App policy</dt><dd id="rPolicy">Normal</dd>
+        <dt>Brightness</dt><dd id="rBright">100 %</dd>
+        <dt>Next</dt><dd id="rNext">dims at 10 s</dd>
+      </dl>
+
+      <div>
+        <div class="timeline" id="tl"></div>
+      </div>
+
+      <ul class="howto">
+        <li><b>Tap</b> an icon to open an app. Scroll the menu with the wheel or trackpad.</li>
+        <li><b>Pull the status bar down</b> (or tap it) for quick settings: slide the brightness or volume bar (sliding it unmutes), tap the speaker to mute, tap Wi-Fi to pick a network and type its password with multi-tap (2 2 2 = c, # = abc/ABC/123). In this mock any 8+ character password connects; "wrongpass" shows the failure.</li>
+        <li><b>Dice:</b> tap the middle to roll. <b>Level:</b> drag on the screen to tilt the board; switch flat / edge under Sensor.</li>
+        <li><b>Back</b> (upper side button, or Esc): one step back. <b>Home</b> (lower, or H): menu.</li>
+        <li><b>Hold</b> either button for 1 s: power-off animation, then deep sleep. Press again to wake.</li>
+        <li>While dimmed or black, the first tap only wakes the screen.</li>
+        <li>Start the Pomodoro and leave it alone: after 10 s it switches to its minimal view instead of sleeping.</li>
+        <li><b>Timer:</b> the Clock tab never blanks: after 10 s it drops to a minimal clock at 25 % that moves every minute. A running stopwatch or countdown does the same, even from the menu. Set the countdown by dragging a column up or down, or tapping above / below its middle; at 0 it flashes and beeps (Back silences it).</li>
+        <li><b>Noise:</b> tap to play or pause, swipe sideways for rain, white or blue noise (it really plays, at the quick-settings volume). Playing, the screen dims and goes black as usual but the device never deep-sleeps, so the sound goes on, also from the menu.</li>
+      </ul>
+      <p class="note">A mock of the firmware, not the firmware: colours, sizes and fonts follow docs/UI_DESIGN.md, but the real panel is far brighter and sharper than a monitor, so brightness is shown compressed here. Values like IP, battery, networks and firmware version are examples.</p>
+    </div>
+  </section>
+
+  <section style="display:grid; gap:16px" aria-label="All screens">
+    <h2>All screens</h2>
+    <div class="gallery" id="gallery"></div>
+  </section>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const now = () => performance.now();
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function ic(name, size, fill) {
+  return `<span class="ms" style="font-size:${size}px;font-variation-settings:'FILL' ${fill ? 1 : 0},'wght' 500,'GRAD' 0,'opsz' ${Math.min(48, Math.max(20, size))}">${name}</span>`;
+}
+function mix(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgb(${Math.round((n >> 16 & 255) * a)},${Math.round((n >> 8 & 255) * a)},${Math.round((n & 255) * a)})`;
+}
+const mmss = ms => { const s = Math.ceil(ms / 1000); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+
+const APPS = [
+  { id: 'lights', name: 'Lights', icon: 'lightbulb', accent: '#FFB300' },
+  { id: 'bot', name: 'Bot face', icon: 'sentiment_satisfied', accent: '#00E5FF' },
+  { id: 'pomodoro', name: 'Pomodoro', icon: 'timer', accent: '#FF5A4E' },
+  { id: 'espresso', name: 'Espresso', icon: 'coffee', accent: '#C8915A' },
+  { id: 'dice', name: 'Dice', icon: 'casino', accent: '#FF8A1F' },
+  { id: 'level', name: 'Level', icon: 'straighten', accent: '#FFD54F' },
+  { id: 'timer', name: 'Timer', icon: 'alarm', accent: '#B388FF' },
+  { id: 'noise', name: 'Noise', icon: 'rainy', accent: '#6E8BFF' },
+  { id: 'system', name: 'System', icon: 'memory', accent: '#8FA3BF' },
+];
+const appById = id => APPS.find(a => a.id === id);
+
+/* ---------------- shared app state ---------------- */
+const PH = {
+  focus: { label: 'Focus', dur: 25 * 60e3, color: '#FF5A4E' },
+  short: { label: 'Short break', dur: 5 * 60e3, color: '#4CD07D' },
+  long: { label: 'Long break', dur: 15 * 60e3, color: '#4DA3FF' },
+};
+const pomo = { phase: 'focus', running: false, rem: (18 * 60 + 42) * 1000, endAt: 0, count: 2 };
+const pomoRem = p => p.running ? Math.max(0, p.endAt - Date.now()) : p.rem;
+const esp = { mode: 'ready', start: 0, elapsed: 0, hist: [26.1, 31.8, 24.0] };
+const sys = { view: 'info', phase: 'waiting', pct: 0, t0: 0 };
+const lights = [
+  { label: 'Living room', s: 'on' }, { label: 'Kitchen', s: 'off' },
+  { label: 'Bedroom', s: 'off' }, { label: 'Hallway', s: 'na' },
+];
+const env = { charger: false, battery: 82 };
+const bootT = Date.now();
+
+function espColor(t) { return t < 20 ? '#4DA3FF' : t < 25 ? '#FFB020' : t <= 30 ? '#4CD07D' : '#FF5A5F'; }
+
+/* ---------------- screen builders ---------------- */
+function statusBar() {
+  const sb = el('div', 'statusbar');
+  const upd = () => {
+    const d = new Date();
+    const bat = env.charger ? `${ic('bolt', 18, 1)}${env.battery} %` : `${ic('battery_5_bar', 18, 1)}${env.battery} %`;
+    sb.innerHTML = `<span>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</span><span class="r">${ic('wifi', 18, 1)}<span class="r" style="gap:2px">${bat}</span></span>`;
+  };
+  upd();
+  return { el: sb, upd };
+}
+
+function fisheye(list) {
+  const c = list.scrollTop + list.clientHeight / 2 - 30;
+  for (const row of list.children) {
+    const d = Math.abs(row.offsetTop + row.offsetHeight / 2 - c);
+    const k = Math.min(1, d / 240);
+    row.style.transform = `scale(${1 - 0.1 * k})`;
+    row.style.opacity = 1 - 0.4 * k;
+  }
+}
+
+function buildMenu(live, onOpen, opts) {
+  const s = el('div', 'scr');
+  const sb = statusBar();
+  const list = el('div', 'menu-list');
+  for (let i = 0; i < APPS.length; i += 2) {
+    const row = el('div', 'menu-row');
+    for (const a of APPS.slice(i, i + 2)) {
+      const b = el('button', 'app');
+      b.style.setProperty('--acc', a.accent);
+      b.style.setProperty('--accdim', mix(a.accent, 0.15));
+      b.style.setProperty('--accmid', mix(a.accent, 0.3));
+      b.innerHTML = `<span class="app-disc">${ic(a.icon, 64, 1)}</span><span class="app-name">${a.name}</span>`;
+      b.setAttribute('aria-label', `Open ${a.name}`);
+      if (live) b.addEventListener('click', () => onOpen(a.id));
+      else b.tabIndex = -1;
+      row.append(b);
+    }
+    list.append(row);
+  }
+  list.addEventListener('scroll', () => fisheye(list), { passive: true });
+  s.append(sb.el, list);
+  const qs = addQuickSettings(s, sb, live, opts);
+  requestAnimationFrame(() => fisheye(list));
+  return {
+    el: s, list,
+    tick() { sb.upd(); if (qs.isOpen()) qs.render(); },
+    home() { if (qs.isOpen()) qs.close(); else list.scrollTo({ top: 0, behavior: 'smooth' }); },
+    onBack() { if (qs.isOpen()) qs.close(); else if (list.scrollTop > 0) list.scrollTo({ top: 0, behavior: 'smooth' }); return true; },
+  };
+}
+
+function buildLights(state, live) {
+  const s = el('div', 'scr');
+  const g = el('div', 'tiles');
+  s.append(g);
+  const render = () => {
+    g.innerHTML = '';
+    state.forEach(t => {
+      const lit = t.s === 'on' || (t.s === 'pending' && t.prev === 'on');
+      const cls = t.s === 'na' ? 'na' : lit ? 'on' : 'off';
+      const b = el('button', 'tile ' + cls);
+      const st = t.s === 'na' ? 'n/a' : t.s === 'pending' ? '<i class="spin"></i>' : lit ? 'On' : 'Off';
+      b.innerHTML = `<span class="tile-ic">${ic('lightbulb', 56, lit)}</span><span class="tile-lab">${t.label}</span><span class="tile-st">${st}</span>`;
+      b.setAttribute('aria-label', `${t.label}: ${t.s}`);
+      if (live) b.addEventListener('click', () => {
+        if (t.s === 'on' || t.s === 'off') {
+          t.prev = t.s; t.s = 'pending'; render();
+          setTimeout(() => { t.s = t.prev === 'on' ? 'off' : 'on'; render(); }, 650);
+        } else if (t.s === 'na') { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+      });
+      else b.tabIndex = -1;
+      g.append(b);
+    });
+  };
+  render();
+  return { el: s };
+}
+
+/* bot face: parametric, tweened */
+const faces = new Set();
+function buildBot(live, isDim) {
+  const s = el('div', 'scr');
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 368 448'); svg.setAttribute('width', 368); svg.setAttribute('height', 448);
+  const C = '#00E5FF';
+  const eL = document.createElementNS(NS, 'rect'), eR = document.createElementNS(NS, 'rect');
+  const mouth = document.createElementNS(NS, 'path'), mo = document.createElementNS(NS, 'ellipse');
+  [eL, eR, mo].forEach(e => e.setAttribute('fill', C));
+  mouth.setAttribute('fill', 'none'); mouth.setAttribute('stroke', C); mouth.setAttribute('stroke-width', 12); mouth.setAttribute('stroke-linecap', 'round');
+  svg.append(eL, eR, mouth, mo);
+  s.append(svg);
+  const t0 = now();
+  const f = {
+    p: { open: 1, lx: 0, ly: 0, curve: 0.55, mo: 0, bounce: 0, w: 1 },
+    tg: { open: 1, lx: 0, ly: 0, curve: 0.55, mo: 0, bounce: 0, w: 1 },
+    nextBlink: t0 + 1500, blinkAt: -1e9, nextLook: t0 + 1200, reactUntil: 0, lastTap: 0, isDim,
+    draw(t) {
+      const p = this.p, tg = this.tg;
+      if (t > this.reactUntil) {
+        const sleepy = this.isDim && this.isDim();
+        tg.open = sleepy ? 0.45 : 1; tg.curve = sleepy ? 0.25 : 0.55; tg.mo = 0; tg.bounce = 0; tg.w = 1;
+      }
+      if (t > this.nextLook) {
+        const center = Math.random() < 0.3;
+        tg.lx = center ? 0 : Math.random() * 2 - 1; tg.ly = center ? 0 : Math.random() * 1.2 - 0.6;
+        this.nextLook = t + 1400 + Math.random() * 2200;
+      }
+      if (t > this.nextBlink) {
+        this.blinkAt = t;
+        const dbl = Math.random() < 0.2;
+        this.nextBlink = t + (dbl ? 260 : 2000 + Math.random() * 4000) * ((this.isDim && this.isDim()) ? 1.8 : 1);
+      }
+      for (const k in p) p[k] += (tg[k] - p[k]) * 0.16;
+      const ph = (t - this.blinkAt) / 150;
+      const blink = ph < 1 ? 1 - Math.sin(ph * Math.PI) * 0.93 : 1;
+      const breathe = Math.sin((t - t0) / 900) * 3;
+      const h = Math.max(8, 118 * p.open * blink), w = 86 * p.w;
+      const cy = 196 + p.ly * 14 + breathe + p.bounce;
+      [[124, eL], [244, eR]].forEach(([cx, e]) => {
+        const x = cx + p.lx * 18 - w / 2;
+        e.setAttribute('x', x); e.setAttribute('y', cy - h / 2); e.setAttribute('width', w); e.setAttribute('height', h);
+        e.setAttribute('rx', Math.min(28, h / 2)); e.setAttribute('ry', Math.min(28, h / 2));
+      });
+      const my = 318 + breathe + p.bounce * 0.6, mx = 184 + p.lx * 8;
+      if (p.mo > 0.15) {
+        mouth.setAttribute('d', ''); mo.setAttribute('cx', mx); mo.setAttribute('cy', my + 6);
+        mo.setAttribute('rx', 16 + 6 * p.mo); mo.setAttribute('ry', 24 * p.mo);
+      } else {
+        mo.setAttribute('rx', 0); mo.setAttribute('ry', 0);
+        mouth.setAttribute('d', `M ${mx - 44} ${my} Q ${mx} ${my + 56 * p.curve} ${mx + 44} ${my}`);
+      }
+    },
+    tap(t) {
+      if (t - this.lastTap < 320) {
+        Object.assign(this.tg, { open: 1.25, w: 1.15, mo: 1, curve: 0, bounce: -6 });
+        this.reactUntil = t + 1300;
+      } else {
+        Object.assign(this.tg, { open: 0.3, w: 1.08, curve: 1, mo: 0, bounce: -14 });
+        this.reactUntil = t + 900;
+        setTimeout(() => { this.tg.bounce = 0; }, 180);
+      }
+      this.lastTap = t;
+    },
+    svg,
+  };
+  faces.add(f);
+  if (live) s.addEventListener('pointerdown', () => f.tap(now()));
+  f.draw(now());
+  return { el: s, face: f };
+}
+(function faceLoop() {
+  const t = now();
+  for (const f of faces) { if (!f.svg.isConnected) { faces.delete(f); continue; } f.draw(t); }
+  requestAnimationFrame(faceLoop);
+})();
+
+function ringSvg(r, w, color, frac, track, dash) {
+  const C = 2 * Math.PI * r, sz = (r + w) * 2;
+  return `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true">
+    ${track ? `<circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="${track}" stroke-width="${w}"/>` : ''}
+    <circle cx="${sz / 2}" cy="${sz / 2}" r="${r}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"
+      ${dash ? `stroke-dasharray="${dash}"` : `stroke-dasharray="${C * frac} ${C}"`} transform="rotate(-90 ${sz / 2} ${sz / 2})"/>
+  </svg>`;
+}
+
+function buildPomodoro(p, live) {
+  const s = el('div', 'scr');
+  const top = el('div', 'pomo-top'), ring = el('div', 'pomo-ring'), center = el('div', 'pomo-center'), btns = el('div', 'pomo-btns');
+  const toggle = el('button', 'pill'), reset = el('button', 'round', ic('restart_alt', 28, 0));
+  reset.setAttribute('aria-label', 'Reset phase');
+  btns.append(toggle, reset);
+  s.append(top, ring, center, btns);
+  let confirmUntil = 0, pressT = null, skipped = false;
+  const render = () => {
+    const ph = PH[p.phase], rem = pomoRem(p);
+    top.style.color = ph.color;
+    const filled = p.phase === 'focus' ? p.count % 4 : p.phase === 'long' ? 4 : p.count % 4 || 4;
+    top.innerHTML = `<span>${ph.label}</span><span class="dots">${[0, 1, 2, 3].map(i => `<i class="${i < filled ? 'f' : ''}"></i>`).join('')}</span>`;
+    ring.innerHTML = ringSvg(144, 6, ph.color, 1 - rem / ph.dur, '#1E1E1E');
+    const nxt = p.phase === 'focus' ? ((p.count + 1) % 4 === 0 ? 'long break' : 'short break') : 'focus';
+    center.innerHTML = `<div class="digits">${mmss(rem)}</div><div class="sub">${p.running ? 'until ' + nxt : 'paused'}</div>`;
+    toggle.innerHTML = p.running ? `${ic('pause', 28, 1)}Pause` : `${ic('play_arrow', 28, 1)}${rem === ph.dur ? 'Start' : 'Resume'}`;
+    toggle.style.color = ph.color;
+    const old = s.querySelector('.toast');
+    if (Date.now() < confirmUntil) { if (!old) s.append(el('div', 'toast', 'Tap again to reset')); } else if (old) old.remove();
+  };
+  if (live) {
+    const flip = () => {
+      if (p.running) { p.rem = pomoRem(p); p.running = false; } else { p.endAt = Date.now() + p.rem; p.running = true; }
+      render();
+    };
+    toggle.addEventListener('click', flip);
+    center.style.cursor = 'pointer';
+    center.addEventListener('pointerdown', () => { skipped = false; pressT = setTimeout(() => { skipped = true; pomoAdvance(true); render(); }, 700); });
+    center.addEventListener('pointerup', () => { clearTimeout(pressT); if (!skipped) flip(); });
+    center.addEventListener('pointerleave', () => clearTimeout(pressT));
+    reset.addEventListener('click', () => {
+      if (Date.now() < confirmUntil) {
+        confirmUntil = 0; p.running = false; p.rem = PH[p.phase].dur;
+      } else confirmUntil = Date.now() + 2000;
+      render();
+    });
+  } else [toggle, reset].forEach(b => b.tabIndex = -1);
+  render();
+  return { el: s, tick: render };
+}
+function pomoAdvance(manual) {
+  const p = pomo;
+  if (p.phase === 'focus') { p.count++; p.phase = p.count % 4 === 0 ? 'long' : 'short'; }
+  else if (p.phase === 'long') { p.phase = 'focus'; p.count = 0; }
+  else p.phase = 'focus';
+  p.rem = PH[p.phase].dur;
+  if (p.running) p.endAt = Date.now() + p.rem;
+  if (!manual) phaseFlash();
+}
+
+function buildPomoMinimal(p, drift) {
+  const s = el('div', 'scr minimal');
+  const render = () => {
+    const ph = PH[p.phase], rem = pomoRem(p);
+    const k = drift ? Math.floor(Date.now() / 5000) : 0;
+    const dx = Math.round(Math.sin(k * 1.7) * 22), dy = Math.round(Math.cos(k * 1.1) * 26);
+    const cx = 184 + dx, cy = 224 + dy;
+    const frac = rem / ph.dur, r = 62, N = 40, lit = Math.ceil(frac * N);
+    let dots = '';
+    for (let i = 0; i < lit; i++) {
+      const a = -Math.PI / 2 + i * 2 * Math.PI / N;
+      dots += `<circle cx="${(cx + r * Math.cos(a)).toFixed(1)}" cy="${(cy + r * Math.sin(a)).toFixed(1)}" r="2.2" fill="${ph.color}"/>`;
+    }
+    s.innerHTML = `<svg width="368" height="448" viewBox="0 0 368 448" aria-hidden="true">${dots}</svg>
+      <div class="m-dig" style="left:${cx - 70}px;top:${cy - 22}px;color:${ph.color}">${Math.ceil(rem / 60000)}</div>`;
+  };
+  render();
+  return { el: s, tick: render };
+}
+
+function buildEspresso(e, live) {
+  const s = el('div', 'scr');
+  s.innerHTML = `<div class="esp-top"><span>Espresso</span><span>target 25–30 s</span></div>
+    <div class="esp-digits"></div>
+    <div class="esp-bar"><div class="esp-band" style="left:${25 / 40 * 100}%;width:${5 / 40 * 100}%"></div><div class="esp-fill"></div></div>
+    <div class="esp-ticks"><span style="left:0">0</span><span style="left:${25 / 40 * 100}%">25</span><span style="left:${30 / 40 * 100}%">30</span><span style="left:100%">40 s</span></div>
+    <div class="esp-msg"></div><div class="esp-hist"></div>`;
+  const dg = s.querySelector('.esp-digits'), fill = s.querySelector('.esp-fill'), msg = s.querySelector('.esp-msg'), hist = s.querySelector('.esp-hist');
+  const render = () => {
+    const t = e.mode === 'running' ? (now() - e.start) / 1000 : e.elapsed;
+    const col = e.mode === 'ready' ? '#EDEDED' : espColor(t);
+    dg.textContent = t.toFixed(1); dg.style.color = col;
+    fill.style.width = Math.min(100, t / 40 * 100) + '%'; fill.style.background = e.mode === 'ready' ? 'transparent' : col;
+    if (e.mode === 'ready') { msg.textContent = 'Tap anywhere to start'; msg.style.color = '#9A9A9A'; }
+    else if (e.mode === 'running') { msg.textContent = 'Tap to stop'; msg.style.color = '#9A9A9A'; }
+    else {
+      const ok = t >= 25 && t <= 30;
+      msg.innerHTML = ok ? `${ic('check_circle', 22, 1)} In target` : t < 25 ? 'Too short' : 'Too long';
+      msg.style.color = ok ? '#4CD07D' : t < 25 ? '#4DA3FF' : '#FF5A5F';
+    }
+    hist.innerHTML = e.hist.slice(0, 4).map(v => `<span style="color:${v >= 25 && v <= 30 ? '#4CD07D' : '#9A9A9A'}">${v.toFixed(1)}${v >= 25 && v <= 30 ? ' ✓' : ''}</span>`).join('');
+  };
+  let pressT = null, longDone = false;
+  if (live) {
+    s.style.cursor = 'pointer';
+    s.addEventListener('pointerdown', () => {
+      longDone = false;
+      if (e.mode === 'done') pressT = setTimeout(() => { longDone = true; e.hist.shift(); e.mode = 'ready'; e.elapsed = 0; render(); }, 700);
+    });
+    s.addEventListener('pointerup', () => {
+      clearTimeout(pressT);
+      if (longDone) return;
+      if (e.mode === 'ready') { e.mode = 'running'; e.start = now(); }
+      else if (e.mode === 'running') { e.elapsed = Math.round((now() - e.start) / 100) / 10; e.mode = 'done'; e.hist.unshift(e.elapsed); }
+      else { e.mode = 'ready'; e.elapsed = 0; }
+      render();
+    });
+  }
+  render();
+  return {
+    el: s, tick: render,
+    onBack() { if (e.mode === 'done') { e.mode = 'ready'; e.elapsed = 0; render(); return true; } return false; },
+  };
+}
+
+function buildSystem(st, live, restart) {
+  const s = el('div', 'scr');
+  let infoVals = null;
+  const upd = () => {
+    if (!infoVals) return;
+    const up = Math.floor((Date.now() - bootT) / 1000);
+    infoVals.bat.textContent = `${env.battery} % · 3.95 V`;
+    infoVals.chg.textContent = env.charger ? 'yes (USB)' : 'no';
+    infoVals.up.textContent = `${Math.floor(up / 3600)}:${String(Math.floor(up / 60) % 60).padStart(2, '0')}:${String(up % 60).padStart(2, '0')}`;
+  };
+  const render = () => {
+    infoVals = null;
+    if (st.view === 'info') {
+      const up = Math.floor((Date.now() - bootT) / 1000);
+      s.innerHTML = `<div class="sys-title">System</div><div class="sys-list">
+        <div><span>Firmware</span><span>v0.3.0-5-gabc123</span></div>
+        <div><span>Board</span><span>V2 · ESP32-S3R8</span></div>
+        <div><span>Battery</span><span>${env.battery} % · 3.95 V</span></div>
+        <div><span>Charging</span><span>${env.charger ? 'yes (USB)' : 'no'}</span></div>
+        <div><span>Wi-Fi</span><span>−61 dBm</span></div>
+        <div><span>IP</span><span>192.168.1.57</span></div>
+        <div><span>Free RAM</span><span>212 KB · 7.6 MB</span></div>
+        <div><span>Uptime</span><span>${Math.floor(up / 3600)}:${String(Math.floor(up / 60) % 60).padStart(2, '0')}:${String(up % 60).padStart(2, '0')}</span></div>
+      </div><button class="sys-btn">${ic('system_update', 26, 1)}Wireless update</button>`;
+      const vals = s.querySelectorAll('.sys-list span:last-child');
+      infoVals = { bat: vals[2], chg: vals[3], up: vals[7] };
+      const b = s.querySelector('.sys-btn');
+      if (live) b.addEventListener('click', () => { st.view = 'ota'; st.phase = 'waiting'; st.pct = 0; st.t0 = now(); render(); });
+      else b.tabIndex = -1;
+    } else {
+      const c = { waiting: '#8FA3BF', receiving: '#8FA3BF', done: '#4CD07D' }[st.phase];
+      const centerHtml = st.phase === 'waiting'
+        ? `${ic('wifi_tethering', 56, 1)}<div class="sub">Waiting for upload</div>`
+        : st.phase === 'receiving' ? `<div class="ota-pct">${Math.floor(st.pct)} %</div><div class="sub">Receiving</div>`
+        : `${ic('check_circle', 64, 1)}<div class="sub">Updated · restarting</div>`;
+      s.innerHTML = `<div class="sys-title">Wireless update</div>
+        <div style="position:absolute;left:54px;top:70px">${ringSvg(124, 6, c, st.phase === 'waiting' ? 0.001 : st.phase === 'done' ? 1 : st.pct / 100, '#1E1E1E')}</div>
+        <div class="ota-center" style="color:${c}">${centerHtml}</div>
+        <div class="ota-info">${st.phase === 'receiving' ? '<b>Don’t power off</b>' : '<b>esp32-amoled.local</b>'}<span>192.168.1.57 · v0.3.0-5-gabc123</span></div>`;
+    }
+  };
+  render();
+  return {
+    el: s,
+    tick() {
+      if (st.view === 'info') { upd(); return; }
+      if (!live) return;
+      const t = now() - st.t0;
+      if (st.phase === 'waiting' && t > 2600) { st.phase = 'receiving'; st.t0 = now(); }
+      else if (st.phase === 'receiving') { st.pct = Math.min(100, t / 60); if (st.pct >= 100) { st.phase = 'done'; st.t0 = now(); } }
+      else if (st.phase === 'done' && t > 1400) { st.view = 'info'; restart(); return; }
+      render();
+    },
+    onBack() { if (st.view === 'ota') { if (st.phase === 'waiting') { st.view = 'info'; render(); } return true; } return false; },
+    blocksHome() { return st.view === 'ota' && st.phase !== 'waiting'; },
+    policy() { return st.view === 'ota' ? 'keep' : null; },
+  };
+}
+
+/* ---------------- Dice (code from docs/design/dice-wireframe.html, design D) ---------------- */
+const DiceKit = (() => {
+  const W = 368, H = 448, TOP = 70, BOT = 376;
+  const C = { bg:'#000', surface:'#141414', track:'#1E1E1E', outline:'#3A3A3A', text:'#EDEDED', dim:'#9A9A9A',
+              off:'#5A5A5A', ok:'#4CD07D', err:'#FF5A5F', accent:'#FF8A1F', accentFill:'#26170A', ghost:'#0C0C0C' };
+  const DICE = [4, 6, 8, 10, 12, 20, 100];
+  const MONO = '"Roboto Mono", ui-monospace, monospace', SANS = 'Inter, system-ui, sans-serif';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = ms => reduced ? Math.min(ms, 160) : ms;
+  let state = { die: 20, count: 1, mode: 'flat' };
+function rand(n) { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n + 1; }
+const sum = a => a.reduce((x, y) => x + y, 0);
+const clamp01 = t => t < 0 ? 0 : t > 1 ? 1 : t;
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outQuart = t => 1 - Math.pow(1 - t, 4);
+const outBack = t => { const c1 = 1.1, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const label = d => 'd' + d;
+
+function makeRoll(idle = false) {
+  const n = state.mode === 'flat' ? 1 : 2;
+  const sets = [];
+  for (let s = 0; s < n; s++) sets.push(Array.from({ length: state.count }, () => idle ? state.die : rand(state.die)));
+  const totals = sets.map(sum);
+  let kept = 0;
+  if (n === 2) kept = state.mode === 'adv' ? (totals[1] > totals[0] ? 1 : 0) : (totals[1] < totals[0] ? 1 : 0);
+  let crit = null;
+  if (!idle && state.die === 20 && state.count === 1) crit = sets[kept][0] === 20 ? 'nat20' : sets[kept][0] === 1 ? 'nat1' : null;
+  return { die: state.die, count: state.count, mode: state.mode, sets, totals, kept, crit, idle };
+}
+function pct(v) { return { tens: String(Math.floor((v % 100) / 10) * 10).padStart(2, '0'), ones: String(v % 10) }; }
+function face(die) { if (die !== 100) return rand(die); return rand(100); }
+const critColor = c => c === 'nat20' ? C.ok : c === 'nat1' ? C.err : null;
+const critText = c => c === 'nat20' ? 'NATURAL 20' : c === 'nat1' ? 'NATURAL 1' : '';
+const modeText = m => m === 'adv' ? 'Advantage · higher total kept' : m === 'dis' ? 'Disadvantage · lower total kept' : '';
+
+/* ===================== die silhouettes (2D, unit radius) ===================== */
+const D2R = Math.PI / 180, pol = (deg, r) => [Math.cos(deg * D2R) * r, Math.sin(deg * D2R) * r];
+const GEOM = {};
+function geom(die) {
+  if (GEOM[die]) return GEOM[die];
+  let g;
+  if (die === 4) {
+    const o = [-90, 30, 150].map(a => pol(a, 1.08)).map(([x, y]) => [x, y + .2]), c = [0, .2];
+    g = { o, l: o.map(p => [c, p]), round: .1, at: [0, .38], fs: .44 };
+  } else if (die === 6) {
+    g = { o: [45, 135, 225, 315].map(a => pol(a, 1)), l: [], round: .24, at: [0, 0], fs: .62 };
+  } else if (die === 8) {
+    const h = [0, 1, 2, 3, 4, 5].map(i => pol(-90 + 60 * i, 1));
+    g = { o: h, l: [[h[0], h[2]], [h[2], h[4]], [h[4], h[0]]], round: .07, at: [0, .1], fs: .4 };
+  } else if (die === 10) {
+    const T = [0, -1], R = [.92, .1], B = [0, 1], L = [-.92, .1], FR = [.56, 0], M = [0, .42], FL = [-.56, 0];
+    g = { o: [T, R, B, L], l: [[T, FR], [FR, M], [M, FL], [FL, T], [FR, R], [FL, L], [M, B]], round: .07, at: [0, -.06], fs: .38 };
+  } else if (die === 12) {
+    const out = [...Array(10)].map((_, i) => pol(-90 + 36 * i, 1)), inn = [...Array(5)].map((_, i) => pol(-90 + 72 * i, .6)), l = [];
+    for (let i = 0; i < 5; i++) { l.push([inn[i], inn[(i + 1) % 5]]); l.push([inn[i], out[2 * i]]); }
+    g = { o: out, l, round: .05, at: [0, .04], fs: .44 };
+  } else {
+    const hx = [...Array(6)].map((_, i) => pol(-90 + 60 * i, 1)), tr = [0, 1, 2].map(i => pol(-90 + 120 * i, .58)), l = [];
+    for (let i = 0; i < 3; i++) { l.push([tr[i], tr[(i + 1) % 3]]); [-1, 0, 1].forEach(k => l.push([tr[i], hx[(2 * i + k + 6) % 6]])); }
+    g = { o: hx, l, round: .06, at: [0, .08], fs: .34 };
+  }
+  return GEOM[die] = g;
+}
+function roundPoly(ctx, p, rad) {
+  const n = p.length;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const a = p[(i - 1 + n) % n], b = p[i], c = p[(i + 1) % n];
+    if (i === 0) ctx.moveTo((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    ctx.arcTo(b[0], b[1], (b[0] + c[0]) / 2, (b[1] + c[1]) / 2, rad);
+  }
+  ctx.closePath();
+}
+/* st: stroke, fill, text, lw, value, alpha, glow, upright */
+function drawDie(ctx, die, x, y, r, rot, st) {
+  if (die === 100) {
+    const v = st.value == null || st.value === '' ? null : pct(+st.value);
+    drawDie(ctx, 10, x - r * .52, y, r * .58, rot, { ...st, value: v ? v.tens : '' });
+    drawDie(ctx, 10, x + r * .52, y, r * .58, -rot * .8, { ...st, value: v ? v.ones : '' });
+    return;
+  }
+  const g = geom(die), a = st.alpha ?? 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = a;
+  ctx.save();
+  ctx.rotate(rot);
+  roundPoly(ctx, g.o.map(([px, py]) => [px * r, py * r]), g.round * r);
+  ctx.fillStyle = st.fill; ctx.fill();
+  if (st.glow) { ctx.shadowColor = st.glow; ctx.shadowBlur = 16; }
+  ctx.lineWidth = st.lw; ctx.strokeStyle = st.stroke; ctx.lineJoin = 'round'; ctx.stroke();
+  ctx.shadowBlur = 0;
+  if (g.l.length) {
+    ctx.beginPath();
+    for (const [p, q] of g.l) { ctx.moveTo(p[0] * r, p[1] * r); ctx.lineTo(q[0] * r, q[1] * r); }
+    ctx.lineWidth = Math.max(1, st.lw * .5); ctx.globalAlpha = a * .5; ctx.stroke(); ctx.globalAlpha = a;
+  }
+  if (!st.upright) drawNum(ctx, g, r, st);
+  ctx.restore();
+  if (st.upright) drawNum(ctx, g, r, st);
+  ctx.restore();
+}
+function drawNum(ctx, g, r, st) {
+  if (st.value == null || st.value === '') return;
+  const s = String(st.value), k = s.length >= 3 ? .7 : s.length === 2 ? .86 : 1;
+  const fs = Math.max(8, r * g.fs * k * (st.fsMul || 1));
+  ctx.font = `500 ${fs}px ${MONO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = st.text; ctx.fillText(s, g.at[0] * r, g.at[1] * r + fs * .05);
+}
+function iconSVG(die) {
+  const pts = (p, s = 1, dx = 0) => p.map(([x, y]) => `${(x * s + dx).toFixed(3)},${(y * s).toFixed(3)}`).join(' ');
+  const one = (d, s = 1, dx = 0) => { const g = geom(d); return `<polygon points="${pts(g.o, s, dx)}"/>` + g.l.map(([a, b]) => `<line x1="${(a[0]*s+dx).toFixed(3)}" y1="${(a[1]*s).toFixed(3)}" x2="${(b[0]*s+dx).toFixed(3)}" y2="${(b[1]*s).toFixed(3)}" opacity=".55"/>`).join(''); };
+  const body = die === 100 ? one(10, .62, -.55) + one(10, .62, .55) : one(die);
+  return `<svg viewBox="-1.2 -1.2 2.4 2.4" aria-hidden="true">${body}</svg>`;
+}
+/* best grid for n dice inside a rect; aspect = cell width / height */
+function grid(n, x, y, w, h, maxR, aspect = 1) {
+  let best = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols), ch = Math.min(w / (cols * aspect), h / rows);
+    if (!best || ch > best.ch) best = { cols, rows, ch };
+  }
+  const ch = best.ch, cw = ch * aspect, r = Math.min(maxR, ch * .42), out = [];
+  const y0 = y + (h - best.rows * ch) / 2;
+  for (let i = 0; i < n; i++) {
+    const row = Math.floor(i / best.cols), col = i % best.cols, inRow = Math.min(best.cols, n - row * best.cols);
+    const x0 = x + (w - inRow * cw) / 2;
+    out.push({ x: x0 + cw * (col + .5), y: y0 + ch * (row + .5), r });
+  }
+  return out;
+}
+function text(ctx, s, x, y, font, color, align = 'center', spacing = 0) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+  ctx.fillText(s, x, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function hint(ctx, s, y = BOT - 20) { text(ctx, s, W / 2, y, `500 15px ${SANS}`, C.dim); }
+
+/* shared layout + summary for the "dice on a stage" designs (A, D) */
+function stageSlots(roll, maxSingle) {
+  const sets = roll.sets.length, multi = roll.count > 1, aspect = roll.die === 100 ? 1.75 : 1, slots = [];
+  if (sets === 1) {
+    const y1 = multi ? BOT - 76 : BOT - 40;
+    grid(roll.count, 24, TOP + 8, W - 48, y1 - TOP - 8, multi ? 70 : maxSingle, aspect).forEach((p, i) => slots.push({ ...p, s: 0, i }));
+  } else {
+    const y0 = TOP + 34, y1 = multi ? BOT - 70 : BOT - 44;
+    [[16, 0], [W / 2 + 6, 1]].forEach(([x, s]) =>
+      grid(roll.count, x, y0, W / 2 - 22, y1 - y0, multi ? 60 : 74, aspect).forEach((p, i) => slots.push({ ...p, s, i })));
+  }
+  return slots;
+}
+function stageSummary(ctx, roll, finished) {
+  if (roll.idle) { hint(ctx, roll.sets.length === 2 ? 'Tap to roll twice' : 'Tap to roll'); return; }
+  const cc = critColor(roll.crit);
+  if (roll.sets.length === 1) {
+    if (roll.count > 1 && finished) {
+      text(ctx, 'TOTAL', W / 2, BOT - 62, `500 11px ${SANS}`, C.dim, 'center', 1.2);
+      text(ctx, String(roll.totals[0]), W / 2, BOT - 32, `500 38px ${MONO}`, C.text);
+    } else if (finished && cc) text(ctx, critText(roll.crit), W / 2, BOT - 20, `600 14px ${SANS}`, cc, 'center', 1.4);
+    return;
+  }
+  [W / 4 + 2, W * 3 / 4 - 2].forEach((x, s) => {
+    const kept = s === roll.kept;
+    const lab = !finished ? (s ? '2ND' : '1ST') : kept ? 'KEPT' : 'DROPPED';
+    text(ctx, lab, x, TOP + 16, `600 11px ${SANS}`, !finished ? C.dim : kept ? C.accent : C.off, 'center', 1.2);
+    if (roll.count > 1 && finished) {
+      const tx = String(roll.totals[s]);
+      text(ctx, tx, x, BOT - 46, `500 28px ${MONO}`, kept ? C.text : C.off);
+      if (!kept) { ctx.fillStyle = C.off; const w = tx.length * 17 + 8; ctx.fillRect(x - w / 2, BOT - 46, w, 2); }
+    }
+  });
+  if (finished) text(ctx, cc ? critText(roll.crit) : modeText(roll.mode), W / 2, BOT - 14, `${cc ? 600 : 500} 12px ${SANS}`, cc || C.dim, 'center', cc ? 1.4 : 0);
+}
+
+const PHI = (1 + Math.sqrt(5)) / 2, SOLIDS = {};
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], scale3 = (a, k) => a.map(c => c * k);
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = a => scale3(a, 1 / Math.hypot(...a));
+const mul = (M, v) => [dot(M[0], v), dot(M[1], v), dot(M[2], v)];
+const mulM = (A, B) => A.map(row => [0, 1, 2].map(j => row[0] * B[0][j] + row[1] * B[1][j] + row[2] * B[2][j]));
+function axisAngle(a, th) {                       // Rodrigues rotation matrix
+  const [x, y, z] = a, c = Math.cos(th), s = Math.sin(th), t = 1 - c;
+  return [[t * x * x + c, t * x * y - s * z, t * x * z + s * y], [t * x * y + s * z, t * y * y + c, t * y * z - s * x], [t * x * z - s * y, t * y * z + s * x, t * z * z + c]];
+}
+function solid(die) {
+  if (SOLIDS[die]) return SOLIDS[die];
+  let V = [], E = [];
+  if (die === 4) V = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+  else if (die === 6) { for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) V.push([a, b, c]); }
+  else if (die === 8) V = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  else if (die === 12) {
+    for (const a of [-1, 1]) for (const b of [-1, 1]) for (const c of [-1, 1]) V.push([a, b, c]);
+    for (const a of [-1, 1]) for (const b of [-1, 1]) V.push([0, a / PHI, b * PHI], [a / PHI, b * PHI, 0], [a * PHI, 0, b / PHI]);
+  } else if (die === 20) { for (const a of [-1, 1]) for (const b of [-1, 1]) V.push([0, a, b * PHI], [a, b * PHI, 0], [a * PHI, 0, b]); }
+  else {                                           // d10: pentagonal trapezohedron, apexes on the y axis
+    V = [[0, -1.25, 0], [0, 1.25, 0]];
+    for (let i = 0; i < 5; i++) V.push([Math.cos(72 * i * D2R), -.13, Math.sin(72 * i * D2R)]);
+    for (let i = 0; i < 5; i++) V.push([Math.cos((72 * i + 36) * D2R), .13, Math.sin((72 * i + 36) * D2R)]);
+    for (let i = 0; i < 5; i++) E.push([0, 2 + i], [1, 7 + i], [2 + i, 7 + i], [2 + i, 7 + (i + 4) % 5]);
+  }
+  const m = Math.max(...V.map(v => Math.hypot(...v)));
+  V = V.map(v => scale3(v, 1 / m));
+  if (!E.length) {
+    const dist = (i, j) => Math.hypot(...sub(V[i], V[j]));
+    let min = Infinity;
+    for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) min = Math.min(min, dist(i, j));
+    for (let i = 0; i < V.length; i++) for (let j = i + 1; j < V.length; j++) if (dist(i, j) < min * 1.01) E.push([i, j]);
+  }
+  return SOLIDS[die] = { V, E, pose: restPose(die, V) };
+}
+/* Rest pose: the rotation that turns one face straight at the viewer, upright
+   (a vertex up for triangles and pentagons, an edge up for the cube, the apex
+   up for the d10 kite). The roll always ends exactly on this matrix. */
+function restPose(die, V) {
+  let face, n, u;
+  if (die === 10) {
+    face = [0, 2, 7, 3];                           // top apex, ring vertex, lower ring vertex, next ring vertex
+    const P = face.map(i => V[i]);
+    n = unit(cross(sub(P[3], P[1]), sub(P[2], P[0])));
+    const c0 = scale3(P.reduce(add), 1 / 4);
+    if (dot(n, c0) < 0) n = scale3(n, -1);
+    u = sub(P[0], c0);                             // towards the apex
+  } else {
+    const dir = { 4: scale3(V[0], -1), 6: [0, 0, 1], 8: [1, 1, 1], 12: [0, PHI, 1], 20: [1, 1, 1] }[die];
+    n = unit(dir);
+    const best = Math.max(...V.map(v => dot(v, n)));
+    face = V.map((v, i) => i).filter(i => dot(V[i], n) > best - 1e-6);
+    const c0 = scale3(face.map(i => V[i]).reduce(add), 1 / face.length);
+    if (die === 6) u = [0, -1, 0];
+    else u = sub(V[face.reduce((b, i) => (dot(sub(V[i], c0), [0, -1, 0]) > dot(sub(V[b], c0), [0, -1, 0]) ? i : b), face[0])], c0);
+  }
+  u = unit(sub(u, scale3(n, dot(u, n))));
+  const w = cross(n, u), tn = [0, 0, -1], tu = [0, -1, 0], tw = [-1, 0, 0];
+  const M = [0, 1, 2].map(i => [0, 1, 2].map(j => tn[i] * n[j] + tu[i] * u[j] + tw[i] * w[j]));
+  // order the face vertices around the centre so the face can be filled
+  const fp = face.map(i => mul(M, V[i]));
+  face = face.map((i, k) => [i, Math.atan2(fp[k][1], fp[k][0])]).sort((a, b) => a[1] - b[1]).map(f => f[0]);
+  return { M, face };
+}
+const FACE_FS = { 4: .38, 6: .56, 8: .34, 10: .32, 12: .44, 20: .31 };
+function drawSolid(ctx, die, x, y, r, M, color, opts) {
+  const { V, E, pose } = solid(die);
+  const P = V.map(v => { const q = mul(M, v), k = 4 / (4 + q[2]); return [x + q[0] * r * k, y + q[1] * r * k, q[2]]; });
+  const edges = E.map(([i, j]) => ({ a: P[i], b: P[j], z: (P[i][2] + P[j][2]) / 2 })).sort((p, q) => q.z - p.z);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const e of edges) {
+    const front = e.z < 0, depth = clamp01((1 - e.z) / 2);
+    ctx.globalAlpha = (front ? .55 + .45 * depth : .14 + .2 * depth) * opts.bright;
+    ctx.lineWidth = front ? Math.max(1.6, r * .028) : Math.max(1, r * .016);
+    ctx.strokeStyle = color;
+    ctx.beginPath(); ctx.moveTo(e.a[0], e.a[1]); ctx.lineTo(e.b[0], e.b[1]); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  if (opts.reveal > 0) {                           // landed: the face toward the viewer gets a solid fill and the number
+    ctx.beginPath();
+    pose.face.forEach((i, k) => k ? ctx.lineTo(P[i][0], P[i][1]) : ctx.moveTo(P[i][0], P[i][1]));
+    ctx.closePath();
+    ctx.globalAlpha = opts.reveal;
+    ctx.fillStyle = opts.fill; ctx.fill();
+    ctx.lineWidth = Math.max(1.8, r * .032); ctx.strokeStyle = color; ctx.stroke();
+    const s = String(opts.value), fs = Math.max(9, r * FACE_FS[die] * (s.length >= 3 ? .62 : s.length === 2 ? .8 : 1));
+    text(ctx, s, x, y + fs * .05, `500 ${fs}px ${MONO}`, opts.text);
+    ctx.globalAlpha = 1;
+  }
+}
+const randAxis = () => { const z = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, s = Math.sqrt(1 - z * z); return [s * Math.cos(a), s * Math.sin(a), z]; };
+
+  const maxCount = d => d === 100 ? 4 : 10;
+  function build(live, preset) {
+    const st = preset ? { ...preset.state } : diceState;
+    const s = el('div', 'scr');
+    const cv = el('canvas', 'dice-canvas'); cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    const strip = el('div', 'dice-strip'), hit = el('div', 'dice-hit');
+    const step = el('div', 'dice-step'), modes = el('div', 'seg2');
+    s.append(cv, hit, strip, step, modes);
+    let roll, slots, t0 = 0, end = 0, busy = false;
+    const layout = r => {
+      roll = r;
+      slots = stageSlots(r, 112).map((sl, k) => ({ ...sl, delay: k * 80, len: dur(1100 + Math.random() * 300),
+        spins: [0, 1].map(() => ({ axis: randAxis(), turns: (2.2 + Math.random() * 1.6) * Math.PI * 2 })) }));
+      end = Math.max(...slots.map(x => x.delay + x.len)) + 260;
+    };
+    const withState = f => { const keep = state; state = st; try { return f(); } finally { state = keep; } };
+    const draw = t => {
+      ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+      const r = roll, finished = t >= end - 260;
+      for (const sl of slots) {
+        const lt = t - sl.delay, p = clamp01(lt / sl.len), e = outQuart(p);
+        const dropped = finished && r.sets.length > 1 && sl.s !== r.kept;
+        const cc = !r.idle && p >= 1 && sl.s === r.kept ? critColor(r.crit) : null;
+        const color = r.idle || dropped ? C.off : cc || C.accent;
+        const reveal = r.idle ? 1 : clamp01((lt - sl.len + 40) / 180);
+        const after = lt - sl.len, pop = p >= 1 && !r.idle ? 1 + .06 * Math.exp(-after / 80) * Math.sin(after / 30) : 1;
+        const v = r.sets[sl.s][sl.i];
+        const pieces = r.die === 100 ? [[-sl.r * .66, 10, pct(v).tens, .72], [sl.r * .66, 10, pct(v).ones, .72]] : [[0, r.die, String(v), 1]];
+        pieces.forEach(([dx, d, val, sc], j) => {
+          const sp = sl.spins[j], M = r.idle ? solid(d).pose.M : mulM(solid(d).pose.M, axisAngle(sp.axis, sp.turns * (1 - e)));
+          drawSolid(ctx, d, sl.x + dx, sl.y, sl.r * sc * 1.08 * pop, M, color, {
+            bright: r.idle ? .7 : 1, reveal, value: r.idle ? '?' : val,
+            fill: r.idle || dropped ? '#050505' : C.accentFill, text: r.idle || dropped ? C.off : cc || C.text });
+        });
+      }
+      stageSummary(ctx, r, finished);
+    };
+    const controls = () => {
+      strip.innerHTML = '';
+      DICE.forEach(d => {
+        const b = el('button', 'dice-die' + (d === st.die ? ' on' : ''), iconSVG(d) + '<span>d' + d + '</span>');
+        b.setAttribute('aria-label', 'd' + d);
+        if (live) b.addEventListener('click', () => { st.die = d; st.count = Math.min(st.count, maxCount(d)); reset(); }); else b.tabIndex = -1;
+        strip.append(b);
+      });
+      step.innerHTML = `<button aria-label="One die fewer" ${st.count <= 1 ? 'disabled' : ''}>−</button><span>${st.count}d${st.die}</span><button aria-label="One die more" ${st.count >= maxCount(st.die) ? 'disabled' : ''}>+</button>`;
+      const [minus, , plus] = step.children;
+      if (live) { minus.addEventListener('click', () => { st.count--; reset(); }); plus.addEventListener('click', () => { st.count++; reset(); }); }
+      modes.innerHTML = '';
+      [['flat', 'Flat', C.accent], ['adv', 'Adv', C.ok], ['dis', 'Dis', C.err]].forEach(([m, lab, col]) => {
+        const b = el('button', '', lab), on = st.mode === m;
+        if (on) { b.style.background = col; b.style.color = mix(col, .14); }
+        if (live) b.addEventListener('click', () => { st.mode = m; reset(); }); else b.tabIndex = -1;
+        modes.append(b);
+      });
+    };
+    const reset = () => { busy = false; layout(withState(() => makeRoll(true))); controls(); draw(1e9); };
+    if (live) hit.addEventListener('click', () => { layout(withState(() => makeRoll(false))); t0 = now(); busy = true; });
+    if (preset) { layout(withState(() => ({ ...makeRoll(false), ...preset.roll }))); controls(); draw(1e9); }
+    else reset();
+    return { el: s, frame(tm) { if (!busy) return; const t = tm - t0; draw(t); if (t > end) { busy = false; draw(1e9); } } };
+  }
+  return { build };
+})();
+const diceState = { die: 20, count: 1, mode: 'flat' };
+
+/* ---------------- Level (code from docs/design/level.html, designs A + B) ---------------- */
+const LevelKit = (() => {
+  const W = 368, H = 448;
+  const C = { bg:'#000', surface:'#141414', track:'#1E1E1E', outline:'#3A3A3A', text:'#EDEDED', dim:'#9A9A9A', off:'#5A5A5A',
+              ok:'#4CD07D', near:'#FFD54F', accent:'#FFD54F', err:'#FF5A5F' };
+  const MONO = '"Roboto Mono", ui-monospace, monospace', SANS = 'Inter, system-ui, sans-serif';
+  const D2R = Math.PI / 180, LEVEL = 0.3, NEAR = 2;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const fmt = (v, unit) => {
+  if (unit === '%') { const p = Math.tan(clamp(Math.abs(v), 0, 89.9) * D2R) * 100 * Math.sign(v); return (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(Math.abs(p) < 100 ? 1 : 0) + '%'; }
+  return (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(1) + '°';
+};
+const fmtAbs = (v, unit) => unit === '%' ? (Math.tan(clamp(Math.abs(v), 0, 89.9) * D2R) * 100).toFixed(1) + '%' : Math.abs(v).toFixed(1) + '°';
+const stateColor = dev => Math.abs(dev) <= LEVEL ? C.ok : Math.abs(dev) <= NEAR ? C.near : C.text;
+// Edge mode: the nearest of level (0°/180°) or plumb (±90°), and how far from it.
+function edgeRef(a) {
+  let n = ((a % 360) + 540) % 360 - 180;              // -180..180
+  const refs = [0, 90, -90, 180, -180];
+  let best = 0, dev = 999;
+  for (const r of refs) { const d = n - r; if (Math.abs(d) < Math.abs(dev)) { dev = d; best = r; } }
+  return { norm: n, ref: best, dev, plumb: Math.abs(best) === 90 };
+}
+
+/* ---------- drawing helpers ---------- */
+function text(ctx, s, x, y, font, color, align = 'center', spacing = 0) {
+  ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = spacing + 'px';
+  ctx.fillText(s, x, y);
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); }
+function header(ctx, scr, r) {
+  const edge = r.mode === 'edge';
+  text(ctx, edge ? (edgeRef(r.a).plumb ? 'EDGE · PLUMB' : 'EDGE · LEVEL') : 'SURFACE', 24, 30, `600 12px ${SANS}`, C.dim, 'left', 1.2);
+  if (scr.zero) text(ctx, 'ZEROED', W - 24, 30, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+  else if (scr.hold) text(ctx, 'HELD', W - 24, 30, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+}
+function ticks(ctx, cx, cy, r0, r1, a0, a1, step, color, lw = 1) {
+  ctx.beginPath();
+  for (let a = a0; a <= a1 + 1e-6; a += step) { const c = Math.cos(a * D2R), s = Math.sin(a * D2R); ctx.moveTo(cx + c * r0, cy + s * r0); ctx.lineTo(cx + c * r1, cy + s * r1); }
+  ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.stroke();
+}
+
+
+  const rad = (deg, R) => R * Math.tanh(Math.abs(deg) / 7);
+  const scrObj = { unit: '°', rad };
+  const P = {
+    flat(ctx, r) {
+    const cx = W / 2, cy = 214, R = 118, mag = Math.hypot(r.x, r.y), col = stateColor(mag);
+    // vial
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fillStyle = '#0B0A06'; ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = '#2E2A1C'; ctx.stroke();
+    for (const [deg, a] of [[1, .9], [3, .5], [6, .3]]) { ctx.beginPath(); ctx.arc(cx, cy, rad(deg, R), 0, Math.PI * 2); ctx.strokeStyle = `rgba(255,213,79,${a * .35})`; ctx.lineWidth = 1.2; ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.strokeStyle = 'rgba(255,255,255,.08)'; ctx.lineWidth = 1; ctx.stroke();
+    // target ring
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.strokeStyle = Math.abs(mag) <= LEVEL ? C.ok : '#6B5E2E'; ctx.lineWidth = 2; ctx.stroke();
+    // bubble: towards the high side
+    const d = rad(mag, R - 30), ang = Math.atan2(-r.y, -r.x);
+    const bx = cx + (mag > 1e-3 ? Math.cos(ang) * d : 0), by = cy + (mag > 1e-3 ? Math.sin(ang) * d : 0);
+    const g = ctx.createRadialGradient(bx - 8, by - 9, 3, bx, by, 26);
+    g.addColorStop(0, '#FFFFFF'); g.addColorStop(.25, col); g.addColorStop(1, col);
+    ctx.globalAlpha = .9; ctx.beginPath(); ctx.arc(bx, by, 25, 0, Math.PI * 2); ctx.fillStyle = g;
+    ctx.shadowColor = col; ctx.shadowBlur = 18; ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    // readouts
+    text(ctx, 'X', 24, 62, `600 11px ${SANS}`, C.dim, 'left', 1); text(ctx, fmt(r.x, scrObj.unit), 40, 62, `500 16px ${MONO}`, stateColor(r.x), 'left');
+    text(ctx, 'Y', W - 24, 62, `600 11px ${SANS}`, C.dim, 'right', 1); text(ctx, fmt(r.y, scrObj.unit), W - 40, 62, `500 16px ${MONO}`, stateColor(r.y), 'right');
+    text(ctx, fmtAbs(mag, scrObj.unit), cx, 356, `500 30px ${MONO}`, col);
+  }
+ ,
+  draw(ctx, pitch, roll, label1, v1, label2, v2, dev1 = pitch, dev2 = roll) {
+    const cx = W / 2, cy = 214, R = 132, ppd = 5;            // pixels per degree of pitch
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(cx, cy); ctx.rotate(-roll * D2R); ctx.translate(0, pitch * ppd);
+    ctx.fillStyle = '#1C1604'; ctx.fillRect(-400, 0, 800, 600);                  // ground
+    const gr = ctx.createLinearGradient(0, 0, 0, -220); gr.addColorStop(0, '#0B1420'); gr.addColorStop(1, '#000');
+    ctx.fillStyle = gr; ctx.fillRect(-400, -600, 800, 600);                      // sky
+    ctx.beginPath(); ctx.moveTo(-400, 0); ctx.lineTo(400, 0); ctx.strokeStyle = C.accent; ctx.lineWidth = 2.5; ctx.stroke();
+    for (let p = -60; p <= 60; p += 5) {
+      if (!p) continue;
+      const y = -p * ppd, w = p % 10 ? 22 : 46;
+      ctx.beginPath(); ctx.moveTo(-w, y); ctx.lineTo(w, y); ctx.strokeStyle = 'rgba(237,237,237,.55)'; ctx.lineWidth = p % 10 ? 1 : 1.5; ctx.stroke();
+      if (!(p % 10)) { text(ctx, String(Math.abs(p)), -w - 14, y, `500 11px ${MONO}`, C.dim); text(ctx, String(Math.abs(p)), w + 14, y, `500 11px ${MONO}`, C.dim); }
+    }
+    ctx.restore();
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.strokeStyle = C.outline; ctx.lineWidth = 2; ctx.stroke();
+    // roll scale
+    for (const a of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+      const t = (a - 90) * D2R, len = a % 30 ? 7 : 12;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(t) * (R + 4), cy + Math.sin(t) * (R + 4)); ctx.lineTo(cx + Math.cos(t) * (R + 4 + len), cy + Math.sin(t) * (R + 4 + len));
+      ctx.strokeStyle = a ? C.dim : C.text; ctx.lineWidth = 2; ctx.stroke();
+    }
+    const t = (-roll - 90) * D2R, px = cx + Math.cos(t) * (R - 2), py = cy + Math.sin(t) * (R - 2);
+    ctx.save(); ctx.translate(px, py); ctx.rotate(t + Math.PI / 2);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-8, 12); ctx.lineTo(8, 12); ctx.closePath(); ctx.fillStyle = stateColor(roll); ctx.fill(); ctx.restore();
+    // fixed aircraft symbol
+    const col = stateColor(Math.hypot(pitch, roll));
+    ctx.beginPath(); ctx.moveTo(cx - 62, cy); ctx.lineTo(cx - 22, cy); ctx.lineTo(cx - 10, cy + 10); ctx.moveTo(cx + 62, cy); ctx.lineTo(cx + 22, cy); ctx.lineTo(cx + 10, cy + 10);
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 4, 0, Math.PI * 2); ctx.fillStyle = col; ctx.fill();
+    // readouts
+    text(ctx, label1, 24, 360, `600 11px ${SANS}`, C.dim, 'left', 1); text(ctx, v1, 24, 340, `500 22px ${MONO}`, stateColor(dev1), 'left');
+    text(ctx, label2, W - 24, 360, `600 11px ${SANS}`, C.dim, 'right', 1); text(ctx, v2, W - 24, 340, `500 22px ${MONO}`, dev2 === null ? C.dim : stateColor(dev2), 'right');
+  }
+
+  };
+  function hdr(ctx, mode, a, tag) {
+    text(ctx, mode === 'edge' ? (edgeRef(a).plumb ? 'EDGE · PLUMB' : 'EDGE · LEVEL') : 'SURFACE', 24, 34, `600 12px ${SANS}`, C.dim, 'left', 1.2);
+    if (tag) text(ctx, tag, W - 24, 34, `600 12px ${SANS}`, C.accent, 'right', 1.2);
+  }
+  function build(live, preset) {
+    const s = el('div', 'scr');
+    const cv = el('canvas', 'lv-canvas'); cv.width = W * 2; cv.height = H * 2;
+    const ctx = cv.getContext('2d');
+    const hit = el('div', 'lv-hit');
+    const zero = el('button', 'lv-btn', 'Zero'), hold = el('button', 'lv-btn', 'Hold'), units = el('div', 'seg2 units');
+    zero.style.left = '24px'; hold.style.left = '128px';
+    s.append(cv, hit, zero, hold, units);
+    const sim = preset ? { ...preset } : levelSensor;
+    const st = { zero: null, hold: null, unit: '°', sm: { x: sim.x, y: sim.y, a: sim.a, p: sim.p } };
+    const reading = t => {
+      if (st.hold) return st.hold;
+      const w = live && !reduced ? 1 : 0;
+      const n1 = w * (Math.sin(t / 830) * .12 + Math.sin(t / 211) * .03), n2 = w * (Math.sin(t / 1170 + 1) * .1 + Math.sin(t / 173) * .03);
+      const z = st.zero || { x: 0, y: 0, a: 0, p: 0 }, k = live && !reduced ? .14 : 1;
+      st.sm.x += (sim.x + n1 - z.x - st.sm.x) * k; st.sm.y += (sim.y + n2 - z.y - st.sm.y) * k; st.sm.p += (sim.p + n2 * .8 - z.p - st.sm.p) * k;
+      let da = sim.a + n1 - z.a - st.sm.a; da = ((da + 540) % 360) - 180; st.sm.a += da * k;
+      return { x: st.sm.x, y: st.sm.y, a: st.sm.a, p: st.sm.p };
+    };
+    const draw = t => {
+      const r = reading(t);
+      ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+      scrObj.unit = st.unit;
+      if (sim.mode === 'flat') P.flat(ctx, r);
+      else {
+        const e = edgeRef(r.a);
+        text(ctx, `rotation ${Math.abs(e.norm).toFixed(1)}°`, 24, 54, `500 12px ${MONO}`, C.off, 'left');
+        P.draw(ctx, r.p, e.dev, e.plumb ? 'PLUMB' : 'LEVEL', fmtAbs(e.dev, st.unit), r.p >= 0 ? 'LEAN UP' : 'LEAN DOWN', fmtAbs(r.p, st.unit), e.dev, r.p);
+      }
+      hdr(ctx, sim.mode, r.a, st.hold ? 'HELD' : st.zero ? 'ZEROED' : '');
+    };
+    const sync = () => {
+      zero.textContent = st.zero ? 'Reset' : 'Zero';
+      zero.classList.toggle('on', !!st.zero); hold.classList.toggle('on', !!st.hold);
+      units.innerHTML = '';
+      ['°', '%'].forEach(u => {
+        const b = el('button', '', u);
+        if (st.unit === u) { b.style.background = '#242424'; b.style.color = '#EDEDED'; }
+        if (live) b.addEventListener('click', () => { st.unit = u; sync(); }); else b.tabIndex = -1;
+        units.append(b);
+      });
+    };
+    if (live) {
+      zero.addEventListener('click', () => { st.zero = st.zero ? null : { x: sim.x, y: sim.y, a: sim.a, p: sim.p }; st.hold = null; sync(); });
+      hold.addEventListener('click', () => { st.hold = st.hold ? null : { ...st.sm }; sync(); });
+      // Drag on the screen to "tilt" the board: flat, the bubble follows the finger;
+      // on an edge, sideways turns it and up/down leans it.
+      let down = null;
+      hit.addEventListener('pointerdown', e => { hit.setPointerCapture(e.pointerId); down = { x: e.clientX, y: e.clientY, a: sim.a, p: sim.p }; });
+      hit.addEventListener('pointermove', e => {
+        if (!down) return;
+        const k = parseFloat(getComputedStyle(document.getElementById('device')).transform.split(',')[3]) || 1;
+        if (sim.mode === 'flat') {
+          const b = hit.getBoundingClientRect(), dx = (e.clientX - b.left) / k - 184, dy = (e.clientY - b.top) / k + 70 - 214;
+          const d = Math.min(.985, Math.hypot(dx, dy) / 88), mag = 7 * Math.atanh(d), ang = Math.atan2(dy, dx);
+          sim.x = -Math.cos(ang) * mag; sim.y = -Math.sin(ang) * mag;
+        } else {
+          sim.a = down.a + (e.clientX - down.x) / k / 4; sim.p = Math.max(-40, Math.min(40, down.p - (e.clientY - down.y) / k / 5));
+        }
+      });
+      hit.addEventListener('pointerup', () => { down = null; });
+    } else [zero, hold].forEach(b => b.tabIndex = -1);
+    sync(); draw(0);
+    return { el: s, frame: live ? draw : null };
+  }
+  return { build };
+})();
+const levelSensor = { mode: 'flat', x: 2.4, y: -1.1, a: 12, p: 4 };
+
+/* ---------------- sound: the speaker (Web Audio; volume and mute from the quick settings) ---------------- */
+const Snd = (() => {
+  let ctx = null, master = null, cur = null;   // cur: the noise playing { kind, src, g }
+  const bufs = {};
+  // The first call must come from a tap (browser autoplay rules); nothing plays before one.
+  function ensure() {
+    try {
+      if (!ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ctx = new AC(); master = ctx.createGain(); master.gain.value = level(); master.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+    } catch (e) { ctx = null; }
+    return ctx;
+  }
+  // 100 % = 0 dB, 1 % = −40 dB, 0 % = silent (SOUND_VOLUME_RANGE_DB); muted = silent.
+  const level = () => user.muted || !user.vol ? 0 : 0.5 * Math.pow(10, -40 * (100 - user.vol) / 99 / 20);
+  function apply() { if (master) master.gain.setTargetAtTime(level(), ctx.currentTime, 0.015); }
+  // 6 s of each sound, generated once and looped (seam cross-faded), all at the same loudness.
+  function buffer(kind) {
+    if (bufs[kind]) return bufs[kind];
+    const sr = ctx.sampleRate, len = Math.round(sr * 6), xf = Math.round(sr * 0.05), d = new Float32Array(len + xf);
+    let b0 = 0, b1 = 0, b2 = 0, prev = 0, lp = 0, hp = 0, hpIn = 0;
+    const pink = () => { const w = Math.random() * 2 - 1; b0 = .99765 * b0 + w * .099046; b1 = .963 * b1 + w * .2965164; b2 = .57 * b2 + w * 1.0526913; return b0 + b1 + b2 + w * .1848; };
+    const kLp = 1 - Math.exp(-2 * Math.PI * 3000 / sr), kHp = Math.exp(-2 * Math.PI * 150 / sr);
+    for (let i = 0; i < d.length; i++) {
+      if (kind === 0) {                  // rain: pink noise band-passed 150 Hz–3 kHz, in slow gusts
+        lp += (pink() - lp) * kLp; hp = kHp * (hp + lp - hpIn); hpIn = lp;
+        d[i] = hp * (0.75 + 0.25 * Math.sin(4 * Math.PI * i / len));
+      } else if (kind === 1) d[i] = Math.random() * 2 - 1;   // white: uniform samples
+      else { const x = pink(); d[i] = x - prev; prev = x; }   // blue: first difference of pink
+    }
+    if (kind === 0) for (let n = 0; n < 28 * 6; n++) {         // ~28 drops a second: short noise ticks
+      const at = Math.floor(Math.random() * len), dl = Math.round(sr * (0.004 + Math.random() * 0.01)), a = 0.3 + Math.random();
+      for (let j = 0; j < dl && at + j < d.length; j++) d[at + j] += (Math.random() * 2 - 1) * a * Math.exp(-6 * j / dl);
+    }
+    for (let i = 0; i < xf; i++) { const t = i / xf; d[i] = d[i] * t + d[len + i] * (1 - t); }
+    let rms = 0;
+    for (let i = 0; i < len; i++) rms += d[i] * d[i];
+    rms = Math.sqrt(rms / len) || 1;
+    const ab = ctx.createBuffer(1, len, sr), out = ab.getChannelData(0);
+    for (let i = 0; i < len; i++) out[i] = Math.max(-1, Math.min(1, d[i] * 0.25 / rms));
+    return (bufs[kind] = ab);
+  }
+  function stopNoise() {
+    if (!cur) return;
+    const { src, g } = cur, t = ctx.currentTime;
+    g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t); g.gain.linearRampToValueAtTime(0, t + 0.4);   // NOISE_FADE_MS
+    src.stop(t + 0.45); cur = null;
+  }
+  function startNoise(kind) {
+    if (!ensure() || (cur && cur.kind === kind)) return;
+    stopNoise();
+    const src = ctx.createBufferSource(), g = ctx.createGain(), t = ctx.currentTime;
+    src.buffer = buffer(kind); src.loop = true;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.4);
+    src.connect(g); g.connect(master); src.start(t);
+    cur = { kind, src, g };
+  }
+  function tone(t, f, dur) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.5, t + 0.005);
+    g.gain.setValueAtTime(0.5, t + dur - 0.01); g.gain.linearRampToValueAtTime(0, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  // Muted (or before any tap): beeps are dropped, like the device.
+  const alarm = () => { if (!ctx || !level()) return; const t = ctx.currentTime + 0.02; for (let i = 0; i < 4; i++) tone(t + i * 0.16, 2000, 0.09); };
+  const blip = () => { if (!ctx || !level()) return; tone(ctx.currentTime + 0.02, 1500, 0.06); };
+  return { ensure, apply, startNoise, stopNoise, alarm, blip };
+})();
+const devK = () => parseFloat(getComputedStyle($('#device')).transform.split(',')[3]) || 1;   // device scale, for drags
+const showEl = (e, on) => { e.style.display = on ? '' : 'none'; };
+const two = n => String(n).padStart(2, '0');
+
+/* ---------------- Timer (docs/apps/timer.md) ---------------- */
+const TIMER_C = '#B388FF', WARN = '#FFB020';
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// Both timers keep absolute timestamps, so they run on whatever screen is shown.
+const tmr = { tab: 'clock', sw: { run: false, t0: 0, acc: 0 }, cd: { set: 300, st: 'idle', endAt: 0, rem: 0, doneAt: 0 }, alarmUntil: 0, nextAlarm: 0 };
+// mm:ss, or h:mm:ss from an hour up; overtime ("-") drops the leading zero
+function fmtT(s, sign = '') {
+  if (s >= 3600) return `${sign}${Math.floor(s / 3600)}:${two(Math.floor(s / 60) % 60)}:${two(s % 60)}`;
+  return sign ? `${sign}${Math.floor(s / 60)}:${two(s % 60)}` : `${two(Math.floor(s / 60))}:${two(s % 60)}`;
+}
+const swMs = (sw, t) => sw.acc + (sw.run ? t - sw.t0 : 0);
+const cdRem = (c, t) => c.st === 'running' ? Math.max(0, c.endAt - t) : c.st === 'paused' ? c.rem : c.st === 'idle' ? c.set * 1000 : 0;
+// ui::drift: a new spot every step, so no pixel stays lit
+const drift = (step, ax, ay) => ({ x: Math.round(Math.sin(step * 1.7) * ax), y: Math.round(Math.cos(step * 1.1) * ay) });
+
+// What the Timer's minimal view would show: the open tab if it has something, else a running timer.
+function timerShows() {
+  const c = tmr.cd.st, cdActive = c === 'running' || c === 'done';
+  if (D.app === 'timer') {
+    if (tmr.tab === 'clock') return 'clock';
+    if (tmr.tab === 'stopwatch' && tmr.sw.run) return 'stopwatch';
+    if (tmr.tab === 'countdown' && cdActive) return 'countdown';
+  }
+  return cdActive ? 'countdown' : tmr.sw.run ? 'stopwatch' : null;
+}
+// Time's up: alarm (four quick beeps every 2 s for 30 s), wake the screen, flash, show the Countdown tab.
+function timerService() {
+  const c = tmr.cd, t = Date.now();
+  if (c.st === 'running' && t >= c.endAt) {
+    c.st = 'done'; c.doneAt = c.endAt;
+    tmr.alarmUntil = t + 30000; tmr.nextAlarm = t;
+    D.lastInput = now(); D.frozenIdle = 0;
+    if (D.app === 'timer' && D.power === 'on') { tmr.tab = 'countdown'; D.scr.showTab(); phaseFlash(TIMER_C); }
+  }
+  if (tmr.alarmUntil) {
+    if (t >= tmr.alarmUntil) tmr.alarmUntil = 0;
+    else if (t >= tmr.nextAlarm) { Snd.alarm(); tmr.nextAlarm = t + 2000; }
+  }
+}
+
+function buildTimer(t, live, preset) {
+  const wall = () => preset ? preset.now : Date.now();
+  if (live && t.cd.st === 'done') { t.tab = 'countdown'; tmr.alarmUntil = 0; }   // a finished countdown is why we're here
+  const s = el('div', 'scr');
+  const views = {}, last = {};
+  for (const k of ['clock', 'stopwatch', 'countdown']) { views[k] = el('div'); views[k].style.cssText = 'position:absolute;inset:0'; s.append(views[k]); }
+  const pillKey = new WeakMap();
+  const setPill = (b, icon, label) => { const k = icon + label; if (pillKey.get(b) !== k) { b.innerHTML = `${ic(icon, 28, 1)}${label}`; pillKey.set(b, k); } };
+  const btnRow = () => {
+    const row = el('div', 'pomo-btns'), pill = el('button', 'pill'), reset = el('button', 'round', ic('restart_alt', 28, 0));
+    pill.style.color = TIMER_C; reset.setAttribute('aria-label', 'Reset');
+    if (!live) [pill, reset].forEach(b => b.tabIndex = -1);
+    row.append(pill, reset);
+    return [row, pill, reset];
+  };
+
+  // Clock: hours over minutes
+  views.clock.innerHTML = `<div class="tm-big" style="top:87px"></div><div class="tm-big" style="top:219px;color:${TIMER_C}"></div><div class="tm-date"></div>`;
+  const [hh, mm, date] = views.clock.children;
+
+  // Stopwatch: mm:ss with tenths
+  views.stopwatch.innerHTML = `<div class="tm-sw"><span class="digits"></span><small></small></div><div class="tm-cap" style="top:256px"></div>
+    <div class="tm-tap" style="top:110px;height:200px"></div>`;
+  const [swDig, swTen] = views.stopwatch.querySelector('.tm-sw').children, swCap = views.stopwatch.querySelector('.tm-cap');
+  const [swRow, swPill, swReset] = btnRow();
+  views.stopwatch.append(swRow);
+
+  // Countdown: two wheels to set it, a ring while it runs
+  const edit = el('div'), run = el('div');
+  edit.style.cssText = run.style.cssText = 'position:absolute;inset:0';
+  const col = (x, lab) => `<div class="tm-col" style="left:${x}px" role="spinbutton" aria-label="${lab}">${ic('expand_less', 28, 1)}<span class="digits"></span>${ic('expand_more', 28, 1)}</div>
+    <div class="tm-cap" style="top:332px;left:${x}px;right:auto;width:120px">${lab === 'Minutes' ? 'min' : 'sec'}</div>`;
+  edit.innerHTML = col(44, 'Minutes') + col(204, 'Seconds') + '<div class="digits tm-colon">:</div>';
+  const [colMin, colSec] = edit.querySelectorAll('.tm-col');
+  run.innerHTML = `<div class="tm-ring"></div><div class="tm-mid"><span class="digits"></span></div><div class="tm-cap" style="top:250px"></div>
+    <div class="tm-tap" style="left:74px;right:auto;width:220px;top:108px;height:220px;border-radius:50%"></div>`;
+  const ring = run.querySelector('.tm-ring'), cdDig = run.querySelector('.tm-mid .digits'), cdCap = run.querySelector('.tm-cap');
+  const [cdRow, cdPill, cdReset] = btnRow();
+  views.countdown.append(edit, run, cdRow);
+
+  const tabs = el('div', 'tm-tabs');
+  const TABS = [['clock', 'Clock'], ['stopwatch', 'Stopwatch'], ['countdown', 'Countdown']];
+  const tabBtns = TABS.map(([k, lab]) => {
+    const b = el('button', '', lab);
+    if (live) b.addEventListener('click', () => { t.tab = k; showTab(); }); else b.tabIndex = -1;
+    tabs.append(b);
+    return b;
+  });
+  s.append(tabs);
+
+  // Redraw only what changed (the firmware keys each tab the same way).
+  const render = () => {
+    const tm = wall();
+    if (t.tab === 'clock') {
+      const key = Math.floor(tm / 60000);
+      if (last.clock === key) return;
+      last.clock = key;
+      const d = new Date(tm);
+      hh.textContent = two(d.getHours()); mm.textContent = two(d.getMinutes());
+      date.textContent = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+    } else if (t.tab === 'stopwatch') {
+      const ms = swMs(t.sw, tm), ds = Math.floor(ms / 100), key = ds * 2 + (t.sw.run ? 1 : 0);
+      if (last.sw === key) return;
+      last.sw = key;
+      swDig.textContent = fmtT(Math.floor(ds / 10));
+      swTen.textContent = ds >= 36000 ? '' : '.' + ds % 10;   // h:mm:ss fills the width
+      const zero = ms === 0;
+      swCap.textContent = t.sw.run ? 'running' : zero ? 'tap to start' : 'paused';
+      setPill(swPill, t.sw.run ? 'pause' : 'play_arrow', t.sw.run ? 'Pause' : zero ? 'Start' : 'Resume');
+      showEl(swReset, !t.sw.run && !zero);
+    } else {
+      const c = t.cd, rem = cdRem(c, tm), done = c.st === 'done';
+      const sec = done ? Math.floor((tm - c.doneAt) / 1000) : Math.ceil(rem / 1000), key = `${sec}|${c.st}|${c.set}`;
+      if (last.cd === key) return;
+      last.cd = key;
+      showEl(edit, c.st === 'idle'); showEl(run, c.st !== 'idle');
+      showEl(cdReset, c.st === 'running' || c.st === 'paused');
+      if (c.st === 'idle') {
+        colMin.querySelector('.digits').textContent = two(Math.floor(c.set / 60));
+        colSec.querySelector('.digits').textContent = two(c.set % 60);
+        setPill(cdPill, 'play_arrow', 'Start');
+        cdPill.style.color = c.set ? TIMER_C : '#5A5A5A';
+        return;
+      }
+      const txt = fmtT(sec, done ? '-' : ''), color = done ? WARN : TIMER_C;
+      cdDig.textContent = txt;
+      cdDig.style.fontSize = txt.length > 5 ? '56px' : '';
+      cdDig.style.color = done ? WARN : '';
+      ring.innerHTML = ringSvg(127, 6, color, done || !c.set ? 1 : Math.max(0.001, 1 - rem / (c.set * 1000)), '#1E1E1E');
+      cdPill.style.color = color;
+      if (done) { cdCap.textContent = 'time’s up'; setPill(cdPill, 'cancel', 'Stop'); }
+      else if (c.st === 'paused') { cdCap.textContent = 'paused'; setPill(cdPill, 'play_arrow', 'Resume'); }
+      else { const e = new Date(tm + sec * 1000); cdCap.textContent = `ends ${two(e.getHours())}:${two(e.getMinutes())}`; setPill(cdPill, 'pause', 'Pause'); }
+    }
+  };
+  const showTab = () => {
+    TABS.forEach(([k], i) => {
+      const on = t.tab === k;
+      tabBtns[i].style.background = on ? TIMER_C : ''; tabBtns[i].style.color = on ? mix(TIMER_C, .14) : '';
+      tabBtns[i].setAttribute('aria-pressed', String(on));
+    });
+    for (const k in views) showEl(views[k], k === t.tab);
+    for (const k in last) delete last[k];
+    render();
+  };
+
+  if (live) {
+    const swToggle = () => {
+      const n = Date.now(), sw = t.sw;
+      if (sw.run) { sw.acc += n - sw.t0; sw.run = false; } else { sw.t0 = n; sw.run = true; }
+      render();
+    };
+    swPill.addEventListener('click', swToggle);
+    views.stopwatch.querySelector('.tm-tap').addEventListener('click', swToggle);
+    swReset.addEventListener('click', () => { t.sw.acc = 0; render(); });
+    const cdToggle = () => {
+      const c = t.cd, n = Date.now();
+      if (c.st === 'idle') { if (!c.set) return; c.endAt = n + c.set * 1000; c.st = 'running'; Snd.ensure(); }
+      else if (c.st === 'running') { c.rem = Math.max(0, c.endAt - n); c.st = 'paused'; }
+      else if (c.st === 'paused') { c.endAt = n + c.rem; c.st = 'running'; }
+      else c.st = 'idle';                      // Stop: back to the set time
+      tmr.alarmUntil = 0; render();
+    };
+    cdPill.addEventListener('click', cdToggle);
+    run.querySelector('.tm-tap').addEventListener('click', cdToggle);
+    cdReset.addEventListener('click', () => { t.cd.st = 'idle'; tmr.alarmUntil = 0; render(); });
+    // A wheel column: drag up to count up (16 px a step), or tap above / below the middle (hold repeats).
+    // Minutes 0–99 and seconds 0–59 wrap, with no carry.
+    const wheel = (colEl, minutes) => {
+      const stepBy = d => {
+        const c = t.cd;
+        if (c.st !== 'idle') return;
+        let m = Math.floor(c.set / 60), sc = c.set % 60;
+        if (minutes) m = ((m + d) % 100 + 100) % 100; else sc = ((sc + d) % 60 + 60) % 60;
+        c.set = m * 60 + sc; render();
+      };
+      const dir = e => { const b = colEl.getBoundingClientRect(); return e.clientY < b.top + b.height / 2 ? 1 : -1; };
+      let y0 = null, steps = 0, dragged = false, repeated = false, rep = null;
+      colEl.addEventListener('pointerdown', e => {
+        colEl.setPointerCapture(e.pointerId); y0 = e.clientY; steps = 0; dragged = false; repeated = false;
+        const d = dir(e);
+        clearTimeout(rep);
+        rep = setTimeout(function go() { if (dragged || y0 == null) return; repeated = true; stepBy(d); rep = setTimeout(go, 120); }, 500);
+      });
+      colEl.addEventListener('pointermove', e => {
+        if (y0 == null) return;
+        const d = (y0 - e.clientY) / devK();
+        if (Math.abs(d) > 10) { dragged = true; clearTimeout(rep); }
+        const n = Math.trunc(d / 16);
+        if (dragged && n !== steps) { stepBy(n - steps); steps = n; }
+      });
+      const up = e => {
+        if (y0 == null) return;
+        y0 = null; clearTimeout(rep);
+        if (!dragged && !repeated && e.type === 'pointerup') stepBy(dir(e));
+      };
+      colEl.addEventListener('pointerup', up);
+      colEl.addEventListener('pointercancel', up);
+      colEl.tabIndex = 0;
+      colEl.addEventListener('keydown', e => { const k = { ArrowUp: 1, ArrowDown: -1 }[e.key]; if (k) { e.preventDefault(); e.stopPropagation(); stepBy(k); } });
+    };
+    wheel(colMin, true); wheel(colSec, false);
+  }
+  showTab();
+  return {
+    el: s, tick: render, frame: live ? render : null, showTab,
+    onBack() { if (tmr.alarmUntil) { tmr.alarmUntil = 0; return true; } return false; },   // first Back silences the alarm
+  };
+}
+
+// Minimal view: no tabs, no buttons, just the digits; a new spot every minute.
+function buildTimerMinimal(t, show, preset) {
+  const s = el('div', 'scr minimal');
+  const render = () => {
+    const tm = preset ? preset.now : Date.now(), step = preset ? preset.step : Math.floor(tm / 60000);
+    if (show === 'clock') {
+      const d = new Date(tm), o = drift(step, 40, 50), pos = cy => `left:${o.x}px;right:${-o.x}px;top:${cy - 14 - 85 + o.y}px`;
+      s.innerHTML = `<div class="tm-big" style="${pos(172)}">${two(d.getHours())}</div><div class="tm-big" style="${pos(304)};color:${TIMER_C}">${two(d.getMinutes())}</div>`;
+      return;
+    }
+    let sec, sign = '', cap = 'stopwatch', color = TIMER_C;
+    if (show === 'countdown' && t.cd.st === 'done') { sec = Math.floor((tm - t.cd.doneAt) / 1000); sign = '-'; cap = 'time’s up'; color = WARN; }
+    else if (show === 'countdown') { sec = Math.ceil(cdRem(t.cd, tm) / 1000); cap = 'countdown'; }
+    else sec = Math.floor(swMs(t.sw, tm) / 1000);
+    const o = drift(step, sec >= 3600 ? 8 : 40, 110), cy = 224 + o.y, x = `left:${o.x}px;right:${-o.x}px`;
+    s.innerHTML = `<div class="digits" style="position:absolute;${x};top:${cy - 42}px;text-align:center;color:${color}">${fmtT(sec, sign)}</div>
+      <div class="tm-cap" style="${x};top:${cy + 40}px">${cap}</div>`;
+  };
+  render();
+  return { el: s, tick: render };
+}
+
+/* ---------------- Noise (docs/apps/noise.md) ---------------- */
+const NOISE_C = '#6E8BFF';
+const NOISES = ['Rain', 'White noise', 'Blue noise'];
+const noiseSt = { kind: 0, playing: false };   // keeps playing in the background
+function buildNoise(live, preset) {
+  const W = 368, H = 448, N = 72, OPA = [70, 130, 210];
+  const st = preset ? { ...preset } : noiseSt;
+  const s = el('div', 'scr');
+  const cv = el('canvas', 'nz-canvas'); cv.width = W * 2; cv.height = H * 2;
+  const ctx = cv.getContext('2d');
+  const title = el('div', 'nz-title nz-chrome'), state = el('div', 'nz-state nz-chrome'), play = el('div', 'nz-play', ic('play_arrow', 64, 1));
+  const muted = el('div', 'nz-muted', 'Muted: unmute in quick settings'), dots = el('div', 'nz-dots nz-chrome', '<i></i><i></i><i></i>');
+  const hit = el('div', 'nz-hit');
+  hit.setAttribute('aria-label', 'Tap to play or pause, swipe to change the sound');
+  s.append(cv, title, state, play, muted, dots, hit);
+  let parts = [], splashes = [], T = 0, chrome = true, chromeUntil = now() + 4000, lastT = null, nextAt = 0;
+
+  // Rain: streaks in three depths (far ones short, dim and slow). White: soft snow drifting down.
+  // Blue: a jittered 8 × 9 grid of twinkling points rising slowly.
+  const seed = () => {
+    parts = Array.from({ length: N }, (_, i) => {
+      const p = { depth: i % 3, x: Math.random() * W, y: Math.random() * H, phase: Math.random() * 6.283 };
+      if (st.kind === 0) { p.v = 420 + 260 * p.depth + Math.random() * 120; p.size = 10 + 9 * p.depth + Math.random() * 8; }
+      else if (st.kind === 1) { p.v = 14 + 12 * p.depth + Math.random() * 10; p.size = 1.2 + 0.8 * p.depth + Math.random() * 0.8; }
+      else { p.x = (i % 8 + 0.2 + 0.6 * Math.random()) * W / 8; p.y = (Math.floor(i / 8) + 0.2 + 0.6 * Math.random()) * H / 9; p.v = 6 + 4 * Math.random(); p.size = 1.4 + Math.random(); }
+      return p;
+    });
+    splashes = Array.from({ length: 6 }, () => ({ age: -1 }));
+  };
+  const step = dt => {
+    T += dt;
+    for (const p of parts) {
+      if (st.kind === 0) {
+        p.y += p.v * dt; p.x -= p.v * dt * 0.12;   // a little wind
+        if (p.y - p.size > H) {
+          const free = p.depth === 2 && splashes.find(q => q.age < 0);   // near drops splash
+          if (free) Object.assign(free, { x: p.x, y: H - 40 - Math.random() * 140, age: 0 });
+          p.y = -Math.random() * 60; p.x = Math.random() * (W + 60);
+        }
+        if (p.x < -20) p.x += W + 40;
+      } else if (st.kind === 1) {
+        p.y += p.v * dt; p.x += Math.sin(T * 0.7 + p.phase) * 8 * dt;
+        if (p.y > H + 4) { p.y = -4; p.x = Math.random() * W; }
+      } else {
+        p.y -= p.v * dt;
+        if (p.y < -4) p.y += H + 8;
+      }
+    }
+    for (const q of splashes) if (q.age >= 0 && (q.age += dt) > 0.45) q.age = -1;
+  };
+  const dot = (x, y, r, color, a) => { ctx.globalAlpha = a; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
+  const draw = () => {
+    ctx.setTransform(2, 0, 0, 2, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+    const k = st.playing ? 1 : 0.45;   // paused: dimmer, and still
+    ctx.strokeStyle = '#9DB7FF'; ctx.lineCap = 'round';
+    for (const p of parts) {
+      const a = OPA[p.depth] / 255 * k;
+      if (st.kind === 0) {
+        ctx.globalAlpha = a; ctx.lineWidth = p.depth === 2 ? 2 : 1;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + p.size * 0.12, p.y - p.size); ctx.stroke();
+      } else if (st.kind === 1) dot(p.x, p.y, p.size, '#E8ECF2', a);
+      else dot(p.x, p.y, p.size, '#3D6BFF', (60 + 170 * (0.5 + 0.5 * Math.sin(T * 2.3 + p.phase))) / 255 * k);   // twinkle
+    }
+    // Splash: three droplets thrown up and out from where a drop landed.
+    for (const q of splashes) {
+      if (q.age < 0) continue;
+      const t = q.age;
+      for (let d = -1; d <= 1; d++) dot(q.x + d * 34 * t, q.y - (d ? 70 : 95) * t + 300 * t * t, 1.3, '#9DB7FF', 190 / 255 * (1 - t / 0.45) * k);
+    }
+    ctx.globalAlpha = 1;
+  };
+  // The labels go away while it plays untouched; the mute warning stays, it explains the silence.
+  const render = () => {
+    title.textContent = NOISES[st.kind];
+    state.textContent = st.playing ? 'playing' : 'tap to play  ·  swipe to change';
+    showEl(play, !st.playing);
+    showEl(muted, preset ? !!preset.muted : user.muted);
+    [...dots.children].forEach((d, i) => { d.style.background = i === st.kind ? NOISE_C : ''; });
+    [title, state, dots].forEach(e => e.classList.toggle('hide', !chrome));
+  };
+  const showChrome = () => { chrome = true; chromeUntil = now() + 4000; render(); };
+  const setKind = k => { if (k === st.kind) return; st.kind = k; T = 0; seed(); step(0); };
+
+  seed();
+  if (preset) { chrome = preset.chrome !== false; for (let i = 0; i < 60; i++) step(1 / 24); } else step(0);
+  draw(); render();
+  if (live) {
+    let p0 = null;
+    hit.addEventListener('pointerdown', e => { hit.setPointerCapture(e.pointerId); p0 = { x: e.clientX, y: e.clientY }; });
+    hit.addEventListener('pointercancel', () => { p0 = null; });
+    // Tap: play / pause. Swipe left / right: the next / previous sound, playing.
+    hit.addEventListener('pointerup', e => {
+      if (!p0) return;
+      const k = devK(), dx = (e.clientX - p0.x) / k, dy = (e.clientY - p0.y) / k;
+      p0 = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { setKind((st.kind + (dx < 0 ? 1 : 2)) % 3); st.playing = true; Snd.startNoise(st.kind); }
+      else if (Math.abs(dx) <= 12 && Math.abs(dy) <= 12) {
+        st.playing = !st.playing;
+        if (st.playing) Snd.startNoise(st.kind); else Snd.stopNoise();
+      } else return;   // a vague drag: ignore
+      lastT = null; showChrome(); draw();
+    });
+  }
+  return {
+    el: s,
+    tick() {
+      if (chrome && st.playing && now() > chromeUntil) chrome = false;
+      render();
+    },
+    // 24 fps, 8 fps when dimmed; nothing to draw with the panel off
+    frame: live ? tm => {
+      if (!st.playing || D.stage === 'black') { lastT = null; return; }
+      if (tm < nextAt) return;
+      nextAt = tm + 1000 / (D.stage === 'dim' ? 8 : 24);
+      const dt = lastT == null ? 0 : Math.min((tm - lastT) / 1000, 0.15);
+      lastT = tm; step(dt); draw();
+    } : null,
+  };
+}
+
+/* ---------------- device controller ---------------- */
+const D = { power: 'on', stage: 'active', lastInput: now(), frozenIdle: 0, paused: false, app: 'menu', scr: null, held: new Set(), consumed: false, holdT: null, waitRelease: false, minimal: null, minimalOwner: null, bright: 1 };
+const content = $('#content'), dimmer = $('#dimmer'), swallow = $('#swallow'), crt = $('#crt'), hint = $('#hint');
+
+function make(id) {
+  if (id === 'menu') return buildMenu(true, open);
+  if (id === 'lights') return buildLights(lights, true);
+  if (id === 'bot') return buildBot(true, () => D.stage === 'dim');
+  if (id === 'pomodoro') return buildPomodoro(pomo, true);
+  if (id === 'espresso') return buildEspresso(esp, true);
+  if (id === 'system') return buildSystem(sys, true, () => { powerOff(() => setTimeout(powerOn, 500)); });
+  if (id === 'dice') return DiceKit.build(true);
+  if (id === 'level') return LevelKit.build(true);
+  if (id === 'timer') return buildTimer(tmr, true);
+  if (id === 'noise') return buildNoise(true);
+  if (id === 'wifi') return buildWifi(true);
+  return buildMenu(true, open);
+}
+function show(id, animate = true) {
+  const old = D.scr;
+  const n = make(id);
+  D.app = id; D.scr = n;
+  if (animate) n.el.classList.add('enter');
+  content.append(n.el);
+  if (animate) requestAnimationFrame(() => requestAnimationFrame(() => n.el.classList.remove('enter')));
+  if (old) {
+    if (animate) { old.el.classList.add('leave'); setTimeout(() => old.el.remove(), 240); } else old.el.remove();
+  }
+}
+function open(id) { show(id); }
+function doHome() {
+  if (D.scr.blocksHome && D.scr.blocksHome()) return;
+  if (D.app === 'menu') D.scr.home(); else show('menu');
+}
+function doBack() {
+  if (D.scr.blocksHome && D.scr.blocksHome()) return;
+  if (D.scr.onBack && D.scr.onBack()) return;
+  if (D.app !== 'menu') show('menu');
+}
+function phaseFlash(color = PH[pomo.phase].color) {
+  const f = el('div', 'flash'); f.style.background = color;
+  content.append(f); setTimeout(() => f.remove(), 900);
+  D.lastInput = now();
+}
+
+// Like the firmware's app manager: keep awake (open app) beats a minimal view (open app first,
+// then the others in menu order), which beats no-sleep (noise playing, open or in the background).
+function minimalOwner() {
+  const t = timerShows();
+  if (D.app === 'timer' && t) return 'timer';
+  if (pomo.running) return 'pomodoro';
+  return t ? 'timer' : null;
+}
+function policy() {
+  if (D.app === 'espresso' && esp.mode === 'running') return 'keep';
+  if (D.scr && D.scr.policy && D.scr.policy() === 'keep') return 'keep';
+  if (minimalOwner()) return 'low';
+  if (noiseSt.playing) return 'nosleep';
+  return 'normal';
+}
+// Minimal views have their own fixed level (Pomodoro 15 %, Timer 25 %), never above the user's.
+const minimalPct = () => Math.min(minimalOwner() === 'timer' ? 25 : 15, user.bright);
+const STAGES = {
+  battery: [['active', 0], ['dim', 10], ['black', 15], ['sleep', 20]],
+  charger: [['active', 0], ['dim', 60], ['black', 300]],
+};
+function idleSec() { return D.paused ? D.frozenIdle : (now() - D.lastInput) / 1000; }
+
+function tick() {
+  if (pomo.running && pomoRem(pomo) <= 0) pomoAdvance(false);
+  timerService();
+  if (D.power !== 'on') { updateReadout(); return; }
+  const idle = idleSec(), pol = policy(), prof = env.charger ? 'charger' : 'battery';
+  const ub = user.bright / 100, owner = minimalOwner();
+  let stage = 'active';
+  if (pol === 'low') stage = idle >= 10 ? 'minimal' : 'active';
+  else if (pol === 'normal' || pol === 'nosleep') for (const [st, at] of STAGES[prof]) if (idle >= at) stage = st;
+  if (stage === 'sleep' && pol === 'nosleep') stage = 'black';   // noise plays on: black, never asleep
+  if (stage === 'sleep') { sleepNow(); return; }
+  D.stage = stage;
+  const b = { active: ub, dim: Math.min(env.charger ? 0.4 : 0.25, ub / 2), black: 0, minimal: minimalPct() / 100 }[stage];
+  D.bright = b;
+  dimmer.style.opacity = 1 - vis(b);
+  swallow.hidden = stage === 'active';
+  if (D.minimal && (stage !== 'minimal' || D.minimalOwner !== owner)) { D.minimal.el.remove(); D.minimal = null; }
+  if (stage === 'minimal' && !D.minimal) {
+    D.minimal = owner === 'timer' ? buildTimerMinimal(tmr, timerShows()) : buildPomoMinimal(pomo, true);
+    D.minimalOwner = owner; content.append(D.minimal.el);
+  }
+  if (D.minimal) D.minimal.tick();
+  if (D.scr && D.scr.tick) D.scr.tick();
+  updateReadout();
+}
+// A monitor is much dimmer than the AMOLED: brightness is shown compressed so
+// even 5 % stays visible here. The readout shows the device's real value.
+const vis = b => b <= 0 ? 0 : Math.min(1, 0.3 + b);
+function applyBrightness() { D.lastInput = now(); tick(); }
+function wakeScreen() { D.lastInput = now(); D.frozenIdle = 0; tick(); }
+
+function powerOff(after) {
+  if (D.power !== 'on') return;
+  if (pomo.running) { pomo.rem = pomoRem(pomo); pomo.running = false; }
+  // the device can't sleep on its own while these run; a long press stops them
+  if (noiseSt.playing) { noiseSt.playing = false; Snd.stopNoise(); }
+  Object.assign(tmr.sw, { run: false, acc: 0 }); tmr.cd.st = 'idle'; tmr.alarmUntil = 0;
+  D.power = 'anim';
+  crt.classList.remove('on', 'dead'); void crt.offsetWidth; crt.classList.add('off');
+  setTimeout(() => {
+    if (D.held.size) { D.waitRelease = true; hint.hidden = false; }
+    else finishSleep();
+    if (after) after();
+  }, 1000);
+  updateReadout();
+}
+function finishSleep() {
+  D.power = 'sleep'; D.waitRelease = false; hint.hidden = true;
+  crt.classList.remove('off'); crt.classList.add('dead');
+  updateReadout();
+}
+function sleepNow() {
+  D.power = 'sleep'; crt.classList.remove('on', 'off'); crt.classList.add('dead'); updateReadout();
+}
+function powerOn() {
+  if (D.power === 'on') return;
+  D.power = 'anim';
+  if (D.minimal) { D.minimal.el.remove(); D.minimal = null; }
+  content.innerHTML = ''; D.scr = null;
+  show('menu', false);
+  dimmer.style.opacity = 1 - vis(user.bright / 100); swallow.hidden = true;
+  crt.classList.remove('dead', 'off'); void crt.offsetWidth; crt.classList.add('on');
+  setTimeout(() => { crt.classList.remove('on'); D.power = 'on'; D.lastInput = now(); D.frozenIdle = 0; tick(); }, 600);
+}
+
+/* side buttons */
+function btnDown(kind, btn, ev) {
+  ev.preventDefault();
+  D.held.add(kind);
+  if (D.power === 'sleep') { D.consumed = true; powerOn(); return; }
+  if (D.power !== 'on') { D.consumed = true; return; }
+  const wasActive = D.stage === 'active';
+  wakeScreen();
+  D.consumed = !wasActive;
+  clearTimeout(D.holdT);
+  if (!(D.scr && D.scr.blocksHome && D.scr.blocksHome())) {
+    btn.classList.add('holding');
+    D.holdT = setTimeout(() => { D.consumed = true; btn.classList.remove('holding'); powerOff(); }, 1000);
+  }
+}
+function btnUp(kind, btn) {
+  if (!D.held.has(kind)) return;
+  D.held.delete(kind);
+  clearTimeout(D.holdT); btn.classList.remove('holding');
+  if (!D.consumed && D.power === 'on') (kind === 'back' ? doBack : doHome)();
+  D.consumed = false;
+  if (D.waitRelease && D.held.size === 0) finishSleep();
+}
+[['back', $('#btnBack')], ['home', $('#btnHome')]].forEach(([k, b]) => {
+  b.addEventListener('pointerdown', e => { b.setPointerCapture(e.pointerId); btnDown(k, b, e); });
+  b.addEventListener('pointerup', () => btnUp(k, b));
+  b.addEventListener('pointercancel', () => btnUp(k, b));
+  b.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) btnDown(k, b, e); });
+  b.addEventListener('keyup', e => { if (e.key === 'Enter' || e.key === ' ') btnUp(k, b); });
+});
+document.addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('input')) return;
+  const k = e.key === 'Escape' || e.key === 'Backspace' ? 'back' : (e.key === 'h' || e.key === 'H') ? 'home' : null;
+  if (!k || e.repeat) return;
+  const b = k === 'back' ? $('#btnBack') : $('#btnHome');
+  btnDown(k, b, e);
+  const up = ev => { if (ev.key === e.key) { btnUp(k, b); document.removeEventListener('keyup', up); } };
+  document.addEventListener('keyup', up);
+});
+
+/* touches on the display */
+$('#glass').addEventListener('pointerdown', () => { if (D.power === 'on' && D.stage === 'active') D.lastInput = now(); }, true);
+$('#glass').addEventListener('wheel', () => { if (D.power === 'on' && D.stage === 'active') D.lastInput = now(); }, { capture: true, passive: true });
+swallow.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); wakeScreen(); });
+
+/* panel */
+function setProfile(chg) {
+  env.charger = chg; env.battery = chg ? 84 : 82;
+  $('#pBat').setAttribute('aria-pressed', String(!chg)); $('#pChg').setAttribute('aria-pressed', String(chg));
+  D.lastInput = now(); D.frozenIdle = 0; tick();
+}
+$('#pBat').addEventListener('click', () => setProfile(false));
+$('#pChg').addEventListener('click', () => setProfile(true));
+function setOrientation(edge) {
+  levelSensor.mode = edge ? 'edge' : 'flat';
+  $('#sFlat').setAttribute('aria-pressed', String(!edge)); $('#sEdge').setAttribute('aria-pressed', String(edge));
+}
+$('#sFlat').addEventListener('click', () => setOrientation(false));
+$('#sEdge').addEventListener('click', () => setOrientation(true));
+$('#pause').addEventListener('change', e => {
+  if (e.target.checked) { D.frozenIdle = (now() - D.lastInput) / 1000; D.paused = true; }
+  else { D.paused = false; D.lastInput = now() - D.frozenIdle * 1000; }
+});
+
+function updateReadout() {
+  const pol = policy(), prof = env.charger ? 'charger' : 'battery';
+  const label = D.power === 'sleep' ? 'Deep sleep' : D.power === 'anim' ? 'Powering…' : { active: 'Active', dim: 'Dimmed', black: 'Black', minimal: 'Minimal view' }[D.stage];
+  $('#rStage').textContent = label;
+  const idle = idleSec();
+  $('#rIdle').textContent = D.power === 'on' ? idle.toFixed(1) + ' s' + (D.paused ? ' (paused)' : '') : '—';
+  const owner = minimalOwner(), why = owner === 'pomodoro' ? 'Pomodoro running' : timerShows() === 'clock' ? 'Timer: clock open' : 'Timer running';
+  $('#rPolicy').textContent = { normal: 'Normal', keep: 'Keep awake', low: `Low-power display (${why})`, nosleep: 'No sleep (noise playing)' }[pol];
+  $('#rBright').textContent = D.power === 'on' ? Math.round(D.bright * 100) + ' %' + (D.stage === 'active' ? ' (quick settings)' : '') : 'off';
+  let next = '—';
+  if (D.power === 'sleep') next = 'press a side button to wake';
+  else if (D.power === 'on') {
+    if (pol === 'keep') next = 'stays on while busy';
+    else if (pol === 'low') next = D.stage === 'minimal' ? `touch for the full view${owner === 'timer' ? ' (never blanks)' : ''}` : `minimal view at 10 s`;
+    else {
+      const up = STAGES[prof].find(([k, at]) => at > idle && !(pol === 'nosleep' && k === 'sleep'));
+      next = up ? `${{ dim: 'dims', black: 'goes black', sleep: 'sleeps' }[up[0]]} at ${up[1] >= 60 ? up[1] / 60 + ' min' : up[1] + ' s'}`
+        : pol === 'nosleep' ? 'stays black, never sleeps (noise plays on)' : 'stays black (charger)';
+    }
+  }
+  $('#rNext').textContent = next;
+  const tl = $('#tl');
+  const ub = user.bright, dimP = Math.round(Math.min(prof === 'battery' ? 25 : 40, ub / 2));
+  const stg = pol === 'low' ? [['active', `${ub} % · 0 s`], ['minimal', `Minimal ${minimalPct()} % · 10 s`]] :
+    prof === 'battery' ? [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 10 s`], ['black', 'Black · 15 s'],
+      pol === 'nosleep' ? ['nosleep', 'No sleep (noise)'] : ['sleep', 'Sleep · 20 s']] :
+      [['active', `${ub} % · 0 s`], ['dim', `${dimP} % · 60 s`], ['black', 'Black · 5 min']];
+  const cur = D.power === 'sleep' ? 'sleep' : D.stage;
+  tl.style.gridTemplateColumns = `repeat(${stg.length}, minmax(0,1fr))`;
+  tl.innerHTML = stg.map(([k, l]) => `<span class="${k === cur ? 'now' : ''}">${l}</span>`).join('');
+}
+
+/* ---------------- user settings (quick settings, NVS on the device) ---------------- */
+const user = { bright: 60, wifi: 'HomeNet', vol: 80, muted: false };   // brightness 5–70 %, volume 0–100 %
+const B_MIN = 5, B_MAX = 70;
+
+/* the shade inside the menu screen; `opts.open` draws it open, `opts.user` overrides the settings (gallery) */
+function addQuickSettings(s, sb, live, opts = {}) {
+  const H = 312, u = opts.user || user;
+  const scrim = el('div', 'qs-scrim'), shade = el('div', 'qs-shade');
+  shade.innerHTML = `<div class="qs-time"></div><div class="qs-bat"></div>
+    <button class="qs-row qs-wifi" aria-label="Wi-Fi settings"><span class="ic"></span><span class="nm"></span></button>
+    <div class="qs-row qs-bar qs-bright" role="slider" aria-label="Brightness" tabindex="0" aria-valuemin="${B_MIN}" aria-valuemax="${B_MAX}">
+      <div class="qs-fill"></div>${ic('light_mode', 28, 1)}<span class="qs-pct"></span></div>
+    <button class="qs-row qs-mute"></button>
+    <div class="qs-row qs-bar qs-vol" role="slider" aria-label="Volume" tabindex="0" aria-valuemin="0" aria-valuemax="100">
+      <div class="qs-fill"></div><span class="qs-pct"></span></div>
+    <div class="qs-grip"></div>`;
+  s.append(scrim, shade);
+  const wifiRow = shade.querySelector('.qs-wifi'), bar = shade.querySelector('.qs-bright');
+  const muteBtn = shade.querySelector('.qs-mute'), volBar = shade.querySelector('.qs-vol');
+  let y = -H, open = false;
+  const setY = (v, anim) => {
+    y = Math.max(-H, Math.min(0, v));
+    shade.classList.toggle('anim', !!anim); scrim.classList.toggle('anim', !!anim);
+    shade.style.transform = `translateY(${y}px)`;
+    scrim.style.opacity = (0.63 * (y + H) / H).toFixed(3);
+    scrim.style.pointerEvents = y > -H ? 'auto' : 'none';
+  };
+  const render = () => {
+    const d = new Date();
+    shade.querySelector('.qs-time').textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    shade.querySelector('.qs-bat').textContent = env.charger ? `${env.battery} % · charging` : `${env.battery} %`;
+    wifiRow.querySelector('.ic').innerHTML = `<span style="color:#4DA3FF">${ic(u.wifi ? 'wifi' : 'wifi_off', 28, 1)}</span>`;
+    wifiRow.querySelector('.nm').textContent = u.wifi || 'Set up Wi-Fi';
+    const f = (u.bright - B_MIN) / (B_MAX - B_MIN);
+    bar.querySelector('.qs-fill').style.width = `${40 + (336 - 40) * f}px`;   // never empty
+    bar.querySelector('.qs-pct').textContent = `${u.bright} %`;
+    bar.setAttribute('aria-valuenow', u.bright);
+    // volume: muted, the bar turns grey and reads "Muted"; the button turns red
+    const vf = volBar.querySelector('.qs-fill'), vp = volBar.querySelector('.qs-pct');
+    vf.style.width = `${40 + (260 - 40) * u.vol / 100}px`;
+    vf.style.background = u.muted ? '#3A3A3A' : '';
+    vp.textContent = u.muted ? 'Muted' : `${u.vol} %`;
+    vp.style.color = u.muted ? '#9A9A9A' : '';
+    volBar.setAttribute('aria-valuenow', u.vol);
+    muteBtn.innerHTML = ic(u.muted ? 'volume_off' : 'volume_up', 28, 1);
+    muteBtn.style.color = u.muted ? '#FF5A5F' : '';
+    muteBtn.style.background = u.muted ? mix('#FF5A5F', .22) : '';
+    muteBtn.setAttribute('aria-label', u.muted ? 'Unmute' : 'Mute');
+  };
+  const doOpen = () => { open = true; render(); setY(0, true); };
+  const doClose = () => { open = false; setY(-H, true); };
+  render();
+  if (opts.open) { open = true; setY(0); }
+  else setY(-H);
+  if (!live) { [wifiRow, bar, muteBtn, volBar].forEach(e => e.tabIndex = -1); return { isOpen: () => open, close: doClose, render }; }
+
+  const scale = () => parseFloat(getComputedStyle($('#device')).transform.split(',')[3]) || 1;
+  // pull the status bar down (or tap it)
+  let p0 = null, moved = false;
+  sb.el.addEventListener('pointerdown', e => { if (open) return; sb.el.setPointerCapture(e.pointerId); p0 = e.clientY; moved = false; });
+  sb.el.addEventListener('pointermove', e => {
+    if (p0 == null) return;
+    const d = (e.clientY - p0) / scale();
+    if (d > 8) moved = true;
+    if (moved) setY(-H + d);
+  });
+  sb.el.addEventListener('pointerup', () => { if (p0 == null) return; p0 = null; (!moved || y > -H * 2 / 3) ? doOpen() : doClose(); });
+  // drag the shade back up
+  let q0 = null, y0 = 0, qm = false;
+  shade.addEventListener('pointerdown', e => { if (e.target.closest('.qs-row')) return; shade.setPointerCapture(e.pointerId); q0 = e.clientY; y0 = y; qm = false; });
+  shade.addEventListener('pointermove', e => { if (q0 == null) return; const d = (q0 - e.clientY) / scale(); if (d > 8) qm = true; if (qm) setY(y0 - d); });
+  shade.addEventListener('pointerup', () => { if (q0 == null) return; q0 = null; (qm && y < -H / 3) ? doClose() : doOpen(); });
+  scrim.addEventListener('click', doClose);
+  wifiRow.addEventListener('click', () => { open = false; setY(-H); show('wifi'); });
+  // brightness: live while touched, "saved" on release
+  const setFrom = e => {
+    const b = bar.getBoundingClientRect(), x = Math.max(0, Math.min(1, (e.clientX - b.left) / b.width));
+    user.bright = Math.round(B_MIN + x * (B_MAX - B_MIN)); render(); applyBrightness();
+  };
+  bar.addEventListener('pointerdown', e => { bar.setPointerCapture(e.pointerId); setFrom(e); bar.dataset.drag = 1; });
+  bar.addEventListener('pointermove', e => { if (bar.dataset.drag) setFrom(e); });
+  bar.addEventListener('pointerup', () => { delete bar.dataset.drag; });
+  bar.addEventListener('keydown', e => {
+    const k = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
+    if (k) { e.preventDefault(); e.stopPropagation(); user.bright = Math.max(B_MIN, Math.min(B_MAX, user.bright + k)); render(); applyBrightness(); }
+  });
+  // volume: live while touched (hear it on playing noise), unmutes; a blip on release unless noise plays
+  const setVol = v => { user.vol = Math.max(0, Math.min(100, v)); user.muted = false; render(); Snd.apply(); };
+  const volFrom = e => { const b = volBar.getBoundingClientRect(); setVol(Math.round(Math.max(0, Math.min(1, (e.clientX - b.left) / b.width)) * 100)); };
+  volBar.addEventListener('pointerdown', e => { volBar.setPointerCapture(e.pointerId); Snd.ensure(); volFrom(e); volBar.dataset.drag = 1; });
+  volBar.addEventListener('pointermove', e => { if (volBar.dataset.drag) volFrom(e); });
+  volBar.addEventListener('pointerup', () => { if (!volBar.dataset.drag) return; delete volBar.dataset.drag; if (!noiseSt.playing) Snd.blip(); });
+  volBar.addEventListener('keydown', e => {
+    const k = { ArrowRight: 5, ArrowUp: 5, ArrowLeft: -5, ArrowDown: -5 }[e.key];
+    if (k) { e.preventDefault(); e.stopPropagation(); setVol(user.vol + k); }
+  });
+  muteBtn.addEventListener('click', () => { user.muted = !user.muted; render(); Snd.apply(); });
+  return { isOpen: () => open, close: doClose, render };
+}
+
+/* ---------------- Wi-Fi settings (opened from the quick settings) ---------------- */
+const NETS = [{ ssid: 'HomeNet', rssi: -52, secure: true }, { ssid: 'Neighbour 5G', rssi: -68, secure: true }, { ssid: 'Cafe Guest', rssi: -80, secure: false }];
+const KEYS = '123456789*0#';
+const MT = { 0: ' 0', 1: '.,-_@!?1', 2: 'abc2', 3: 'def3', 4: 'ghi4', 5: 'jkl5', 6: 'mno6', 7: 'pqrs7', 8: 'tuv8', 9: 'wxyz9' };
+const SYMS = '#$%&*+=/\\:;\'"()[]{}<>^~`|';
+const sigIcon = r => r >= -60 ? 'network_wifi_3_bar' : r >= -72 ? 'network_wifi_2_bar' : 'network_wifi_1_bar';
+
+function buildWifi(live, preset) {
+  const s = el('div', 'scr');
+  const w = preset ? { ...preset } : { view: 'list', scanning: true, ssid: '', secure: true, text: '', pending: false, mode: 'abc', join: 'trying' };
+  let lastKey = null, lastT = 0, cycle = 0, commitT = null, joinT = null;
+  const chars = k => k === '*' ? SYMS : w.mode === '123' ? (k === '#' ? '' : k) : w.mode === 'ABC' ? MT[k].toUpperCase() : MT[k];
+  const render = () => {
+    clearTimeout(joinT);
+    if (w.view === 'list') {
+      s.innerHTML = `<div class="wf-head"><span>Wi-Fi</span><span>${w.scanning ? 'Scanning…' : ''}</span></div><div class="wf-list"></div>
+        <button class="wf-scan">${ic('refresh', 26, 1)}Scan again</button>`;
+      const list = s.querySelector('.wf-list');
+      if (!w.scanning) NETS.forEach(n => {
+        const cur = n.ssid === user.wifi;
+        const b = el('button', 'wf-net' + (cur ? ' cur' : ''), `<span class="sig">${ic(sigIcon(n.rssi), 28, 1)}</span>
+          <span class="nm"><span>${n.ssid}</span>${cur ? '<small>Connected</small>' : ''}</span>${n.secure ? `<span style="color:#5A5A5A">${ic('lock', 18, 1)}</span>` : ''}`);
+        if (live) b.addEventListener('click', () => {
+          w.ssid = n.ssid; w.secure = n.secure; w.text = ''; w.pending = false;
+          if (n.secure) { w.view = 'password'; render(); } else connect();
+        }); else b.tabIndex = -1;
+        list.append(b);
+      });
+      const scan = s.querySelector('.wf-scan');
+      if (live) { scan.addEventListener('click', () => { w.scanning = true; render(); }); if (w.scanning) joinT = setTimeout(() => { w.scanning = false; render(); }, 1300); }
+      else scan.tabIndex = -1;
+    } else if (w.view === 'password') {
+      s.innerHTML = `<div class="wf-head"><span>Password</span><span class="mode">${w.mode}</span></div><div class="wf-ssid">${w.ssid}</div>
+        <div class="wf-field"></div><div class="wf-keys"></div>
+        <div class="wf-bottom"><button class="wf-del" aria-label="Delete">${ic('backspace', 28, 1)}</button><button class="wf-ok">Connect</button></div>`;
+      const keys = s.querySelector('.wf-keys');
+      for (const k of KEYS) {
+        const lab = k === '*' ? '#$%' : k === '#' ? { abc: 'ABC', ABC: '123', 123: 'abc' }[w.mode] : k === '0' ? (w.mode === '123' ? '' : 'space')
+          : w.mode === '123' ? '' : chars(k).slice(0, -1).slice(0, 4);
+        const b = el('button', 'wf-key', `<b>${k}</b><span>${lab}</span>`);
+        if (live) b.addEventListener('click', () => press(k)); else b.tabIndex = -1;
+        keys.append(b);
+      }
+      field();
+      const [del, ok] = s.querySelectorAll('.wf-bottom button');
+      if (live) {
+        del.addEventListener('click', () => { w.text = w.text.slice(0, -1); w.pending = false; field(); });
+        ok.addEventListener('click', () => {
+          if (w.text.length < 8) { if (!s.querySelector('.wf-hint')) s.append(el('div', 'wf-hint', 'At least 8 characters')); return; }
+          connect();
+        });
+      } else [del, ok].forEach(b => b.tabIndex = -1);
+    } else {
+      const trying = w.join === 'trying', ok = w.join === 'joined';
+      s.innerHTML = `<div class="wf-head"><span>Wi-Fi</span><span></span></div>
+        <svg class="wf-ring${trying ? ' spinning' : ''}" viewBox="0 0 132 132" aria-hidden="true">${trying ? '<circle cx="66" cy="66" r="62" fill="none" stroke="#1E1E1E" stroke-width="6"/><circle cx="66" cy="66" r="62" fill="none" stroke="#4DA3FF" stroke-width="6" stroke-linecap="round" stroke-dasharray="290 400"/>' : ''}</svg>
+        <div class="wf-icon" style="color:${trying ? '#4DA3FF' : ok ? '#4CD07D' : '#FF5A5F'}">${ic(trying ? 'wifi' : ok ? 'check_circle' : 'error', 56, 1)}</div>
+        <div class="wf-title">${trying ? 'Connecting…' : ok ? 'Connected' : 'Couldn’t connect'}</div>
+        <div class="wf-sub">${trying ? w.ssid : ok ? `${w.ssid} · 192.168.1.57<br>Saved on this device` : 'Check the password, or move closer to the router'}</div>
+        ${trying ? '' : `<button class="wf-btn">${ok ? 'Done' : 'Try again'}</button>`}`;
+      const btn = s.querySelector('.wf-btn');
+      if (btn && live) btn.addEventListener('click', () => doBack());
+      if (trying && live) joinT = setTimeout(() => {
+        w.join = w.text === 'wrongpass' ? 'failed' : 'joined';
+        if (w.join === 'joined') user.wifi = w.ssid;
+        render();
+      }, 2200);
+    }
+  };
+  const field = () => {
+    const f = s.querySelector('.wf-field');
+    if (!f) return;
+    const t = w.text, esc = c => c.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+    f.innerHTML = !t ? '<span class="ph">Type with the keys below</span>'
+      : `<span>${esc(w.pending ? t.slice(0, -1) : t)}</span>${w.pending ? `<span class="pend">${esc(t.slice(-1))}</span>` : ''}<span class="caret"></span>`;
+    f.scrollLeft = f.scrollWidth;
+    s.querySelector('.wf-hint')?.remove();
+  };
+  // Nokia multi-tap: the same key within 0.9 s cycles, a pause or another key commits
+  const press = k => {
+    const t = performance.now();
+    clearTimeout(commitT);
+    if (k === '#') { w.mode = { abc: 'ABC', ABC: '123', 123: 'abc' }[w.mode]; w.pending = false; lastKey = null; render(); return; }
+    const cs = chars(k);
+    if (w.pending && k === lastKey && t - lastT < 900) { cycle = (cycle + 1) % cs.length; w.text = w.text.slice(0, -1) + cs[cycle]; }
+    else if (w.text.length < 63) { cycle = 0; w.text += cs[0]; w.pending = cs.length > 1; }
+    lastKey = k; lastT = t;
+    if (w.pending) commitT = setTimeout(() => { w.pending = false; field(); }, 900);
+    field();
+  };
+  const connect = () => { w.view = 'join'; w.join = 'trying'; render(); };
+  render();
+  return {
+    el: s,
+    onBack() {
+      if (w.view === 'password') { w.view = 'list'; w.scanning = true; render(); return true; }
+      if (w.view === 'join') {
+        if (w.join === 'joined') return false;
+        if (w.join === 'failed') { w.view = 'password'; render(); return true; }
+        w.view = 'list'; render(); return true;
+      }
+      return false;
+    },
+  };
+}
+
+/* animation for the live Dice and Level screens */
+(function frameLoop(t) {
+  if (D.scr && D.scr.frame) D.scr.frame(t);
+  requestAnimationFrame(frameLoop);
+})(0);
+
+/* scale the device to fit */
+function fit() {
+  const host = $('#devHost'), w = host.clientWidth;
+  const k = Math.min(1, w / 470);
+  $('#device').style.transform = `scale(${k})`;
+  $('#devScale').style.height = 500 * k + 'px';
+}
+new ResizeObserver(fit).observe($('#devHost'));
+fit();
+
+show('menu', false);
+setInterval(tick, 200);
+tick();
+
+/* ---------------- gallery ---------------- */
+function thumb(title, note, build, dim) {
+  const fig = el('figure', 'thumb'); fig.style.margin = 0;
+  const fr = el('div', 'frame'), inner = el('div', 'inner');
+  const scr = build();
+  inner.append(scr);
+  if (dim != null) { const d = el('div'); d.style.cssText = `position:absolute;inset:0;background:#000;opacity:${1 - dim}`; inner.append(d); }
+  fr.append(inner);
+  fig.append(fr, el('figcaption', '', `${title}<span>${note}</span>`));
+  $('#gallery').append(fig);
+  return scr;
+}
+const gLights = [{ label: 'Living room', s: 'on' }, { label: 'Kitchen', s: 'off' }, { label: 'Bedroom', s: 'pending', prev: 'off' }, { label: 'Hallway', s: 'na' }];
+const gPomoStatic = { phase: 'focus', running: false, rem: (18 * 60 + 42) * 1000, count: 2 };
+const gPomoMin = { phase: 'focus', running: false, rem: 18 * 60e3, count: 2 };
+thumb('App menu', 'Round icons in pairs, vertical scroll with snapping', () => buildMenu(false).el);
+thumb('Home Assistant lights', 'On, off, toggling, unavailable', () => buildLights(gLights, false).el);
+thumb('Bot face', 'Blinks, looks around, breathes', () => buildBot(false).el);
+thumb('Pomodoro', 'Focus phase, 2 of 4 done', () => buildPomodoro(gPomoStatic, false).el);
+thumb('Pomodoro, minimal view', 'Shown at ≈15 % on the device; redraws once a minute', () => buildPomoMinimal(gPomoMin, false).el, 0.6);
+thumb('Espresso, running', '22.3 s: amber, close to target', () => buildEspresso({ mode: 'done', elapsed: 22.3, hist: [26.1, 31.8, 24.0] }, false).el);
+thumb('Espresso, done', '27.4 s in the 25–30 s window', () => buildEspresso({ mode: 'done', elapsed: 27.4, hist: [27.4, 26.1, 31.8, 24.0] }, false).el);
+thumb('Dice', '6d6 with advantage: the higher total is kept', () => DiceKit.build(false, {
+  state: { die: 6, count: 6, mode: 'adv' },
+  roll: { die: 6, count: 6, mode: 'adv', sets: [[5, 4, 5, 6, 5, 5], [1, 1, 2, 3, 3, 1]], totals: [30, 11], kept: 0, crit: null, idle: false } }).el);
+thumb('Dice, d20', 'Advantage: 19 kept, 18 dropped', () => DiceKit.build(false, {
+  state: { die: 20, count: 1, mode: 'adv' },
+  roll: { die: 20, count: 1, mode: 'adv', sets: [[19], [18]], totals: [19, 18], kept: 0, crit: null, idle: false } }).el);
+thumb('Level, lying flat', 'Bullseye: the bubble sits on the high side', () => LevelKit.build(false, { mode: 'flat', x: 2.4, y: -1.1, a: 0, p: 0 }).el);
+thumb('Level, on an edge', 'Horizon: rotation from level, plus the lean', () => LevelKit.build(false, { mode: 'edge', x: 0, y: 0, a: 12, p: 4 }).el);
+const gNow = new Date(2026, 9, 10, 18, 11, 10).getTime();
+const gTimer = (tab, sw, cd) => ({ tab, sw: { run: false, t0: 0, acc: 0, ...sw }, cd: { set: 300, st: 'idle', endAt: 0, rem: 0, doneAt: 0, ...cd } });
+thumb('Timer, clock', 'Hours over minutes in 160 px digits', () => buildTimer(gTimer('clock'), false, { now: gNow }).el);
+thumb('Timer, minimal clock', 'Never blanks: 25 % and a new spot every minute', () => buildTimerMinimal(gTimer('clock'), 'clock', { now: gNow, step: 49 }).el, 0.55);
+thumb('Stopwatch', 'Running; the tenths are small', () => buildTimer(gTimer('stopwatch', { run: true, t0: gNow - 75300 }), false, { now: gNow }).el);
+thumb('Countdown, set', 'Drag a column, or tap above / below its middle', () => buildTimer(gTimer('countdown', {}, { set: 414 }), false, { now: gNow }).el);
+thumb('Countdown, running', 'The ring is the time gone; "ends" by the wall clock', () => buildTimer(gTimer('countdown', {}, { set: 60, st: 'running', endAt: gNow + 50000 }), false, { now: gNow }).el);
+thumb('Countdown, time’s up', 'Amber, counting the overtime until Stop', () => buildTimer(gTimer('countdown', {}, { set: 60, st: 'done', doneAt: gNow - 4200 }), false, { now: gNow }).el);
+thumb('Noise, paused', 'Still and dimmed, a play button in the middle', () => buildNoise(false, { kind: 0, playing: false }).el);
+thumb('Noise, rain', 'Streaks in three depths, splashes; labels hide after 4 s', () => buildNoise(false, { kind: 0, playing: true }).el);
+thumb('Noise, white', 'Soft snow drifting down', () => buildNoise(false, { kind: 1, playing: true }).el);
+thumb('Noise, blue', 'A jittered grid of twinkling points rising slowly', () => buildNoise(false, { kind: 2, playing: true }).el);
+thumb('System', 'Info list with the update entry', () => buildSystem({ view: 'info' }, false).el);
+thumb('Wireless update', 'Receiving firmware, 42 %', () => buildSystem({ view: 'ota', phase: 'receiving', pct: 42 }, false).el);
+thumb('Quick settings', 'Pulled down from the status bar: Wi-Fi, brightness, volume', () => buildMenu(false, null, { open: true, user: { ...user } }).el);
+thumb('Quick settings, muted', 'Red speaker; the volume bar turns grey', () => buildMenu(false, null, { open: true, user: { ...user, muted: true } }).el);
+thumb('Wi-Fi networks', 'Scan results, strongest first; the one in use is blue', () => buildWifi(false, { view: 'list', scanning: false }).el);
+thumb('Wi-Fi password', 'Nokia multi-tap: the blue letter is still cycling', () => buildWifi(false, { view: 'password', ssid: 'Neighbour 5G', text: 'pasr', pending: true, mode: 'abc' }).el);
+thumb('Wi-Fi, connected', 'Saved on the device only once it connects', () => buildWifi(false, { view: 'join', join: 'joined', ssid: 'Neighbour 5G' }).el);
+thumb('Menu, dimmed', 'Battery: half the brightness after 10 s idle', () => buildMenu(false).el, 0.5);
+thumb('Power-off animation', 'Long press: the picture collapses to a line, then a dot', () => {
+  const s = el('div', 'scr');
+  s.innerHTML = `<div style="position:absolute;left:24px;right:24px;top:222px;height:4px;border-radius:2px;background:#EDEDED;box-shadow:0 0 18px 4px rgba(237,237,237,.55)"></div>`;
+  return s;
+});
+
+/* the "running" espresso thumb: fix label and colour after build */
+(function () {
+  const figs = document.querySelectorAll('#gallery .thumb');
+  const run = figs[5].querySelector('.scr');
+  run.querySelector('.esp-msg').textContent = 'Tap to stop';
+  run.querySelector('.esp-msg').style.color = '#9A9A9A';
+  run.querySelector('.esp-hist').innerHTML = [26.1, 31.8, 24.0].map(v => `<span style="color:${v >= 25 && v <= 30 ? '#4CD07D' : '#9A9A9A'}">${v.toFixed(1)}${v >= 25 && v <= 30 ? ' ✓' : ''}</span>`).join('');
+})();
+</script>
+</body>
+</html>

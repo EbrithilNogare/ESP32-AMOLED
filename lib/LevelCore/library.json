@@ -1,0 +1,7 @@
+{
+  "name": "LevelCore",
+  "version": "0.1.0",
+  "description": "Spirit-level maths: tilt angles from gravity, flat/edge view switching, smoothing",
+  "platforms": "*",
+  "frameworks": "*"
+}

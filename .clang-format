@@ -1,0 +1,13 @@
+# Formatting for our own C/C++ (src/, lib/, test/, tools/sim/). Generated
+# fonts in src/ui/generated/ are excluded (see .clang-format-ignore).
+BasedOnStyle: Google
+ColumnLimit: 120
+IndentWidth: 2
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+DerivePointerAlignment: false
+PointerAlignment: Right
+SortIncludes: true
+IncludeBlocks: Preserve

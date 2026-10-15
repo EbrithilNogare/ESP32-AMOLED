@@ -26,8 +26,9 @@ Waveshare switched shipments to V2 on 2026-05-30.
 
 Pins are identical between revisions. Firmware can detect the revision at
 runtime by probing the touch address on I2C (`0x15` → V2, `0x38` → V1) — the
-vendor ESP-IDF BSP does exactly that. This repo selects it at compile time with
-`BOARD_REVISION` in `board.h` (default `2`).
+vendor ESP-IDF BSP does exactly that, and so does this repo at boot
+(`src/core/board_init.cpp`). `BOARD_REVISION` in `board.h` (default `2`) is
+only the fallback when no touch controller answers.
 
 > The vendor's V2 Arduino code still calls the touch chip `CST816x`/`CST816T`
 > (same register interface as the CST820).
@@ -110,7 +111,7 @@ the products quickly.
 | AXP2101 | `0x34` | PMU |
 | FT3168 (V1) | `0x38` | touch |
 | PCF85063A | `0x51` | RTC |
-| QMI8658 | `0x6B` | IMU |
+| QMI8658 | `0x6B` | IMU (WHO_AM_I `0x00` = `0x05`) |
 
 ### TCA9554 IO expander
 
@@ -120,7 +121,7 @@ From the vendor examples (no board schematic is published yet):
 | --- | --- |
 | 0, 1, 2 | outputs — LCD and touch reset. Vendor init: set LOW, wait ~20 ms, set HIGH. An ESP restart alone does **not** reset the panel/touch. |
 | 4 | input — HIGH while the PWR button is pressed (vendor `12_LVGL_AXP2101_ADC_Data`) |
-| 5 | input — AXP2101 IRQ |
+| 5 | input — AXP2101 IRQ. It reaches only the expander, not an ESP GPIO, so a PWR press can't wake the chip from light or deep sleep (the firmware polls the PMU). |
 | 7 | output — microSD D3/CS; drive HIGH before `SD_MMC.begin()` |
 
 ### Audio — ES8311 over I2S
@@ -132,7 +133,7 @@ From the vendor examples (no board schematic is published yet):
 | WS (LRCK) | 45 |
 | DOUT (ESP → codec, speaker) | 8 |
 | DIN (codec → ESP, mic) | 10 |
-| Speaker amp enable (PA) | 46, HIGH = on |
+| Speaker amp enable (PA) | 46, HIGH = on. Not an RTC pin: held low through deep sleep with `gpio_hold_en` + `gpio_deep_sleep_hold_en`, released in `sound::begin()`. |
 
 ### microSD — SDMMC 1-bit
 
@@ -174,6 +175,51 @@ flash/octal PSRAM on 26–37) are: 13, 17, 18, 38, 39, 40, 41, 42, 47, 48.
 - Battery voltage, charge state, VBUS, and die temperature are readable from
   the AXP2101 ADC (vendor example `12_LVGL_AXP2101_ADC_Data`).
 
+### Deep-sleep current
+
+Goal: **≥ 30 days asleep** on the recommended 400 mAh cell. 30 days is 720 h,
+so the average must stay under 400 mAh / 720 h ≈ **550 µA**; keeping ~15 %
+for the cut-off voltage and the cell's self-discharge (a few % a month)
+leaves **≈ 450 µA**. Aim to measure well under that.
+
+In deep sleep the AXP2101 keeps every rail it had on (the boot log lists
+them: `pmu: rails on (mV): …`), so everything on the board stays powered
+and has to be put to sleep by firmware:
+
+| Part | State while the ESP sleeps | Expected (estimate, not measured) |
+| --- | --- | --- |
+| ESP32-S3 | deep sleep, RTC peripherals on (BOOT pull-up for ext1) | ~8 µA (datasheet) |
+| PSRAM / flash | unpowered with the ESP's VDD_SPI | ~0 |
+| CO5300 panel | display off `0x28` + sleep-in `0x10` | tens of µA |
+| CST820 touch | sleep `0xE5 = 0x03` | a few µA |
+| QMI8658 IMU | standby (CTRL7 = 0) | a few µA |
+| ES8311 codec | powered down after every playback (`powerDownCodec()`) | a few µA |
+| Speaker amp | PA_EN held low | < 1 µA |
+| TCA9554, PCF85063 | running (the RTC keeps time) | ~1 µA |
+| AXP2101 | on, rails up, gauge running | tens of µA |
+| microSD card, if inserted | idle, powered | 50–200 µA depending on the card |
+
+Expected total: roughly 0.1–0.2 mA without a card, i.e. **2–5 months** on
+400 mAh. Until it's measured, treat that as a guess.
+
+**Measuring it** (needs the board, not done yet):
+
+1. Unplug USB: on USB the AXP2101 runs the board from VBUS and the battery
+   current says nothing.
+2. Put a multimeter in series with the battery's red lead (a JST-MX1.25
+   pigtail makes this easy), on the **mA** range first: the wake and the
+   ~1 s boot draw 100 mA+, which the µA range's burden voltage can brown
+   out. Better: a source-measure unit such as a Nordic PPK2 in source
+   mode at 3.8 V instead of the cell.
+3. Long-press to sleep, wait ~10 s for things to settle, then switch to the
+   µA range (or read the PPK2 average over a minute).
+4. Over ~450 µA: find the part by elimination (remove the SD card; check
+   the rails list; compare with the vendor's factory firmware asleep).
+
+Without a meter, **System → Standby** estimates the same thing from the
+fuel gauge after a day or two asleep (ARCHITECTURE §8.6). It's coarse
+(whole percent), but it tells "weeks" from "months".
+
 ## Flashing & recovery
 
 - Plug USB-C and flash; the ESP32-S3 native USB auto-resets into the bootloader.
@@ -205,8 +251,8 @@ The vendor CI builds with core **esp32 3.3.11** and FQBN
 
 ### Libraries
 
-Versions bundled with the vendor Arduino examples (commented out in
-`platformio.ini` `lib_deps`):
+Versions bundled with the vendor Arduino examples (for reference; this repo
+uses its own drivers, see [LIBRARIES.md](LIBRARIES.md)):
 
 | Library | Version | For |
 | --- | --- | --- |
@@ -246,7 +292,7 @@ Display (V2):
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(PIN_LCD_CS, PIN_LCD_SCLK,
     PIN_LCD_SDIO0, PIN_LCD_SDIO1, PIN_LCD_SDIO2, PIN_LCD_SDIO3);
 Arduino_CO5300 *gfx = new Arduino_CO5300(bus, GFX_NOT_DEFINED, 0,
-    LCD_WIDTH, LCD_HEIGHT, LCD_COL_OFFSET, 0, 0, 0);
+    LCD_WIDTH, LCD_HEIGHT, LCD_COL_OFFSET_CO5300, 0, 0, 0);
 // V1: new Arduino_SH8601(bus, GFX_NOT_DEFINED, 0, LCD_WIDTH, LCD_HEIGHT);
 gfx->begin();
 gfx->setBrightness(255);
@@ -283,7 +329,11 @@ qmi.begin(Wire, I2C_ADDR_QMI8658, PIN_I2C_SDA, PIN_I2C_SCL);
 ```
 
 Speaker: `pinMode(PIN_PA_EN, OUTPUT); digitalWrite(PIN_PA_EN, HIGH);` then
-configure the ES8311 over I2C and stream PCM over I2S.
+configure the ES8311 over I2C and stream PCM over I2S. DAC volume register
+`0x32`: 0.5 dB per step, `0xBF` = 0 dB, `0xFF` = +32 dB (clips), `0x00` =
+mute. The volume setting (0–100 %) maps 1–100 % linearly onto the top
+40 dB (`0xBF − (100 − pct) × 0.8`), 0 % onto `0x00`; see `core/sound.cpp`.
+`PIN_PA_EN` (speaker amplifier) is on only while sound plays and not muted.
 
 ## Vendor demo index
 

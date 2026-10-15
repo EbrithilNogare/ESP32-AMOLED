@@ -14,6 +14,13 @@ Waveshare ESP32-S3-Touch-AMOLED-1.8 (ESP32-S3R8, 16 MB flash, 8 MB OPI PSRAM,
 | File | What's in it |
 | --- | --- |
 | `docs/HARDWARE.md` | board spec, V1/V2 revisions, full pinout, I2C map, IO expander, power, libraries, bring-up snippets |
+| `docs/ARCHITECTURE.md` | system design: app framework, power/sleep, Home Assistant integration |
+| `docs/LIBRARIES.md` | every dependency with version, licence, and rejected alternatives — check before adding one |
+| `docs/UI_DESIGN.md` | design tokens (colour, type, spacing, motion), icons, assets pipeline (images, fonts, sprites), LVGL setup |
+| `docs/design/ui-mockup.html` | clickable mock of every screen: menu, all apps, quick settings, Wi-Fi setup (the approved Dice and Level designs are `docs/design/dice-wireframe.html` and `docs/design/level.html`) |
+| `docs/design/firmware-screens.png` | what the firmware actually renders (PC simulator, `tools/sim/`) |
+| `docs/apps/` | one spec per app + how to add an app — write/agree the spec before coding an app |
+| `docs/ROADMAP.md` | milestones with on-device acceptance checklists — find the current one before coding |
 | `docs/DECISIONS.md` | why things are the way they are — check before changing toolchain, layout, partitions |
 | `docs/LESSONS.md` | gotchas learned on real hardware and in the toolchain |
 | `README.md` | layout, build/flash, environments |
@@ -48,18 +55,25 @@ The `docs/` files above are the project's long-term memory between sessions.
 - New modules: a header/source pair in `src/`, or a self-contained library in
   `lib/<Name>/`. Keep `main.cpp` as wiring: init in `setup()`, service in `loop()`.
 - Third-party libraries go in `platformio.ini` `lib_deps` with a pinned version.
-- Large buffers (frame buffers, LVGL draw buffers, audio) belong in PSRAM
-  (`ps_malloc` / `heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`).
+- Large buffers (frame buffers, the LVGL heap, audio) belong in PSRAM
+  (`ps_malloc` / `heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`). Exception: the
+  two LVGL draw buffers stay in internal DMA RAM (hot path, see
+  `src/core/display.cpp`).
 
 ## Build & verify
 
 ```bash
 pio run -e amoled          # release
 pio run -e amoled-debug    # debug
+pio test -e native         # unit tests for lib/
+pio run -e sim && .pio/build/sim/program   # UI flow test in the PC simulator
+python tools/assets.py --check             # after touching assets/
 ```
 
-Both must build before pushing — CI (`.github/workflows/build.yml`) checks the
-same. Flashing needs the physical board; say so instead of claiming hardware
+All of these must pass before pushing — CI (`.github/workflows/build.yml`)
+checks the same. Keep the build at 0 warnings. After a visible UI change,
+regenerate the screenshots with `python tools/sim/shots.py` and look at them.
+Flashing needs the physical board; say so instead of claiming hardware
 behaviour you couldn't test.
 
 ## Hardware must-knows
@@ -67,5 +81,5 @@ behaviour you couldn't test.
 - Display and touch must be reset through the TCA9554 expander (EXIO0–2
   LOW → 20 ms → HIGH) before init; an ESP restart alone doesn't reset them.
 - No backlight pin: AMOLED brightness is panel command `0x51`
-  (`gfx->setBrightness()`).
+  (`core::display::setBrightness()` / `fadeTo()`).
 - Default `BOARD_REVISION` is 2 (CO5300 + CST820). V1 boards use SH8601 + FT3168.

@@ -5,33 +5,45 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  PLATFORMIO_VERSION: "6.2.0"  # same as local `pio --version`; bump on purpose
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  firmware:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         env: [amoled, amoled-debug]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tags for the git-describe firmware version
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      # Toolchains and the per-env library checkouts; restore-keys reuse the
+      # last cache of this env when platformio.ini changed.
       - name: Cache PlatformIO
         uses: actions/cache@v4
         with:
-          path: ~/.platformio
-          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          path: |
+            ~/.platformio
+            .pio/libdeps
+          key: pio-${{ runner.os }}-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-${{ matrix.env }}-
 
       - name: Install PlatformIO
-        run: pip install platformio
+        run: pip install "platformio==${{ env.PLATFORMIO_VERSION }}"
 
       # No secrets.h in CI: the code falls back to include/secrets.example.h.
+      # tools/size_check.py fails the build above the 3.5 MiB OTA budget.
       - name: Build ${{ matrix.env }}
         run: pio run -e ${{ matrix.env }}
 
@@ -44,3 +56,81 @@ jobs:
             .pio/build/amoled/firmware.bin
             .pio/build/amoled/firmware.factory.bin
           retention-days: 14
+
+  host-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            .pio/libdeps
+          key: pio-host-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            pio-host-${{ runner.os }}-
+
+      - name: Install PlatformIO and Pillow
+        run: pip install "platformio==${{ env.PLATFORMIO_VERSION }}" pillow
+
+      - name: Unit tests (lib/)
+        run: pio test -e native
+
+      - name: Build simulator
+        id: sim-build
+        run: pio run -e sim
+
+      - name: UI flow test (simulator)
+        run: .pio/build/sim/program
+
+      # Also when the flow test failed: the frames it got to show where.
+      - name: Simulator screenshots
+        if: ${{ !cancelled() && steps.sim-build.outcome == 'success' }}
+        run: python tools/sim/shots.py --out sim-screens
+
+      - name: Upload simulator screens
+        if: ${{ !cancelled() && steps.sim-build.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-screens
+          path: sim-screens
+          if-no-files-found: warn
+          retention-days: 14
+
+  assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: tools/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/package-lock.json
+
+      - name: Cache downloaded fonts
+        uses: actions/cache@v4
+        with:
+          path: tools/.cache
+          key: assets-${{ hashFiles('assets/assets.toml') }}
+
+      - name: Install asset tools
+        run: |
+          pip install -r tools/requirements.txt
+          npm ci --prefix tools
+
+      # Fails if src/ui/generated/ doesn't match what assets/ would produce.
+      - name: Check generated assets are up to date
+        run: python tools/assets.py --check

@@ -1,0 +1,4 @@
+# Python deps for tools/assets.py (Python 3.11+). Install: pip install -r tools/requirements.txt
+fonttools==4.66.1   # variable-font instancing + subsetting (Material Symbols), font metrics
+pypng==0.20220715.0 # PNG I/O for LVGLImage.py and sprite slicing
+lz4==4.4.5          # LVGLImage.py (LZ4-compressed .bin images)

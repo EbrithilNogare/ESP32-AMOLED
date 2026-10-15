@@ -1,0 +1,7 @@
+{
+  "name": "DiceCore",
+  "version": "0.1.0",
+  "description": "Dice rolls (advantage, percentile) and wireframe polyhedra that land face-on",
+  "platforms": "*",
+  "frameworks": "*"
+}

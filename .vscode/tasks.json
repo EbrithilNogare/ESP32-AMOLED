@@ -14,20 +14,28 @@
       "label": "ESP: build",
       "type": "shell",
       "command": "pio run -e ${input:env}",
-      "group": { "kind": "build", "isDefault": true },
+      "group": "build",
       "problemMatcher": ["$gcc"]
     },
     {
       "label": "ESP: build & upload & monitor",
       "type": "shell",
       "command": "pio run -e ${input:env} -t upload -t monitor",
-      "group": "build",
+      "group": { "kind": "build", "isDefault": true },
       "problemMatcher": ["$gcc"]
     },
     {
       "label": "ESP: upload",
       "type": "shell",
       "command": "pio run -e ${input:env} -t upload",
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "ESP: upload OTA (Wi-Fi)",
+      "detail": "Open System → Wireless update on the device first; set ESP_OTA_PASSWORD in your shell.",
+      "type": "shell",
+      "command": "pio run -e amoled-ota -t upload",
       "group": "build",
       "problemMatcher": ["$gcc"]
     },
@@ -54,6 +62,26 @@
       "label": "ESP: erase flash",
       "type": "shell",
       "command": "pio run -e ${input:env} -t erase",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: unit tests (PC)",
+      "type": "shell",
+      "command": "pio test -e native",
+      "group": "test",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Test: UI simulator + screenshots (PC)",
+      "type": "shell",
+      "command": "pio run -e sim && .pio/build/sim/program && python tools/sim/shots.py",
+      "group": "test",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Assets: regenerate fonts/images",
+      "type": "shell",
+      "command": "python tools/assets.py",
       "problemMatcher": []
     }
   ]

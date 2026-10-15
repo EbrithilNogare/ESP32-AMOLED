@@ -1,0 +1,7 @@
+{
+  "name": "WireRaster",
+  "version": "0.1.0",
+  "description": "Fast anti-aliased thick lines into an RGB565 buffer (dice wireframes)",
+  "platforms": "*",
+  "frameworks": "*"
+}
