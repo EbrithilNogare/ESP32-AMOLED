@@ -612,6 +612,15 @@ int main() {
   key('3', 1);
   key('4', 1);
   CHECK(strcmp(wifiApp.typed(), "pass1234") == 0);
+  // Taps in the gaps and out at the bezel still reach the nearest key.
+  tap(4, LCD_HEIGHT - 4);  // bottom-left corner: Backspace
+  CHECK(strcmp(wifiApp.typed(), "pass123") == 0);
+  tap(2, 136 + 60 + 27);  // left of "4", past the margin
+  CHECK(strcmp(wifiApp.typed(), "pass1234") == 0);
+  tap(16 + 106 + 3, 136 + 54 + 2);  // in the gaps, nearest "1"
+  CHECK(strcmp(wifiApp.typed(), "pass12341") == 0);
+  tap(16 + 53, LCD_HEIGHT - 20 - 24);  // Backspace
+  CHECK(strcmp(wifiApp.typed(), "pass1234") == 0);
   tap(241, LCD_HEIGHT - 20 - 24);  // Connect
   CHECK(wifiApp.view() == apps::WifiApp::View::Joining);
   CHECK(sim::joinSsid == "Neighbour 5G" && sim::joinPassword == "pass1234");

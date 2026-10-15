@@ -182,3 +182,13 @@ BOOT, replug USB, release BOOT → ROM download mode, then upload.
 The CO5300 (V2) panel sits 16 columns into the driver RAM: every CASET
 window is shifted by 16 (`core::board::lcdColumnOffset()`, passed to
 `core::display::begin()`). V1 (SH8601) has no offset.
+
+## Taps near the bezel and between keys go nowhere
+
+Close to the screen edge a finger is partly off the glass, so the panel
+reports it less reliably, and layouts keep a `kPad` margin there. Small
+targets with gaps and margins (the Wi-Fi keypad) feel unresponsive at the
+edges. Route the whole area to the nearest target with one transparent pad
+(see `WifiApp::onPad`) instead of making each key its own click target. The
+debug build logs every touch-down position (`touch: down x,y`) so you can
+check how the panel behaves at the edges.

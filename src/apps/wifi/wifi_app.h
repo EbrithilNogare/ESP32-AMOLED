@@ -40,9 +40,12 @@ class WifiApp : public App {
 
   static void onNetwork(lv_event_t *e);
   static void onRescan(lv_event_t *e);
-  static void onKey(lv_event_t *e);
-  static void onBackspace(lv_event_t *e);
-  static void onConnect(lv_event_t *e);
+  int padTarget(const lv_point_t &p) const;
+  void pressKey(char key);
+  void backspace();
+  void connectPressed();
+
+  static void onPad(lv_event_t *e);
   static void onJoinButton(lv_event_t *e);
   static void onFieldDraw(lv_event_t *e);
 
@@ -59,6 +62,8 @@ class WifiApp : public App {
   lv_obj_t *status_ = nullptr, *list_ = nullptr;                   // list
   lv_obj_t *field_ = nullptr, *mode_ = nullptr, *hint_ = nullptr;  // password
   lv_obj_t *keyLetters_[12] = {};
+  lv_obj_t *targets_[14] = {};  // the 12 keys, Backspace, Connect
+  int pressed_ = -1;            // index into targets_ while a finger is on the pad
   lv_obj_t *joinIcon_ = nullptr, *joinTitle_ = nullptr, *joinSub_ = nullptr, *joinBtn_ = nullptr,
            *spinner_ = nullptr;  // joining
 };

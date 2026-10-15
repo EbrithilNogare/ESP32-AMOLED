@@ -41,6 +41,7 @@ void WifiApp::onDestroy() {
   root_ = status_ = list_ = field_ = mode_ = hint_ = nullptr;
   joinIcon_ = joinTitle_ = joinSub_ = joinBtn_ = spinner_ = nullptr;
   for (auto &l : keyLetters_) l = nullptr;
+  for (auto &t : targets_) t = nullptr;
 }
 
 bool WifiApp::onBack() {
@@ -60,6 +61,8 @@ void WifiApp::build(View v) {
   status_ = list_ = field_ = mode_ = hint_ = nullptr;
   joinIcon_ = joinTitle_ = joinSub_ = joinBtn_ = spinner_ = nullptr;
   for (auto &l : keyLetters_) l = nullptr;
+  for (auto &t : targets_) t = nullptr;
+  pressed_ = -1;
   view_ = next_ = v;
   switch (v) {
     case View::List: buildList(); break;
@@ -206,10 +209,8 @@ void WifiApp::buildPassword() {
     lv_obj_set_style_radius(k, 14, 0);
     lv_obj_set_style_bg_color(k, c(col::surface), 0);
     lv_obj_set_style_bg_opa(k, LV_OPA_COVER, 0);
-    lv_obj_set_clickable(k, true);
-    pressable(k);
-    lv_obj_set_user_data(k, reinterpret_cast<void *>(intptr_t(kKeys[i])));
-    lv_obj_add_event_cb(k, onKey, LV_EVENT_CLICKED, this);
+    pressable(k);  // pressed by the pad below, not clickable itself
+    targets_[i] = k;
     const char digit[2] = {kKeys[i], 0};
     lv_obj_align(label(k, &font_title, col::text, digit), LV_ALIGN_LEFT_MID, 14, 0);
     keyLetters_[i] = label(k, &font_caption, col::textDim, "");
@@ -221,12 +222,24 @@ void WifiApp::buildPassword() {
   lv_obj_set_style_text_font(lv_obj_get_child(del, 0), &font_icon_28, 0);
   lv_obj_set_width(del, kKeyW);
   lv_obj_set_pos(del, kPad, barY);
-  lv_obj_add_event_cb(del, onBackspace, LV_EVENT_CLICKED, this);
+  lv_obj_set_clickable(del, false);
+  targets_[12] = del;
   lv_obj_t *ok = textButton(root_, "Connect", mixBlack(kAccent, 15), kBtnSmall);
   lv_obj_set_style_bg_color(ok, c(kAccent), 0);
   lv_obj_set_width(ok, LCD_WIDTH - 2 * kPad - kKeyW - kKeyGap);
   lv_obj_set_pos(ok, kPad + kKeyW + kKeyGap, barY);
-  lv_obj_add_event_cb(ok, onConnect, LV_EVENT_CLICKED, this);
+  lv_obj_set_clickable(ok, false);
+  targets_[13] = ok;
+
+  // One transparent pad over everything below the field, out to the screen
+  // edges: a touch goes to the nearest key, so the gaps between keys and the
+  // margins along the bezel (where the touch panel is least accurate) still
+  // land somewhere instead of nowhere.
+  lv_obj_t *pad = box(root_);
+  lv_obj_set_pos(pad, 0, kFieldY + kFieldH);
+  lv_obj_set_size(pad, LCD_WIDTH, LCD_HEIGHT - kFieldY - kFieldH);
+  lv_obj_set_clickable(pad, true);
+  lv_obj_add_event_cb(pad, onPad, LV_EVENT_ALL, this);
 
   hint_ = toast(root_, "At least 8 characters");
   lv_obj_align(hint_, LV_ALIGN_TOP_MID, 0, kFieldY + kFieldH + 8);
@@ -298,27 +311,59 @@ void WifiApp::onFieldDraw(lv_event_t *e) {
   static_cast<WifiApp *>(lv_event_get_user_data(e))->drawField(lv_event_get_layer(e));
 }
 
-void WifiApp::onKey(lv_event_t *e) {
-  auto *self = static_cast<WifiApp *>(lv_event_get_user_data(e));
-  const char key = char(ui::eventIndex(e));
-  if (!self->typer_.press(key, millis())) return;
-  if (key == '#') self->renderKeys();
-  lv_obj_set_hidden(self->hint_, true);
-  lv_obj_invalidate(self->field_);
+// The key under `p`: rows and columns split halfway across the gaps, the
+// outer ones run to the screen edge, and the bottom bar takes the rest.
+int WifiApp::padTarget(const lv_point_t &p) const {
+  const int32_t keysBottom = kKeysY + 4 * (kKeyH + kRowGap) - kRowGap;
+  const int32_t barY = LCD_HEIGHT - ui::kBarBottom - ui::kBtnSmall;
+  if (p.y >= (keysBottom + barY) / 2) return p.x < ui::kPad + kKeyW + kKeyGap / 2 ? 12 : 13;
+  int32_t col = (p.x - ui::kPad + kKeyGap / 2) / (kKeyW + kKeyGap);
+  int32_t row = (p.y - kKeysY + kRowGap / 2) / (kKeyH + kRowGap);
+  col = col < 0 ? 0 : col > 2 ? 2 : col;
+  row = row < 0 ? 0 : row > 3 ? 3 : row;
+  return int(row * 3 + col);
 }
 
-void WifiApp::onBackspace(lv_event_t *e) {
+// The key that was touched first gets the press, wherever the finger slides.
+void WifiApp::onPad(lv_event_t *e) {
   auto *self = static_cast<WifiApp *>(lv_event_get_user_data(e));
-  if (self->typer_.backspace()) lv_obj_invalidate(self->field_);
+  const lv_event_code_t code = lv_event_get_code(e);
+  if (code == LV_EVENT_PRESSED) {
+    lv_point_t p{0, 0};
+    lv_indev_get_point(lv_indev_active(), &p);
+    self->pressed_ = self->padTarget(p);
+    lv_obj_add_state(self->targets_[self->pressed_], LV_STATE_PRESSED);
+  } else if (code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) {
+    if (self->pressed_ >= 0) lv_obj_remove_state(self->targets_[self->pressed_], LV_STATE_PRESSED);
+  } else if (code == LV_EVENT_CLICKED && self->pressed_ >= 0) {
+    const int t = self->pressed_;
+    self->pressed_ = -1;
+    if (t < 12)
+      self->pressKey(kKeys[t]);
+    else if (t == 12)
+      self->backspace();
+    else
+      self->connectPressed();
+  }
 }
 
-void WifiApp::onConnect(lv_event_t *e) {
-  auto *self = static_cast<WifiApp *>(lv_event_get_user_data(e));
-  if (self->typer_.length() < kMinWpaLen) {  // WPA2 refuses shorter passphrases
-    lv_obj_set_hidden(self->hint_, false);
+void WifiApp::pressKey(char key) {
+  if (!typer_.press(key, millis())) return;
+  if (key == '#') renderKeys();
+  lv_obj_set_hidden(hint_, true);
+  lv_obj_invalidate(field_);
+}
+
+void WifiApp::backspace() {
+  if (typer_.backspace()) lv_obj_invalidate(field_);
+}
+
+void WifiApp::connectPressed() {
+  if (typer_.length() < kMinWpaLen) {  // WPA2 refuses shorter passphrases
+    lv_obj_set_hidden(hint_, false);
     return;
   }
-  self->connect();
+  connect();
 }
 
 void WifiApp::connect() {

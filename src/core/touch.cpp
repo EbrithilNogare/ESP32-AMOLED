@@ -38,7 +38,10 @@ static void readCb(lv_indev_t *, lv_indev_data_t *data) {
         pressed = true;
       }
     }
-    if (pressed && !down) swallowing = pressHook && !pressHook();
+    if (pressed && !down) {
+      ESP_LOGD(TAG, "down %d,%d", lastX, lastY);  // raw panel position, for checking accuracy at the edges
+      swallowing = pressHook && !pressHook();
+    }
     if (pressed && activityHook) activityHook();
     if (!pressed) swallowing = false;
     down = pressed;
