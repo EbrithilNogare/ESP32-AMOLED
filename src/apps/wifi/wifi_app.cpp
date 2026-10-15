@@ -418,7 +418,13 @@ void WifiApp::renderJoin() {
   if (ok)
     ui::setTextFmt(joinSub_, "%s · %s\nSaved on this device", ssid_, core::net::ip());
   else
-    ui::setText(joinSub_, "Check the password, or move closer to the router");
+    switch (core::net::joinFail()) {
+      case core::net::JoinFail::Password: ui::setText(joinSub_, "Wrong password — check upper and lower case"); break;
+      case core::net::JoinFail::NotFound: ui::setText(joinSub_, "Network not found — move closer to the router"); break;
+      case core::net::JoinFail::Security: ui::setText(joinSub_, "This network's security type isn't supported"); break;
+      case core::net::JoinFail::Timeout: ui::setText(joinSub_, "The router didn't answer — try again"); break;
+      default: ui::setTextFmt(joinSub_, "Error %u — try again", core::net::joinReason()); break;
+    }
   ui::setText(lv_obj_get_child(joinBtn_, 0), ok ? "Done" : "Try again");
 }
 

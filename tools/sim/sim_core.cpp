@@ -70,6 +70,8 @@ void join(const char *ssid, const char *password) {
   sim::join = Join::Trying;
 }
 Join joinState() { return sim::join; }
+JoinFail joinFail() { return sim::join == Join::Failed ? JoinFail::Password : JoinFail::None; }
+uint8_t joinReason() { return sim::join == Join::Failed ? 15 : 0; }
 }  // namespace net
 
 namespace pmu {

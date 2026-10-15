@@ -35,6 +35,11 @@ const char *ssid();  // the network it joins ("" if none is set up)
 enum class Join : uint8_t { Idle, Trying, Joined, Failed };
 void join(const char *ssid, const char *password);
 Join joinState();
+// Why the last join failed, from the last disconnect reason the Wi-Fi driver
+// reported before giving up (Timeout: no reason at all, the router never answered).
+enum class JoinFail : uint8_t { None, Password, NotFound, Security, Timeout, Other };
+JoinFail joinFail();
+uint8_t joinReason();  // the raw WIFI_REASON_* code behind it, 0 if none
 
 // Scan for networks in the background (the Wi-Fi screen holds the radio
 // meanwhile). A connection attempt in progress is paused for the scan.

@@ -30,6 +30,23 @@ static int scanCount = -1;
 static Network networks[kMaxNetworks];
 static Join joinSt = Join::Idle;
 static char joinSsid[settings::kSsidMax + 1], joinPassword[settings::kPasswordMax + 1];
+static volatile uint8_t lastReason;  // last STA disconnect reason, written by the Wi-Fi event task
+static uint8_t failReason;           // lastReason when a join on trial failed
+
+static JoinFail classify(uint8_t reason) {
+  switch (reason) {
+    case 0: return JoinFail::Timeout;
+    case WIFI_REASON_AUTH_FAIL:
+    case WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT:
+    case WIFI_REASON_HANDSHAKE_TIMEOUT:
+    case WIFI_REASON_MIC_FAILURE: return JoinFail::Password;
+    case WIFI_REASON_NO_AP_FOUND:
+    case WIFI_REASON_NO_AP_FOUND_IN_RSSI_THRESHOLD: return JoinFail::NotFound;
+    case WIFI_REASON_NO_AP_FOUND_W_COMPATIBLE_SECURITY:
+    case WIFI_REASON_NO_AP_FOUND_IN_AUTHMODE_THRESHOLD: return JoinFail::Security;
+    default: return JoinFail::Other;
+  }
+}
 
 static void onTimeSync(timeval *) { events::post({Ev::TimeSynced, 0, 0}); }
 
@@ -93,6 +110,7 @@ static void startRadio() {
   }
   radioOn = true;
   startedMs = millis();
+  lastReason = 0;
   ESP_LOGI(TAG, "connecting to %s", wifiSsid());
 }
 
@@ -104,7 +122,16 @@ static void stopRadio(uint32_t now) {
   }
   // A network on trial that loses its radio before connecting has failed;
   // the saved one is used again from here on.
-  if (joinSt == Join::Trying) joinSt = Join::Failed;
+  if (joinSt == Join::Trying) {
+    joinSt = Join::Failed;
+    failReason = lastReason;  // before our own disconnect overwrites it
+    ESP_LOGE(TAG, "join %s failed after %lu ms, reason %u (%s)", joinSsid, (unsigned long)(now - startedMs),
+             failReason, failReason ? WiFi.STA.disconnectReasonName(wifi_err_reason_t(failReason)) : "no answer");
+  }
+  // Otherwise the core's reconnect handler answers our own disconnect by
+  // reconnecting a driver that is already stopped (STA disconnect failed /
+  // STA config failed in the log).
+  WiFi.setAutoReconnect(false);
   WiFi.disconnect(true, false);
   WiFi.mode(WIFI_OFF);
   radioOn = false;
@@ -134,7 +161,11 @@ static void collectScan(int found) {
   std::sort(networks, networks + scanCount, [](const Network &a, const Network &b) { return a.rssi > b.rssi; });
 }
 
-void begin() { WiFi.persistent(false); }
+void begin() {
+  WiFi.persistent(false);
+  WiFi.onEvent([](arduino_event_id_t, arduino_event_info_t info) { lastReason = info.wifi_sta_disconnected.reason; },
+               ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+}
 
 void loop() {
   const uint32_t now = millis();
@@ -209,6 +240,8 @@ void join(const char *ssid, const char *password) {
 }
 
 Join joinState() { return joinSt; }
+JoinFail joinFail() { return joinSt == Join::Failed ? classify(failReason) : JoinFail::None; }
+uint8_t joinReason() { return joinSt == Join::Failed ? failReason : 0; }
 
 void startScan() {
   if (scanning) return;

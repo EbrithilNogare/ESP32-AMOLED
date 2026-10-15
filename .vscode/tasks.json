@@ -14,14 +14,14 @@
       "label": "ESP: build",
       "type": "shell",
       "command": "pio run -e ${input:env}",
-      "group": { "kind": "build", "isDefault": true },
+      "group": "build",
       "problemMatcher": ["$gcc"]
     },
     {
       "label": "ESP: build & upload & monitor",
       "type": "shell",
       "command": "pio run -e ${input:env} -t upload -t monitor",
-      "group": "build",
+      "group": { "kind": "build", "isDefault": true },
       "problemMatcher": ["$gcc"]
     },
     {
