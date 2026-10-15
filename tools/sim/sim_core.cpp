@@ -67,7 +67,7 @@ int scanResults(const Network *&list) {
 bool known(const char *ssid) {
   if (sim::ssid == ssid) return true;
   for (int i = 0; i < settings::wifiCount(); i++)
-    if (strcmp(settings::wifiSsid(i), ssid) == 0) return true;
+    if (strcmp(settings::wifi(i).ssid, ssid) == 0) return true;
   return false;
 }
 void join(const char *ssid, const char *password) {

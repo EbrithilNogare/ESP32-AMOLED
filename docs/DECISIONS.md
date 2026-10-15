@@ -286,3 +286,22 @@ BSSID of the last network skips the scan. Not Arduino's `WiFiMulti`: its
 **Consequences:** With several networks a cold connect costs one scan
 (~2–3 s) more. The old single `wifi` blob is read once and replaced by
 `wifis` on the next save.
+
+## 2026-10-15 — Per-network channel, access point and lease; one network in secrets.h
+
+**Context:** The day's earlier multi-network change kept one deep-sleep cache
+(RTC) for the last network only and added `WIFI_EXTRA_NETWORKS` to
+`secrets.h`. Extra networks are better added on the device, and each of them
+should reconnect as fast as the secrets one with a static IP.
+**Decision:** `secrets.h` has one network again (`WIFI_EXTRA_NETWORKS` is
+gone). Every network that connects is saved in NVS (`wifinets`) with its
+channel, BSSID and, when it came from DHCP, the lease and its time. The
+first connect goes to the last network on its channel and BSSID, reusing the
+lease as a static IP while younger than `WIFI_LEASE_REUSE_S` (12 h) and the
+clock is valid; any failure falls back to a normal join with DHCP (and a scan
+with several networks). The RTC Wi-Fi cache is removed: NVS covers deep
+sleep and power-off alike.
+**Consequences:** Reconnects skip both the scan and DHCP. A reused lease isn't
+confirmed with the router, so an IP clash is possible if the router reassigns
+it within 12 h; a DHCP reservation avoids that. NVS is written on a connect
+only when the channel, BSSID or lease changed (at most about once per lease).

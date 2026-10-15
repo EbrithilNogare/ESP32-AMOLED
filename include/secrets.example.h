@@ -9,11 +9,10 @@
 // Leave WIFI_SSID empty to run without Wi-Fi (the radio then never starts).
 #define WIFI_SSID ""
 #define WIFI_PASSWORD ""
-// More networks (optional): {"ssid", "password"} pairs. The device joins the
-// strongest known one in range; networks joined on the device come first.
-// #define WIFI_EXTRA_NETWORKS {"Office", "password"}, {"Phone hotspot", "password"},
+// More networks are added on the device (quick settings → Wi-Fi) and saved there.
 
-// Optional static IP: speeds up reconnecting after deep sleep. Leave empty for DHCP.
+// Optional static IP for WIFI_SSID. Leave empty for DHCP: the device remembers
+// each network's lease and channel and reuses them to reconnect faster anyway.
 #define WIFI_STATIC_IP ""
 #define WIFI_GATEWAY ""
 #define WIFI_SUBNET ""

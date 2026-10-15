@@ -184,8 +184,8 @@ and mute in quick settings.
 
 ### M11 — Wi-Fi ◐
 
-`core/net`: connect on demand, non-blocking, fast reconnect (cached
-channel/BSSID, optional static IP), released when no app needs it on
+`core/net`: connect on demand, non-blocking, fast reconnect (per-network
+channel/BSSID and DHCP lease, optional static IP), released when no app needs it on
 battery; Wi-Fi icon in the status bar.
 
 **On device:** cold connect < 5 s; reconnect after wake < 1.5 s; a wrong

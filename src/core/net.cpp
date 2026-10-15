@@ -11,7 +11,7 @@
 #include "events.h"
 #include "secrets_or_example.h"
 #include "settings.h"
-#include "store.h"
+#include "rtc_clock.h"
 #include "ticks.h"
 
 namespace core::net {
@@ -53,33 +53,28 @@ static void onTimeSync(timeval *) { events::post({Ev::TimeSynced, 0, 0}); }
 
 // ------------------------------------------------------------ known networks
 
-struct Cred {
-  const char *ssid, *password;
-};
-// secrets.h: WIFI_SSID, plus optional WIFI_EXTRA_NETWORKS as {"ssid", "password"} pairs.
-static const Cred kCompiled[] = {
-    {WIFI_SSID, WIFI_PASSWORD},
-#ifdef WIFI_EXTRA_NETWORKS
-    WIFI_EXTRA_NETWORKS
-#endif
-};
-static constexpr int kMaxKnown = settings::kWifiSaved + int(sizeof kCompiled / sizeof kCompiled[0]);
-static_assert(kMaxKnown <= 32, "triedMask is 32 bits");
-
-// Saved on the device first (newest password wins), then secrets.h; one entry
-// per name. Rebuilt on use: pointers into settings move when one is saved.
-static Cred known_[kMaxKnown];
+// The networks saved on the device (most recent first, each with what was
+// learned last time), plus WIFI_SSID from secrets.h if it isn't saved yet.
+// For WIFI_SSID the secrets.h password wins: that's the one edited on purpose.
+static settings::WifiNet known_[settings::kWifiSaved + 1];
 static int nKnown;
 static void collectKnown() {
   nKnown = 0;
-  auto add = [](const char *ssid, const char *password) {
-    if (!ssid || !ssid[0]) return;
-    for (int i = 0; i < nKnown; i++)
-      if (strcmp(known_[i].ssid, ssid) == 0) return;
-    known_[nKnown++] = {ssid, password ? password : ""};
-  };
-  for (int i = 0; i < settings::wifiCount(); i++) add(settings::wifiSsid(i), settings::wifiPassword(i));
-  for (const Cred &c : kCompiled) add(c.ssid, c.password);
+  bool haveSecret = false;
+  for (int i = 0; i < settings::wifiCount(); i++) {
+    settings::WifiNet &k = known_[nKnown++];
+    k = settings::wifi(i);
+    if (WIFI_SSID[0] && strcmp(k.ssid, WIFI_SSID) == 0) {
+      strlcpy(k.password, WIFI_PASSWORD, sizeof k.password);
+      haveSecret = true;
+    }
+  }
+  if (!haveSecret && WIFI_SSID[0]) {
+    settings::WifiNet &k = known_[nKnown++];
+    k = {};
+    strlcpy(k.ssid, WIFI_SSID, sizeof k.ssid);
+    strlcpy(k.password, WIFI_PASSWORD, sizeof k.password);
+  }
 }
 static int knownIndex(const char *ssid) {
   collectKnown();
@@ -87,20 +82,108 @@ static int knownIndex(const char *ssid) {
     if (strcmp(known_[i].ssid, ssid) == 0) return i;
   return -1;
 }
-static bool configured() {
-  collectKnown();
-  return nKnown > 0;
-}
+static bool configured() { return settings::wifiCount() > 0 || WIFI_SSID[0] != '\0'; }
 
-// The network on the radio now (or last), copied: settings may reorder.
-static char curSsid[settings::kSsidMax + 1], curPassword[settings::kPasswordMax + 1];
+// The network on the radio now (or last), and how it was joined.
+static settings::WifiNet cur;
+static bool curCached;     // on its remembered channel / access point
+static bool curLeaseIp;    // with its remembered DHCP lease as a static IP
+static bool fastTried;     // the last network's cached join was tried since the last connect
 static uint32_t triedMask;  // known networks tried since the last scan, by index
 
 static bool scanFresh(uint32_t now) { return scanAtMs && scanCount >= 0 && now - scanAtMs < WIFI_SCAN_FRESH_MS; }
-static int scannedRssi(const char *ssid) {
+static int32_t scannedRssi(const char *ssid) {
   for (int i = 0; i < scanCount; i++)
     if (strcmp(networks[i].ssid, ssid) == 0) return networks[i].rssi;
   return INT32_MIN;  // not in range
+}
+
+// A remembered lease is reused only while it's young enough that the router
+// most likely still holds it for us, and only on the same access point.
+static bool leaseUsable(const settings::WifiNet &n) {
+  if (!n.ip || !n.leasedAt || !clock::valid()) return false;
+  const time_t now = time(nullptr);
+  return now >= time_t(n.leasedAt) && now - time_t(n.leasedAt) < WIFI_LEASE_REUSE_S;
+}
+
+// Picks the network to join into `cur`: the one on trial; else the last
+// network, straight on its cached channel with its lease (no scan, no DHCP);
+// else a single known network as is; else the strongest known network in a
+// fresh scan not tried yet, scanning first if there is no fresh scan. Returns
+// false when there is nothing to try now.
+static bool pick(uint32_t now) {
+  curCached = curLeaseIp = false;
+  if (joinSt == Join::Trying) {
+    cur = {};
+    strlcpy(cur.ssid, joinSsid, sizeof cur.ssid);
+    strlcpy(cur.password, joinPassword, sizeof cur.password);
+    return true;
+  }
+  collectKnown();
+  if (!nKnown) return false;
+  if (!fastTried && known_[0].channel) {
+    fastTried = true;
+    cur = known_[0];
+    curCached = true;
+    curLeaseIp = leaseUsable(cur);
+    return true;
+  }
+  int best = 0;
+  if (nKnown > 1) {
+    if (!scanFresh(now)) {
+      startScan();  // the loop comes back here when it's done
+      return false;
+    }
+    best = -1;
+    int32_t bestRssi = INT32_MIN;
+    for (int i = 0; i < nKnown; i++) {
+      const int32_t rssi = scannedRssi(known_[i].ssid);
+      if (!(triedMask & (1u << i)) && rssi > bestRssi) {
+        best = i;
+        bestRssi = rssi;
+      }
+    }
+    if (best < 0) {  // none in range, or all tried: wait, then scan again
+      ESP_LOGW(TAG, "no known network in range");
+      triedMask = 0;
+      scanAtMs = 0;
+      fastTried = false;
+      retryAtMs = now + WIFI_RETRY_MS;
+      return false;
+    }
+    triedMask |= 1u << best;
+  }
+  cur = known_[best];
+  return true;
+}
+
+// secrets.h can fix a static IP for WIFI_SSID; it beats a remembered lease.
+static bool secretStaticIp(IPAddress &ip, IPAddress &gw, IPAddress &mask, IPAddress &dns) {
+  if (!WIFI_SSID[0] || strcmp(cur.ssid, WIFI_SSID) != 0) return false;
+  if (!ip.fromString(WIFI_STATIC_IP) || !gw.fromString(WIFI_GATEWAY) || !mask.fromString(WIFI_SUBNET)) return false;
+  if (!dns.fromString(WIFI_DNS)) dns = gw;
+  return true;
+}
+static bool curStaticSecret() {
+  IPAddress ip, gw, mask, dns;
+  return secretStaticIp(ip, gw, mask, dns);
+}
+
+// After a connect: remember the channel, access point and (when it came from
+// DHCP) the lease for next time. NVS is written only when something changed.
+static void learn() {
+  settings::WifiNet n = cur;  // a known network's saved fields, or a trial's new password
+  n.channel = uint8_t(WiFi.channel());
+  memcpy(n.bssid, WiFi.BSSID(), sizeof n.bssid);
+  if (!curLeaseIp && !curStaticSecret()) {
+    n.ip = uint32_t(WiFi.localIP());
+    n.gateway = uint32_t(WiFi.gatewayIP());
+    n.mask = uint32_t(WiFi.subnetMask());
+    n.dns = uint32_t(WiFi.dnsIP());
+    n.leasedAt = clock::valid() ? uint32_t(time(nullptr)) : 0;
+  }
+  if (settings::wifiCount() && memcmp(&n, &settings::wifi(0), sizeof n) == 0) return;
+  settings::saveWifi(n);
 }
 
 // The one place linkUp changes, so connected() is already current when an
@@ -109,19 +192,14 @@ static int scannedRssi(const char *ssid) {
 static void setLink(bool up, uint32_t now) {
   if (up == linkUp) return;
   linkUp = up;
-  if (up && joinSt == Join::Trying) {
-    settings::saveWifi(joinSsid, joinPassword);  // it works: keep it
-    joinSt = Join::Joined;
-  }
   if (up) {
+    if (joinSt == Join::Trying) joinSt = Join::Joined;  // it works: learn() keeps it
+    learn();
     triedMask = 0;
+    fastTried = false;
     strlcpy(ipText, WiFi.localIP().toString().c_str(), sizeof ipText);
-    store::RtcState &rtc = store::rtc();
-    rtc.wifiChannel = uint8_t(WiFi.channel());
-    memcpy(rtc.wifiBssid, WiFi.BSSID(), 6);
-    strlcpy(rtc.wifiSsid, curSsid, sizeof rtc.wifiSsid);
-    store::rtcCommit();
-    ESP_LOGI(TAG, "connected, %s, %d dBm, %lu ms", ipText, WiFi.RSSI(), (unsigned long)(now - startedMs));
+    ESP_LOGI(TAG, "connected to %s, %s, %d dBm, %lu ms%s%s", cur.ssid, ipText, WiFi.RSSI(),
+             (unsigned long)(now - startedMs), curCached ? ", cached channel" : "", curLeaseIp ? ", reused lease" : "");
     if (!sntpStarted) {
       sntp_set_time_sync_notification_cb(onTimeSync);
       configTzTime(TIMEZONE, NTP_SERVER);
@@ -137,73 +215,27 @@ static void setLink(bool up, uint32_t now) {
   events::post({Ev::WifiChanged, up ? 1u : 0u, 0});
 }
 
-// Picks the network to join: the one on trial; after deep sleep the cached
-// one (channel / BSSID known, no scan); a single known network as is; else
-// the strongest known network in a fresh scan not tried yet — scanning first
-// if there is no fresh scan. Returns false when there is nothing to try now.
-static bool pick(uint32_t now, const uint8_t *&bssid, uint8_t &channel) {
-  bssid = nullptr;
-  channel = 0;
-  if (joinSt == Join::Trying) {
-    strlcpy(curSsid, joinSsid, sizeof curSsid);
-    strlcpy(curPassword, joinPassword, sizeof curPassword);
-    return true;
-  }
-  collectKnown();
-  int best = -1;
-  store::RtcState &rtc = store::rtc();
-  if (store::rtcValid() && rtc.wifiChannel && (best = knownIndex(rtc.wifiSsid)) >= 0) {
-    bssid = rtc.wifiBssid;
-    channel = rtc.wifiChannel;
-  } else if (nKnown == 1) {
-    best = 0;
-  } else {
-    if (!scanFresh(now)) {
-      startScan();  // the loop comes back here when it's done
-      return false;
-    }
-    int32_t bestRssi = INT32_MIN;
-    for (int i = 0; i < nKnown; i++) {
-      const int32_t rssi = scannedRssi(known_[i].ssid);
-      if (!(triedMask & (1u << i)) && rssi > bestRssi) {
-        best = i;
-        bestRssi = rssi;
-      }
-    }
-    if (best < 0) {  // none in range, or all tried: wait, then scan again
-      ESP_LOGW(TAG, "no known network in range");
-      triedMask = 0;
-      scanAtMs = 0;
-      retryAtMs = now + WIFI_RETRY_MS;
-      return false;
-    }
-    triedMask |= 1u << best;
-  }
-  strlcpy(curSsid, known_[best].ssid, sizeof curSsid);
-  strlcpy(curPassword, known_[best].password, sizeof curPassword);
-  return true;
-}
-
 static void startRadio(uint32_t now) {
-  const uint8_t *bssid;
-  uint8_t channel;
-  if (!pick(now, bssid, channel)) return;
+  if (!pick(now)) return;
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(true);
   WiFi.setAutoReconnect(true);
   IPAddress ip, gw, mask, dns;
-  if (ip.fromString(WIFI_STATIC_IP) && gw.fromString(WIFI_GATEWAY) && mask.fromString(WIFI_SUBNET)) {
-    if (!dns.fromString(WIFI_DNS)) dns = gw;
+  if (secretStaticIp(ip, gw, mask, dns)) {
     WiFi.config(ip, gw, mask, dns);
+  } else if (curLeaseIp) {
+    WiFi.config(IPAddress(cur.ip), IPAddress(cur.gateway), IPAddress(cur.mask), IPAddress(cur.dns));
+  } else {
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);  // DHCP (clears a static IP from the last network)
   }
-  if (bssid)
-    WiFi.begin(curSsid, curPassword, channel, bssid, true);
+  if (curCached)
+    WiFi.begin(cur.ssid, cur.password, cur.channel, cur.bssid, true);
   else
-    WiFi.begin(curSsid, curPassword);
+    WiFi.begin(cur.ssid, cur.password);
   radioOn = true;
   startedMs = now;
   lastReason = 0;
-  ESP_LOGI(TAG, "connecting to %s%s", curSsid, bssid ? " (cached channel)" : "");
+  ESP_LOGI(TAG, "connecting to %s%s%s", cur.ssid, curCached ? " (cached channel)" : "", curLeaseIp ? " (reused lease)" : "");
 }
 
 static void stopRadio(uint32_t now) {
@@ -288,17 +320,16 @@ void loop() {
     const uint32_t timeout = joinSt == Join::Trying ? WIFI_JOIN_TIMEOUT_MS : WIFI_CONNECT_TIMEOUT_MS;
     if (radioOn && !linkUp && now - startedMs > timeout) {
       const bool trial = joinSt == Join::Trying;
-      store::rtc().wifiChannel = 0;
       stopRadio(now);  // also ends a trial as Failed
       if (trial) {
         ESP_LOGW(TAG, "couldn't join %s; back to the saved network", joinSsid);
         retryAtMs = now;
       } else {
-        ESP_LOGW(TAG, "connect to %s timed out", curSsid);
-        // Several known networks: the next one in range right away (pick()
-        // waits once all are tried); just one: wait before trying it again.
+        ESP_LOGW(TAG, "connect to %s timed out", cur.ssid);
+        // After a cached join, or with several known networks: the next try
+        // right away (pick() waits once all are tried); else wait first.
         collectKnown();
-        retryAtMs = nKnown > 1 ? now : now + WIFI_RETRY_MS;
+        retryAtMs = curCached || nKnown > 1 ? now : now + WIFI_RETRY_MS;
       }
     }
   } else if (radioOn && now - releasedMs > WIFI_GRACE_MS) {
@@ -334,7 +365,6 @@ void join(const char *ssid, const char *password) {
   }
   strlcpy(joinPassword, password, sizeof joinPassword);
   strlcpy(joinSsid, ssid, sizeof joinSsid);
-  store::rtc().wifiChannel = 0;  // the cached channel / BSSID belong to the old network
   if (radioOn) stopRadio(millis());
   joinSt = Join::Trying;
   retryAtMs = millis();
@@ -369,7 +399,7 @@ int scanResults(const Network *&list) {
 
 const char *ssid() {
   if (joinSt == Join::Trying) return joinSsid;
-  if (curSsid[0]) return curSsid;
+  if (cur.ssid[0]) return cur.ssid;
   collectKnown();
   return nKnown ? known_[0].ssid : "";
 }

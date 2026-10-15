@@ -68,20 +68,32 @@ character. Logic: `lib/MultiTap` (host-tested).
 - A scan pauses a connection attempt in progress (the driver can't do both)
   and restarts it afterwards; it runs alongside an established connection.
 - **Saved only if it works:** `core::net::join()` tries the new network; once
-  it connects, the name and password are written to NVS (`wifis`). If it
+  it connects, the name and password are written to NVS (`wifinets`). If it
   doesn't connect within `WIFI_JOIN_TIMEOUT_MS` (15 s), or the radio goes
   off first, the known networks are used again. A typo never replaces a
   working network; a wrong password for a saved network can be retyped
   ("Try again" opens the keypad).
 - **Several networks:** up to five are saved on the device, most recently
-  joined first; joining a saved one again moves it to the front with the new
-  password, and past five the oldest drops off. Then come `WIFI_SSID` and
-  `WIFI_EXTRA_NETWORKS` (`{"ssid", "password"}` pairs) from `secrets.h`.
-- **Which one it joins:** with one known network, that one, straight away.
-  With several, it scans (a scan up to `WIFI_SCAN_FRESH_MS` old is reused)
-  and tries the strongest known network in range, then the next; when none
-  is left it waits `WIFI_RETRY_MS` and scans again. After deep sleep it
-  rejoins the last network on its cached channel, without a scan.
+  joined first; every connect moves that network to the front, and past five
+  the oldest drops off. `WIFI_SSID` from `secrets.h` is one more known
+  network (its `secrets.h` password always wins) and is saved like the
+  others once it connects.
+- **Learned per network:** on every connect the channel and access point
+  (BSSID) are saved with the network, and, when the IP came from DHCP, the
+  lease (IP, gateway, mask, DNS) with its time. NVS is written only when
+  something changed.
+- **Which one it joins:** first the last network, straight on its channel
+  and access point (no scan), reusing its lease as a static IP (no DHCP)
+  while it's younger than `WIFI_LEASE_REUSE_S` and the clock is valid.
+  If that doesn't connect, it falls back: one known network is joined
+  normally with DHCP; several are scanned (a scan up to
+  `WIFI_SCAN_FRESH_MS` old is reused) and tried strongest in range first;
+  when none is left it waits `WIFI_RETRY_MS` and scans again.
+  `WIFI_STATIC_IP` in `secrets.h`, if set, still applies to `WIFI_SSID`.
+- **Reused lease risk:** a reused IP is not checked with the router. Should
+  the router give it to another device in the meantime, both clash until the
+  lease is older than `WIFI_LEASE_REUSE_S`; a DHCP reservation for the
+  device on the router avoids it.
 
 ## Security
 
@@ -95,6 +107,7 @@ board and a USB cable can read both.
 | --- | --- | --- |
 | `WIFI_JOIN_TIMEOUT_MS` | 15000 | how long a newly picked network gets to connect |
 | `WIFI_SCAN_FRESH_MS` | 30000 | with several known networks, how old a scan may be to pick one |
+| `WIFI_LEASE_REUSE_S` | 43200 (12 h) | how long a remembered DHCP lease is reused as a static IP |
 
 ## Acceptance (on device)
 
@@ -105,6 +118,8 @@ board and a USB cable can read both.
 - [ ] A wrong password ends in "Couldn't connect" within ~15 s and the old
       network still works
 - [ ] An open network connects without the keypad
-- [ ] With two known networks (one saved, one in `WIFI_EXTRA_NETWORKS`), it
-      joins whichever is in range, and the stronger one when both are
+- [ ] With two saved networks, it joins whichever is in range, and the
+      stronger one when both are
+- [ ] Reconnecting to the last network logs "cached channel, reused lease"
+      and is faster than the first connect
 - [ ] Tapping a saved network connects without the keypad

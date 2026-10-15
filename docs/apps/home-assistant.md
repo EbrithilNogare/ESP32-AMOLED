@@ -66,8 +66,8 @@ instant updates when the device is on the charger and stays awake.
 
 Last known state of each light in `RtcState`. When the app is opened after a
 wake they're shown immediately, marked *stale*, until the first refresh. Target: fresh states
-≤ 1.5 s after wake, using a fast Wi-Fi reconnect with the cached channel and
-BSSID plus an optional static IP.
+≤ 1.5 s after wake, using a fast Wi-Fi reconnect: the network's remembered
+channel and BSSID plus its remembered DHCP lease (or `WIFI_STATIC_IP`).
 
 ## Config
 

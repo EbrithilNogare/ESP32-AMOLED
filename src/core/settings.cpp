@@ -7,7 +7,7 @@
 
 namespace core::settings {
 
-struct Wifi {
+struct WifiV1 {  // what older firmware saved ("wifi": one, "wifis": a list)
   char ssid[kSsidMax + 1];
   char password[kPasswordMax + 1];
 };
@@ -19,8 +19,9 @@ struct Sound {
 
 static uint8_t brightness = BRIGHTNESS_USER_DEFAULT_PCT;
 static Sound sound{SOUND_VOLUME_DEFAULT_PCT, 0};
-static Wifi wifis[kWifiSaved];
+static WifiNet wifis[kWifiSaved];
 static int nWifi;
+static const WifiNet kNone{};
 
 static uint8_t clampPct(int pct) {
   return uint8_t(pct < BRIGHTNESS_USER_MIN_PCT   ? BRIGHTNESS_USER_MIN_PCT
@@ -33,9 +34,15 @@ void begin() {
   if (store::load("bright", &b, sizeof b)) brightness = clampPct(b);
   Sound v;
   if (store::load("volume", &v, sizeof v)) sound = {uint8_t(v.volume > 100 ? 100 : v.volume), uint8_t(v.muted != 0)};
-  // "wifis" holds the list; "wifi" is the single network older firmware saved.
-  if (!store::load("wifis", wifis, sizeof wifis) && !store::load("wifi", &wifis[0], sizeof wifis[0])) return;
-  for (Wifi &w : wifis) w.ssid[kSsidMax] = w.password[kPasswordMax] = '\0';  // never trust stored strings
+  if (!store::load("wifinets", wifis, sizeof wifis)) {  // else from older firmware: names and passwords only
+    WifiV1 old[kWifiSaved] = {};
+    if (!store::load("wifis", old, sizeof old) && !store::load("wifi", &old[0], sizeof old[0])) return;
+    for (int i = 0; i < kWifiSaved; i++) {
+      memcpy(wifis[i].ssid, old[i].ssid, sizeof old[i].ssid);
+      memcpy(wifis[i].password, old[i].password, sizeof old[i].password);
+    }
+  }
+  for (WifiNet &w : wifis) w.ssid[kSsidMax] = w.password[kPasswordMax] = '\0';  // never trust stored strings
   while (nWifi < kWifiSaved && wifis[nWifi].ssid[0]) nWifi++;
 }
 
@@ -54,13 +61,11 @@ void setMuted(bool on) {
 }
 
 int wifiCount() { return nWifi; }
-const char *wifiSsid(int i) { return i >= 0 && i < nWifi ? wifis[i].ssid : ""; }
-const char *wifiPassword(int i) { return i >= 0 && i < nWifi ? wifis[i].password : ""; }
+const WifiNet &wifi(int i) { return i >= 0 && i < nWifi ? wifis[i] : kNone; }
 
-void saveWifi(const char *ssid, const char *password) {
-  Wifi w{};
-  strncpy(w.ssid, ssid, kSsidMax);
-  strncpy(w.password, password ? password : "", kPasswordMax);
+void saveWifi(const WifiNet &net) {
+  WifiNet w = net;
+  w.ssid[kSsidMax] = w.password[kPasswordMax] = '\0';
   int at = 0;  // where it is now; the ones before it move down a place
   while (at < nWifi && strcmp(wifis[at].ssid, w.ssid) != 0) at++;
   if (at == nWifi) {
@@ -69,7 +74,7 @@ void saveWifi(const char *ssid, const char *password) {
   }
   for (int i = at; i > 0; i--) wifis[i] = wifis[i - 1];
   wifis[0] = w;
-  store::save("wifis", wifis, sizeof wifis);
+  store::save("wifinets", wifis, sizeof wifis);
 }
 
 }  // namespace core::settings

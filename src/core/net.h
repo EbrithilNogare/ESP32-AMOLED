@@ -7,9 +7,12 @@
 // as WifiChanged events.
 //
 // Known networks: the ones saved on the device (core::settings, Wi-Fi
-// screen, most recent first), then WIFI_SSID and WIFI_EXTRA_NETWORKS from
-// secrets.h. With one it connects straight away; with several it scans and
-// tries them strongest first. With none the radio never starts.
+// screen, most recent first), plus WIFI_SSID from secrets.h. Every network
+// that connects is saved with its channel, access point and DHCP lease; the
+// next connect goes straight to the last network on that channel, reusing the
+// lease as a static IP while it's young (WIFI_LEASE_REUSE_S). If that fails,
+// or for other networks: one known network is joined as is, several are
+// scanned and tried strongest first. With none the radio never starts.
 namespace core::net {
 
 struct Network {

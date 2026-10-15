@@ -28,11 +28,22 @@ void saveVolume();               // persist volume and mute (on release, not whi
 bool muted();
 void setMuted(bool on);  // saved immediately
 
-// Wi-Fi networks saved on the device, most recently joined first.
+// A Wi-Fi network saved on the device, with what core::net learned the last
+// time it connected, so the next connect can skip the scan and DHCP.
+struct WifiNet {
+  char ssid[kSsidMax + 1];
+  char password[kPasswordMax + 1];
+  uint8_t channel;   // 0: unknown
+  uint8_t bssid[6];  // the access point it was on
+  uint32_t ip, gateway, mask, dns;  // the DHCP lease (lwIP byte order); ip 0: none
+  uint32_t leasedAt;                // unix time of that lease; 0: unknown
+};
+
+// Saved networks, most recently joined first.
 int wifiCount();
-const char *wifiSsid(int i);
-const char *wifiPassword(int i);
-// Saved immediately, at the front; past kWifiSaved the oldest one drops off.
-void saveWifi(const char *ssid, const char *password);
+const WifiNet &wifi(int i);
+// Saved immediately, at the front, replacing a network with the same name;
+// past kWifiSaved the oldest one drops off.
+void saveWifi(const WifiNet &net);
 
 }  // namespace core::settings

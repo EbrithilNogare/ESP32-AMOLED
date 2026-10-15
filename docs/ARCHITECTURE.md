@@ -358,9 +358,12 @@ the device, brightness, volume + mute and the Wi-Fi networks, live in
 `core::settings` (NVS)
 and are set from the [quick settings](apps/quick-settings.md) shade and the
 [Wi-Fi screen](apps/wifi.md). Up to five networks are saved on the device
-(most recent first) and come before `WIFI_SSID` / `WIFI_EXTRA_NETWORKS` in
-`secrets.h`; with several known networks `net` scans and joins the strongest
-one in range. A new one is saved only after it connects (`net::join()`).
+(most recent first), each with the channel, access point and DHCP lease
+learned on its last connect; `WIFI_SSID` in `secrets.h` is the one more
+known network (and is saved too once it connects). `net` rejoins the last
+network straight on its channel, reusing a young lease as a static IP;
+otherwise it scans and joins the strongest known one in range. A new network
+is saved only after it connects (`net::join()`).
 Everything else is read from `config.h` directly.
 
 **Conventions.** C++17, one namespace per area (`core::`, `apps::`, `ui::`),
@@ -471,10 +474,10 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 
 | What | Where | Survives |
 | --- | --- | --- |
-| Wi-Fi channel/BSSID, cached HA states | `RTC_DATA_ATTR RtcState` | deep sleep |
+| cached HA states | `RTC_DATA_ATTR RtcState` | deep sleep |
 | same, written on "deep off" / power-off | NVS (`Store`) | power-off |
 | espresso shot history, pomodoro counters/settings | NVS | power-off |
-| brightness, saved Wi-Fi networks (`bright`, `wifis`; `wifi` from older firmware is read once) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
+| brightness, saved Wi-Fi networks with channel / BSSID / lease (`bright`, `wifinets`; `wifis` and `wifi` from older firmware are read once) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
 
 NVS writes happen only on sleep/shutdown or on user actions, never
 periodically (flash wear).

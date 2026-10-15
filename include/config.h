@@ -76,6 +76,7 @@
 // ---- Wi-Fi ----
 #define WIFI_CONNECT_TIMEOUT_MS 8000
 #define WIFI_RETRY_MS 15000
+#define WIFI_LEASE_REUSE_S (12 * 3600)  // a remembered DHCP lease is reused as a static IP while younger than this
 #define WIFI_SCAN_FRESH_MS 30000  // with several known networks: a scan this recent picks one without rescanning
 #define WIFI_JOIN_TIMEOUT_MS 15000  // a network picked on the device: first join, DHCP included
 #define WIFI_GRACE_MS 30000         // radio stays on this long after the last release()

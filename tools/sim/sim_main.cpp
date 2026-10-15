@@ -630,22 +630,31 @@ int main() {
   tap(184, LCD_HEIGHT - 20 - 28);  // Done
   CHECK(apps::manager::inMenu());
 
-  // ---- saved networks: newest first, at most kWifiSaved
-  core::settings::saveWifi("Old", "x");
+  // ---- saved networks: newest first, at most kWifiSaved, each with what was learned
+  auto saveNet = [](const char *ssid, const char *password, uint8_t channel) {
+    core::settings::WifiNet n{};
+    strlcpy(n.ssid, ssid, sizeof n.ssid);
+    strlcpy(n.password, password, sizeof n.password);
+    n.channel = channel;
+    core::settings::saveWifi(n);
+  };
+  saveNet("Old", "x", 1);
   for (int i = 0; i < core::settings::kWifiSaved; i++) {
     char name[8];
     snprintf(name, sizeof name, "Net%d", i);
-    core::settings::saveWifi(name, "pw");
+    saveNet(name, "pw", uint8_t(i + 1));
   }
   CHECK(core::settings::wifiCount() == core::settings::kWifiSaved);
-  CHECK(strcmp(core::settings::wifiSsid(0), "Net4") == 0 && strcmp(core::settings::wifiSsid(4), "Net0") == 0);
-  core::settings::saveWifi("Net2", "new");  // joined again: to the front, new password, no duplicate
-  CHECK(strcmp(core::settings::wifiSsid(0), "Net2") == 0 && strcmp(core::settings::wifiPassword(0), "new") == 0);
-  CHECK(strcmp(core::settings::wifiSsid(1), "Net4") == 0 && strcmp(core::settings::wifiSsid(2), "Net3") == 0);
+  CHECK(strcmp(core::settings::wifi(0).ssid, "Net4") == 0 && strcmp(core::settings::wifi(4).ssid, "Net0") == 0);
+  saveNet("Net2", "new", 11);  // joined again: to the front, updated, no duplicate
+  CHECK(strcmp(core::settings::wifi(0).ssid, "Net2") == 0 && strcmp(core::settings::wifi(0).password, "new") == 0);
+  CHECK(core::settings::wifi(0).channel == 11 && core::settings::wifi(1).channel == 5);
+  CHECK(strcmp(core::settings::wifi(1).ssid, "Net4") == 0 && strcmp(core::settings::wifi(2).ssid, "Net3") == 0);
   CHECK(core::settings::wifiCount() == core::settings::kWifiSaved);
+  CHECK(core::settings::wifi(9).ssid[0] == '\0');  // out of range: empty
 
   // A saved network joins without the keypad.
-  core::settings::saveWifi("Neighbour 5G", "pass1234");
+  saveNet("Neighbour 5G", "pass1234", 6);
   sim::join = core::net::Join::Idle;
   apps::manager::open(&wifiApp);
   advance(400);
