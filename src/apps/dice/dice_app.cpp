@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 #include <esp_random.h>
+#include <esp_heap_caps.h>
+#include <esp_log.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -17,6 +19,7 @@ namespace apps {
 using dice::Mode;
 namespace draw = ui::draw;
 
+[[maybe_unused]] static const char *TAG = "dice";
 static const AppInfo kInfo = {"dice", "Dice", ICON_CASINO, DICE_COLOR};
 
 // Roll area between the die strip and the bottom bar (screen coordinates).
@@ -97,6 +100,7 @@ void DiceApp::startRoll() {
   t0_ = millis();
   animating_ = true;
   nextFrameMs_ = millis();
+  frames_ = 0;
 }
 
 // Places every die (two pieces for a d100) and gives each its own spin.
@@ -151,6 +155,7 @@ void DiceApp::layout() {
   }
   endMs_ = end + kSettleMs;
   update(idle_ ? UINT32_MAX / 2 : 0);
+  renderWires();
   if (stage_) lv_obj_invalidate(stage_);
 }
 
@@ -179,28 +184,57 @@ void DiceApp::update(uint32_t elapsed) {
 
 // ---------------------------------------------------------------- rendering
 
+bool DiceApp::finished() const { return !animating_ || millis() - t0_ + kSettleMs >= endMs_; }
+
+// After the throw, the set that wasn't kept is drawn as dropped.
+bool DiceApp::droppedNow(const Piece &pc) const {
+  return finished() && !idle_ && roll_.sets == 2 && pc.set != roll_.kept;
+}
+
+uint32_t DiceApp::pieceColor(const Piece &pc, bool dropped) const {
+  const bool keptLanded = !idle_ && pc.spin >= 1 && pc.set == roll_.kept;
+  if (keptLanded && roll_.crit == dice::Crit::Nat20) return ui::col::success;
+  if (keptLanded && roll_.crit == dice::Crit::Nat1) return ui::col::error;
+  return idle_ || dropped ? kOff : DICE_COLOR;
+}
+
+// Every die's edges into the canvas, back to front, nearer edges brighter and
+// thicker. Only where the dice were last time is cleared first.
+void DiceApp::renderWires() {
+  if (!canvas_.px) return;
+  for (int k = 0; k < nDrawn_; k++) raster::fill(canvas_, drawn_[k].x0, drawn_[k].y0, drawn_[k].x1, drawn_[k].y1, 0);
+  nDrawn_ = 0;
+  const float bright = idle_ ? 0.7f : 1.0f;
+  for (int k = 0; k < nPieces_; k++) {
+    const Piece &pc = pieces_[k];
+    const dice::Solid &s = dice::solid(pc.die);
+    const uint32_t color = pieceColor(pc, droppedNow(pc));
+    const float r = pc.r * pc.scale, reach = r * 1.1f + 4;  // vertices + line width
+    drawn_[nDrawn_++] = {int16_t(pc.x - reach), int16_t(pc.y - kTop - reach), int16_t(pc.x + reach + 1),
+                         int16_t(pc.y - kTop + reach + 1)};
+    for (int i = 0; i < s.ne; i++) {
+      const uint8_t *e = s.e[pc.order[i]];
+      const dice::Point &a = pc.p[e[0]], &b = pc.p[e[1]];
+      const float z = (a.z + b.z) / 2, d = clamp01((1 - z) / 2);
+      const bool front = z < 0;
+      const float opa = (front ? 0.55f + 0.45f * d : 0.14f + 0.2f * d) * bright;
+      const float width = front ? roundf(fmaxf(2, r * 0.028f)) : roundf(fmaxf(1, r * 0.016f));
+      raster::line(canvas_, a.x, a.y - kTop, b.x, b.y - kTop, width, color, uint8_t(opa * 255));
+    }
+  }
+  // No cache to drop: LV_CACHE_DEF_SIZE is 0, so LVGL reads the buffer on every draw.
+}
+
+// A landed die: fill the face toward the viewer (a fan; faces are convex),
+// outline it again on top and put the number in the middle. The edges are
+// already in the canvas under it.
 void DiceApp::drawPiece(lv_layer_t *layer, const Piece &pc, bool dropped) {
+  if (pc.reveal <= 0) return;
   const dice::Solid &s = dice::solid(pc.die);
   const bool keptLanded = !idle_ && pc.spin >= 1 && pc.set == roll_.kept;
-  uint32_t color = idle_ || dropped ? kOff : DICE_COLOR;
-  if (keptLanded && roll_.crit == dice::Crit::Nat20) color = ui::col::success;
-  if (keptLanded && roll_.crit == dice::Crit::Nat1) color = ui::col::error;
-  const float bright = idle_ ? 0.7f : 1.0f;
+  const uint32_t color = pieceColor(pc, dropped);
   const float r = pc.r * pc.scale;
 
-  for (int k = 0; k < s.ne; k++) {
-    const uint8_t *e = s.e[pc.order[k]];
-    const dice::Point &a = pc.p[e[0]], &b = pc.p[e[1]];
-    const float z = (a.z + b.z) / 2, d = clamp01((1 - z) / 2);
-    const bool front = z < 0;
-    const float opa = (front ? 0.55f + 0.45f * d : 0.14f + 0.2f * d) * bright;
-    const int32_t width = front ? int32_t(fmaxf(2, r * 0.028f) + 0.5f) : int32_t(fmaxf(1, r * 0.016f) + 0.5f);
-    draw::line(layer, a.x, a.y, b.x, b.y, color, width, lv_opa_t(opa * 255));
-  }
-  if (pc.reveal <= 0) return;
-
-  // Landed: fill the face toward the viewer (a fan; faces are convex),
-  // outline it again on top and put the number in the middle.
   const lv_opa_t opa = lv_opa_t(pc.reveal * 255);
   const uint32_t fillColor = idle_ || dropped ? kGhost : ui::mixBlack(DICE_COLOR, 15);
   float face[dice::kMaxFaceVerts][2];
@@ -276,15 +310,28 @@ void DiceApp::draw(lv_layer_t *layer) {
   lv_area_t a;
   lv_obj_get_coords(stage_, &a);
   const float dx = float(a.x1), dy = float(a.y1 - kTop);
-  const bool finished = !animating_ || millis() - t0_ + kSettleMs >= endMs_;
+  if (canvas_.px) {
+    lv_draw_image_dsc_t img;
+    lv_draw_image_dsc_init(&img);
+    img.src = &canvasBuf_;
+    lv_draw_image(layer, &img, &a);
+  }
+  const bool done = finished();
+  // The screen renders in bands (LCD_DRAW_BUF_LINES) and calls this once per
+  // band: queue only the faces that reach into this one.
+  const lv_area_t &clip = layer->_clip_area;
   for (int k = 0; k < nPieces_; k++) {
+    if (pieces_[k].reveal <= 0) continue;  // still spinning: only edges, already in the canvas
+    const float reach = pieces_[k].r * pieces_[k].scale * 1.1f + 4;  // vertices + line width
+    const float x = pieces_[k].x + dx, y = pieces_[k].y + dy;
+    if (x + reach < clip.x1 || x - reach > clip.x2 || y + reach < clip.y1 || y - reach > clip.y2) continue;
     Piece pc = pieces_[k];
     pc.x += dx;
     pc.y += dy;
     for (int i = 0; i < dice::solid(pc.die).nv; i++) pc.p[i].x += dx, pc.p[i].y += dy;
-    drawPiece(layer, pc, finished && !idle_ && roll_.sets == 2 && pc.set != roll_.kept);
+    drawPiece(layer, pc, droppedNow(pieces_[k]));
   }
-  drawSummary(layer, finished);
+  drawSummary(layer, done);
 }
 
 // ---------------------------------------------------------------- widgets
@@ -315,6 +362,18 @@ void DiceApp::onCreate(lv_obj_t *root) {
     }
     loaded_ = true;
   }
+
+  // The edge canvas: the stage's size, in the display's pixel format so LVGL
+  // copies it without converting.
+  const int32_t cw = LCD_WIDTH, ch = kBot - kTop;
+  const lv_color_format_t cf = lv_display_get_color_format(lv_display_get_default());
+  canvas_.px = static_cast<uint16_t *>(heap_caps_malloc(size_t(cw * ch) * 2, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+  if (canvas_.px) {
+    canvas_ = {canvas_.px, int(cw), int(ch), cf == LV_COLOR_FORMAT_RGB565_SWAPPED};
+    memset(canvas_.px, 0, size_t(cw * ch) * 2);
+    lv_draw_buf_init(&canvasBuf_, uint32_t(cw), uint32_t(ch), cf, uint32_t(cw * 2), canvas_.px, uint32_t(cw * ch * 2));
+  }
+  nDrawn_ = 0;
 
   stage_ = box(root);
   lv_obj_set_pos(stage_, 0, kTop);
@@ -384,6 +443,8 @@ void DiceApp::onCreate(lv_obj_t *root) {
 }
 
 void DiceApp::onDestroy() {
+  free(canvas_.px);  // heap_caps_malloc memory goes back with free()
+  canvas_ = {};
   stage_ = countLabel_ = minus_ = plus_ = modes_ = nullptr;
   for (auto &b : dieBtn_) b = nullptr;
   animating_ = false;
@@ -393,12 +454,16 @@ void DiceApp::onTick(uint32_t nowMs) {
   if (!stage_ || !animating_ || !core::reached(nowMs, nextFrameMs_)) return;
   nextFrameMs_ = nowMs + 1000 / DICE_FPS;
   const uint32_t elapsed = nowMs - t0_;
+  frames_++;
   if (elapsed >= endMs_) {
     animating_ = false;
     update(UINT32_MAX / 2);
+    ESP_LOGD(TAG, "%ux d%u%s: %u frames in %lu ms, %.1f fps", count_, die_, roll_.sets == 2 ? " twice" : "", frames_,
+             (unsigned long)elapsed, frames_ * 1000.0f / float(elapsed));
   } else {
     update(elapsed);
   }
+  renderWires();
   lv_obj_invalidate(stage_);
 }
 

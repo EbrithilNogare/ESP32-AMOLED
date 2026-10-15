@@ -321,3 +321,18 @@ token, and the device should use a non-admin user) and not the WebSocket API
 **Consequences:** No light configuration on the device; all lights show
 (choosing some, e.g. by HA area or label, is for later). The list request
 transfers the whole state list, so it runs once a minute, not every poll.
+
+## 2026-10-15 — Dice edges are rasterised by us, not by LVGL
+
+**Context:** 2 × 10 d20 ran at about 2 fps: 600 anti-aliased edges per frame,
+and LVGL's skewed-line drawing masks every pixel of each line's bounding box
+(up to four masks per pixel), repeated for every 40-line band.
+**Decision:** `lib/WireRaster` draws the edges into a stage-sized RGB565
+buffer in PSRAM once per frame, touching only the pixels each line covers;
+the stage copies the buffer with `lv_draw_image` and LVGL still draws the
+landed faces, numbers and totals on top. Not a bigger LVGL draw buffer (no
+internal RAM to spare, and the per-pixel cost stays) and not dropping the
+hidden edges (they carry the 3D look).
+**Consequences:** ~220 KB of PSRAM while Dice is open (freed on leaving).
+Host benchmark 3.5 → 0.8 ms per frame. The buffer is in the display's pixel
+format, so the copy needs no conversion.

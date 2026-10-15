@@ -21,7 +21,7 @@ test/
 
 Current libraries: `BotFace`, `ButtonLogic`, `DiceCore`, `HaParse`,
 `LevelCore`, `MultiTap`, `NoiseGen`, `PixelShift`, `PomodoroCore`, `PowerFsm`,
-`ShotTimer`, `TimerCore`, `TouchCal`.
+`ShotTimer`, `TimerCore`, `TouchCal`, `WireRaster`.
 Adapters in `src/` connect them to hardware and LVGL.
 
 Third-party libraries go into `lib_deps` in `platformio.ini` instead.

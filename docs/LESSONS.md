@@ -232,3 +232,13 @@ connected in 2.7 s. The fast join now passes only the channel (still no
 scan) and gives up on the first disconnect reason instead of waiting.
 The connect log line shows BSSID and channel, to see if the router hands out
 a different access point.
+
+## LVGL lines cost their bounding box, and draw events run per band
+
+A skewed `lv_draw_line` walks every pixel of the line's bounding box with up
+to four masks (sides and ends), so a short diagonal costs like a filled
+square; round ends add two anti-aliased circles. And with partial rendering
+an object's `LV_EVENT_DRAW_MAIN` is called once per band of
+`LCD_DRAW_BUF_LINES` it overlaps, queuing every draw task again; skip what
+lies outside `layer->_clip_area`. For hundreds of lines per frame, rasterise
+into a buffer yourself (`lib/WireRaster`).

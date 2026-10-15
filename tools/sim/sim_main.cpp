@@ -6,6 +6,8 @@
 //   pio run -e sim -t exec        (or: pio run -e sim && .pio/build/sim/program)
 #include <lvgl.h>
 #include <stdio.h>
+
+#include <chrono>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -462,6 +464,36 @@ int main() {
   tap(184, 220);
   advance(1800);
   capture("21-dice-d100");
+
+  // The heaviest throw, 2 × 10 d20 (advantage), timed frame by frame while it
+  // spins. Host times are far below the board's; compare runs, not devices.
+  tap(dieX(5), 37);  // d20
+  for (int i = 0; i < 9; i++) tap(22 + 142 - 21, barY);
+  tap(263, barY);  // Adv
+  CHECK(diceApp.die() == 20 && diceApp.count() == 10 && diceApp.mode() == dice::Mode::Adv);
+  tap(184, 220);
+  {
+    using clk = std::chrono::steady_clock;
+    double worst = 0, sum = 0;
+    int frames = 0;
+    while (diceApp.rolling()) {
+      const auto t = clk::now();
+      advance(5);  // a tick; the app redraws at DICE_FPS
+      const double ms = std::chrono::duration<double, std::milli>(clk::now() - t).count();
+      if (ms > 0.2) {  // a frame was rendered in this step
+        sum += ms;
+        frames++;
+        if (ms > worst) worst = ms;
+      }
+      if (frames == 20) capture("48-dice-2x10d20-rolling");
+    }
+    printf("bench: dice 2x10 d20, %d frames, %.2f ms average, %.2f ms worst (host)\n", frames, sum / frames, worst);
+  }
+  advance(400);
+  capture("49-dice-2x10d20");
+  tap(206, barY);  // back to Flat
+  for (int i = 0; i < 9; i++) tap(22 + 21, barY);
+  tap(dieX(5), 37);
   apps::manager::back();
   advance(400);
   CHECK(apps::manager::inMenu());

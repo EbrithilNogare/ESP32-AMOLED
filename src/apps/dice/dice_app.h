@@ -1,5 +1,6 @@
 #pragma once
 #include <dice_core.h>
+#include <wire_raster.h>
 
 #include "apps/app.h"
 
@@ -7,9 +8,11 @@ namespace apps {
 
 // Dice (docs/apps/dice.md): wireframe d4–d100 that spin and land face-on.
 // Roll logic and geometry are lib/DiceCore; this class lays out, animates and
-// draws them. The dice are drawn directly in the stage object's draw event
-// (lines, a filled face, labels), so no canvas buffer is needed and only the
-// stage area is redrawn while they spin.
+// draws them. The edges go into a stage-sized RGB565 buffer in PSRAM with
+// lib/WireRaster, once per frame (LVGL's own line drawing was ~2 fps for
+// 2 × 10 d20); the stage's draw event copies that buffer and draws the landed
+// faces, numbers and totals on top with LVGL. Only the stage area is redrawn
+// while they spin.
 class DiceApp : public App {
  public:
   const AppInfo &info() const override;
@@ -43,6 +46,10 @@ class DiceApp : public App {
   void startRoll();
   void layout();
   void update(uint32_t elapsedMs);
+  bool finished() const;
+  uint32_t pieceColor(const Piece &pc, bool dropped) const;
+  bool droppedNow(const Piece &pc) const;
+  void renderWires();
   void syncControls();
   void save();
   void draw(lv_layer_t *layer);
@@ -63,8 +70,18 @@ class DiceApp : public App {
   bool idle_ = true;
   bool animating_ = false;
   uint32_t t0_ = 0, endMs_ = 0, nextFrameMs_ = 0;
+  unsigned frames_ = 0;  // drawn this roll, for the fps in the debug log
   Piece pieces_[dice::kMaxPieces];
   int nPieces_ = 0;
+
+  // The edges, drawn by renderWires() (stage coordinates: y from kTop).
+  raster::Canvas canvas_{};
+  lv_draw_buf_t canvasBuf_{};
+  struct Box {
+    int16_t x0, y0, x1, y1;
+  };
+  Box drawn_[dice::kMaxPieces] = {};  // where each die was drawn, to clear next frame
+  int nDrawn_ = 0;
 
   lv_obj_t *stage_ = nullptr;
   lv_obj_t *dieBtn_[dice::kTypes] = {};

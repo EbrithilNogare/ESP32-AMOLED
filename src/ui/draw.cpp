@@ -25,7 +25,8 @@ void text(lv_layer_t *layer, const lv_font_t *font, uint32_t color, lv_opa_t opa
   lv_draw_label(layer, &d, &a);
 }
 
-void line(lv_layer_t *layer, float x1, float y1, float x2, float y2, uint32_t color, int32_t width, lv_opa_t opa) {
+void line(lv_layer_t *layer, float x1, float y1, float x2, float y2, uint32_t color, int32_t width, lv_opa_t opa,
+          bool round) {
   lv_draw_line_dsc_t d;
   lv_draw_line_dsc_init(&d);
   d.p1.x = lv_value_precise_t(x1);
@@ -35,7 +36,7 @@ void line(lv_layer_t *layer, float x1, float y1, float x2, float y2, uint32_t co
   d.color = c(color);
   d.width = width;
   d.opa = opa;
-  d.round_start = d.round_end = 1;
+  d.round_start = d.round_end = round;
   lv_draw_line(layer, &d);
 }
 

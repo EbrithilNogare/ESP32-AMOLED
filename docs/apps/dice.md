@@ -82,14 +82,26 @@ at `DICE_FPS`; nothing redraws at rest.
 - `lib/DiceCore`: rolls, percentile split, solids (vertices, edges, rest
   pose, front face), spin pose, projection, the flat icons and the grid
   layout. Host-tested (`test/test_dice_core`).
-- `src/apps/dice/dice_app.cpp`: draws everything in the stage's
-  `LV_EVENT_DRAW_MAIN` with `lv_draw_line`, `lv_draw_triangle` (the face,
-  as a fan) and `lv_draw_label`. No canvas buffer. The face numbers use
-  Roboto Mono at 24/32/44/56/80 px.
+- `lib/WireRaster`: anti-aliased thick lines straight into an RGB565
+  buffer, cost proportional to the line's length. Host-tested
+  (`test/test_wire_raster`).
+- `src/apps/dice/dice_app.cpp`: once per frame, every die's edges go into a
+  stage-sized buffer in PSRAM (368 × 306, ~220 KB, in the display's pixel
+  format, cleared only where dice were). The stage's `LV_EVENT_DRAW_MAIN`
+  copies it (`lv_draw_image`), then draws the landed faces with LVGL on top:
+  `lv_draw_triangle` (the face, as a fan), the face outline and
+  `lv_draw_label`, only for the faces that reach into the band being
+  rendered. The face numbers use Roboto Mono at 24/32/44/56/80 px.
+- Why not LVGL lines for the edges: its skewed lines mask every pixel of
+  the line's bounding box, and the draw event runs once per 40-line band;
+  2 × 10 d20 (600 edges) ran at about 2 fps on the board. The simulator
+  times that throw on every run (`bench:` line; 3.5 → 0.8 ms per frame on
+  the host). The debug build logs each roll's frame rate (`[dice]`).
 
 ## On device (checklist)
 
-- [ ] Spins look smooth (≥ 25 fps) with 1 die and with 2 × 10 dice
+- [ ] Spins look smooth (≥ 25 fps) with 1 die and with 2 × 10 d20 (the
+      `[dice] … fps` line in the debug log)
 - [ ] Every die type lands visibly face-on and upright
 - [ ] Taps on the strip, stepper and mode switch don't start a roll
 - [ ] Die, count and mode are remembered after deep sleep
