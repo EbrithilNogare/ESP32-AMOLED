@@ -28,6 +28,12 @@ namespace sim {
 uint32_t nowMs = UINT32_MAX - 30000;
 bool wifi = true;
 int batteryPct = 82;
+sleeplog::Log sleepLog = [] {
+  sleeplog::Log l;  // two nights on battery: 4 % in 52 h
+  l.totalS = 52 * 3600;
+  l.totalLost = 4;
+  return l;
+}();
 bool charger = false;
 power::Stage stage = power::Stage::Active;
 core::ota::State otaState = core::ota::State::Waiting;
@@ -107,6 +113,7 @@ namespace power {
 void activity() {}
 bool onPress() { return true; }
 void applyBrightness() { sim::brightnessApplied++; }
+const sleeplog::Log &sleepLog() { return sim::sleepLog; }
 }  // namespace power
 
 namespace sound {

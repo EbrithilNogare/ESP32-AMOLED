@@ -5,6 +5,7 @@
 #include <driver/rtc_io.h>
 #include <esp_log.h>
 #include <esp_sleep.h>
+#include <time.h>
 
 #include "board.h"
 #include "buttons.h"
@@ -16,6 +17,7 @@
 #include "pmu.h"
 #include "settings.h"
 #include "sound.h"
+#include "store.h"
 #include "ticks.h"
 #include "touch.h"
 #include "ui/power_anim.h"
@@ -31,6 +33,7 @@ using ::power::Stage;
 static constexpr gpio_num_t kBootPin = gpio_num_t(PIN_BOOT_BUTTON);
 static constexpr gpio_num_t kTouchIntPin = gpio_num_t(PIN_TOUCH_INT);
 static constexpr uint32_t kFlushWaitMs = 100;  // longest wait for the minimal frame's DMA before sleeping
+static constexpr uint32_t kSoundWaitMs = 1000;  // longest wait for noise to fade out (and the codec to power down)
 
 enum class SleepPhase : uint8_t { None, Animating, WaitRelease };
 
@@ -74,7 +77,12 @@ static void goDeepSleep() {
   // Getting here on purpose means the running image works: confirm it, or the
   // wake (a reboot) would roll a fresh OTA image back.
   ota::confirmIfPending();
-  if (h.prepareSleep) h.prepareSleep();
+  if (h.prepareSleep) h.prepareSleep();  // stops noise, among others
+  for (const uint32_t t0 = millis(); sound::busy() && millis() - t0 < kSoundWaitMs;) delay(10);
+  pmu::refreshLevel();
+  sleeplog::enter(store::rtc().sleep, time(nullptr), pmu::batteryPercent(), pmu::batteryMillivolts(),
+                  pmu::onCharger());
+  store::rtcCommit();
   net::shutdown();
   imu::enable(false);  // Level may have left it running
   // Speaker amp off, and held off: GPIO46 isn't an RTC pin and would float.
@@ -163,8 +171,24 @@ static void minimalCycle(uint32_t now) {
   if (byInput) touch::kick();
 }
 
+// After a wake: how much the battery lost while asleep (ARCHITECTURE §8.6).
+static void noteWake() {
+  sleeplog::Log &log = store::rtc().sleep;
+  if (!sleeplog::wake(log, time(nullptr), pmu::batteryPercent(), pmu::batteryMillivolts(), pmu::onCharger()))
+    return;
+  [[maybe_unused]] const sleeplog::Sleep &s = log.last;
+  const sleeplog::Estimate e = sleeplog::daysPerCharge(log);
+  ESP_LOGI(TAG, "slept %lu h %02lu min: %d -> %d %% (%u -> %u mV); since the last charge %lu h asleep, -%d %%",
+           (unsigned long)(s.seconds / 3600), (unsigned long)(s.seconds / 60 % 60), s.fromPct, s.toPct, s.fromMv,
+           s.toMv, (unsigned long)(log.totalS / 3600), log.totalLost);
+  if (e.days) ESP_LOGI(TAG, "a charge lasts %s%lu days asleep", e.atLeast ? "over " : "", (unsigned long)e.days);
+}
+
+const sleeplog::Log &sleepLog() { return store::rtc().sleep; }
+
 void begin(const Hooks &hooks) {
   h = hooks;
+  noteWake();
   lastInputMs = millis();
   prof = pmu::onCharger() ? Profile::Charger : Profile::Battery;
   st = apply(Stage::Active, Stage::Active);

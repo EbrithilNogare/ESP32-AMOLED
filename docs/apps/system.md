@@ -17,6 +17,7 @@ calibration**.
 │ Board      V2 · S3R8     │  tap   │       │  42 % │          │  progress ring
 │ Battery    82 % · 3.95 V │ ─────► │        ╰──────╯          │
 │ Charging   yes (USB)     │        │                          │
+│ Standby    54 days       │        │                          │
 │ Wi-Fi      -61 dBm       │        │ esp32-amoled.local       │
 │ IP         192.168.1.57  │        │ 192.168.1.57             │
 │ Free RAM   212 KB / 7.6 MB│       │ Don't power off          │
@@ -25,6 +26,11 @@ calibration**.
 │ [ Update ]  [ Touch ]    │        │                          │
 └──────────────────────────┘        └──────────────────────────┘
 ```
+
+**Standby** is how many days a full charge lasts in deep sleep, measured
+across the sleeps since the last charge (ARCHITECTURE §8.6): "–" before the
+first sleep on battery, "measuring · n h" until 2 % is gone or a day has
+passed, "> n days" when under 2 % was lost (a lower bound).
 
 Touch calibration (`44-touch-calibration.png`, `45-touch-check.png`): a
 cross near each corner, then the centre (40 px in from the edges), one at a

@@ -1,5 +1,6 @@
 #pragma once
 #include <power_fsm.h>
+#include <sleep_log.h>
 #include <stdint.h>
 
 // PowerManager (ARCHITECTURE §3, §8): picks the battery/charger profile, runs
@@ -30,5 +31,6 @@ void applyBrightness();  // the user brightness changed: show it now (no fade)
 void requestSleep();     // long press: animation, wait for release, deep sleep
 
 ::power::Stage stage();
+const sleeplog::Log &sleepLog();  // battery drain while asleep, since the last charge
 
 }  // namespace core::power

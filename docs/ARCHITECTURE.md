@@ -444,8 +444,9 @@ Sequence:
 
 1. Confirm a pending OTA image (`ota::confirmIfPending()`): getting this far
    means it works, and a deep-sleep wake would otherwise roll it back.
-2. Every app's `onSleep()` (e.g. pomodoro saves as paused);
-   save `RtcState`.
+2. Every app's `onSleep()` (e.g. pomodoro saves as paused); wait up to 1 s
+   for noise to fade out, which powers the audio codec down; note the
+   battery level and time for the drain log (§8.6); save `RtcState`.
 3. Wi-Fi off. IMU to standby. Speaker amp off (PA_EN, GPIO46, held low
    through deep sleep: it isn't an RTC pin and would float).
 4. Panel: brightness 0 → display off (`0x28`) → sleep-in (`0x10`); touch IC to sleep.
@@ -475,6 +476,7 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 | What | Where | Survives |
 | --- | --- | --- |
 | cached HA states (by list position) | `RTC_DATA_ATTR RtcState` | deep sleep |
+| deep-sleep drain log (§8.6) | `RTC_DATA_ATTR RtcState` | deep sleep |
 | the Home Assistant light list (`halights`) | NVS | power-off and firmware updates |
 | same, written on "deep off" / power-off | NVS (`Store`) | power-off |
 | espresso shot history, pomodoro counters/settings | NVS | power-off |
@@ -482,6 +484,26 @@ that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
 
 NVS writes happen only on sleep/shutdown or on user actions, never
 periodically (flash wear).
+
+### 8.6 Battery life asleep
+
+Goal: **at least a month in deep sleep** on the ~400 mAh cell. The budget
+and how to measure it are in HARDWARE.md (Power → Deep-sleep current).
+
+The device also measures it itself (`lib/SleepLog`, `core::power`): going
+to sleep it notes the AXP2101 gauge level, the battery voltage and the wall
+clock (PCF85063), and on the wake it compares. Sleeps on battery add up
+until the next charge; the System app shows the result as **Standby** (days
+a full charge lasts asleep) and the wake logs it:
+
+```
+I power: slept 14 h 05 min: 81 -> 80 % (3968 -> 3961 mV); since the last charge 38 h asleep, -2 %
+I power: a charge lasts 79 days asleep
+```
+
+The gauge reads whole percent, so an estimate needs 2 % lost or a day
+asleep (then it's a lower bound, "> n days"). A sleep that started on the
+charger, or a level that rose (charged in between), starts the count over.
 
 ## 9. Configuration
 

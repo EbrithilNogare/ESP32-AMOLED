@@ -106,7 +106,8 @@ power-on animation. Long press on either button → power-off animation
 idle; long press sleeps in any profile and the held button doesn't
 immediately wake it; BOOT wakes into the menu; holding BOOT through the wake doesn't enter download
 mode; PWR result recorded in HARDWARE.md and LESSONS.md; time to first
-frame measured (target < 500 ms); deep-sleep current measured.
+frame measured (target < 500 ms); deep-sleep current measured (HARDWARE.md,
+Power → Deep-sleep current; goal ≥ a month asleep, System → Standby agrees).
 
 ### M7 — Burn-in protection ◐
 

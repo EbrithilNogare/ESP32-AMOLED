@@ -1,0 +1,7 @@
+{
+  "name": "SleepLog",
+  "version": "0.1.0",
+  "description": "Battery drain measured across deep sleeps: days a charge lasts asleep",
+  "platforms": "*",
+  "frameworks": "*"
+}

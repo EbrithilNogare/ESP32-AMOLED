@@ -10,6 +10,7 @@
 #include "core/net.h"
 #include "core/ota.h"
 #include "core/pmu.h"
+#include "core/power.h"
 #include "core/settings.h"
 #include "core/ticks.h"
 #include "core/touch.h"
@@ -22,7 +23,8 @@ using core::ota::State;
 
 static constexpr uint32_t kAccent = 0x8FA3BF;  // slate
 static const AppInfo kInfo = {"system", "System", ICON_MEMORY, kAccent};
-static const char *const kKeys[8] = {"Firmware", "Board", "Battery", "Charging", "Wi-Fi", "IP", "Free RAM", "Uptime"};
+static const char *const kKeys[SystemApp::kRows] = {"Firmware", "Board",    "Battery",  "Charging", "Standby",
+                                                    "Wi-Fi",    "IP",       "Free RAM", "Uptime"};
 
 const AppInfo &SystemApp::info() const { return kInfo; }
 
@@ -76,9 +78,9 @@ void SystemApp::showInfo() {
   lv_obj_set_size(list, LCD_WIDTH - 40, LV_SIZE_CONTENT);
   lv_obj_set_pos(list, 20, 74);
   lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < kRows; i++) {
     lv_obj_t *row = box(list);
-    lv_obj_set_size(row, LV_PCT(100), 35);
+    lv_obj_set_size(row, LV_PCT(100), 32);
     lv_obj_set_style_border_side(row, LV_BORDER_SIDE_BOTTOM, 0);
     lv_obj_set_style_border_color(row, c(col::track), 0);
     lv_obj_set_style_border_width(row, 1, 0);
@@ -117,15 +119,24 @@ void SystemApp::updateInfo() {
   else
     ui::setText(values_[2], "no battery");
   ui::setText(values_[3], core::pmu::onCharger() ? (core::pmu::charging() ? "yes (USB)" : "full (USB)") : "no");
-  if (core::net::connected())
-    ui::setTextFmt(values_[4], "−%d dBm", -core::net::rssi());
+  // How long a charge lasts in deep sleep, measured across sleeps (ARCHITECTURE §8.6).
+  const sleeplog::Log &sleep = core::power::sleepLog();
+  const sleeplog::Estimate days = sleeplog::daysPerCharge(sleep);
+  if (days.days)
+    ui::setTextFmt(values_[4], "%s%lu days", days.atLeast ? "> " : "", (unsigned long)days.days);
+  else if (sleep.totalS)
+    ui::setTextFmt(values_[4], "measuring · %lu h", (unsigned long)(sleep.totalS / 3600));
   else
-    ui::setText(values_[4], "off");
-  ui::setText(values_[5], core::net::connected() ? core::net::ip() : "–");
+    ui::setText(values_[4], "–");
+  if (core::net::connected())
+    ui::setTextFmt(values_[5], "−%d dBm", -core::net::rssi());
+  else
+    ui::setText(values_[5], "off");
+  ui::setText(values_[6], core::net::connected() ? core::net::ip() : "–");
   const size_t psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-  ui::setTextFmt(values_[6], "%u KB · %u.%u MB", unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
+  ui::setTextFmt(values_[7], "%u KB · %u.%u MB", unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
                  unsigned(psram / 1048576), unsigned(psram % 1048576 * 10 / 1048576));
-  ui::setTextFmt(values_[7], "%lu:%02lu:%02lu", (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60),
+  ui::setTextFmt(values_[8], "%lu:%02lu:%02lu", (unsigned long)(up / 3600), (unsigned long)(up / 60 % 60),
                  (unsigned long)(up % 60));
 }
 

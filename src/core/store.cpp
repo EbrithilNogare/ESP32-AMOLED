@@ -6,7 +6,9 @@
 namespace core::store {
 
 static constexpr uint32_t kMagic = 0xA3015EED;
-RTC_DATA_ATTR static RtcState state;
+// Constant-initialised (no constructor at start-up, which would wipe it on every wake).
+RTC_DATA_ATTR static RtcState state{};
+[[maybe_unused]] static constexpr RtcState kConstantInit{};  // fails to compile if RtcState stops allowing that
 static Preferences prefs;
 static bool prefsOpen;
 

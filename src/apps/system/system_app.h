@@ -9,6 +9,7 @@ namespace apps {
 // touch calibration.
 class SystemApp : public App {
  public:
+  static constexpr int kRows = 9;  // info rows
   const AppInfo &info() const override;
   void onCreate(lv_obj_t *root) override;
   void onDestroy() override;
@@ -33,7 +34,7 @@ class SystemApp : public App {
   lv_obj_t *root_ = nullptr;
   bool updateView_ = false;
   // info view
-  lv_obj_t *values_[8] = {};
+  lv_obj_t *values_[kRows] = {};
   uint32_t nextInfoMs_ = 0;
   // update view
   lv_obj_t *arc_ = nullptr, *icon_ = nullptr, *pct_ = nullptr, *status_ = nullptr, *line1_ = nullptr;

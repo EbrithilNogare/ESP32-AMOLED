@@ -5,6 +5,29 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-15 — A month in deep sleep: power the codec down, measure the drain
+
+**Context:** The owner wants the device to last at least a month in deep
+sleep. Nobody had measured the sleep current, and a review of the sleep
+path found two leaks: the ES8311's analog side stayed powered after the
+first beep (nothing ever powered it down), and a long press during Noise
+went to sleep mid-fade with the codec still running.
+**Decision:**
+- The codec powers down whenever the output closes (es8311_suspend()
+  sequence) and is initialised again on the next sound. Sleep entry waits
+  up to 1 s for noise to fade out.
+- A budget and a measuring procedure in HARDWARE.md (≤ ~450 µA average for
+  30 days on 400 mAh). The boot log lists the AXP2101 rails that stay on.
+- The device measures its own sleep drain (`lib/SleepLog`): gauge level and
+  wall clock at sleep and at wake, added up until the next charge, shown as
+  System → Standby. No current meter needed for a first answer.
+- Not "deep off" (AXP power-off, ARCHITECTURE §8.4 Option B): it would cut
+  the drain to the AXP's own few µA but lose BOOT wake and RTC memory. Only
+  worth it if the measured standby falls short.
+**Consequences:** A re-init of the codec (~30 I2C writes, a few ms) before
+each sound. The Standby figure needs 2 % lost or a day asleep before it
+says anything, and is only as good as the AXP2101's gauge.
+
 ## 2026-10-10 — Timer and Noise apps; volume and mute in quick settings
 
 **Context:** The owner asked for a Timer (a big presentation clock that must

@@ -87,7 +87,24 @@ static bool initCodec() {
   reg(0x13, 0x10);
   reg(0x1C, 0x6A);
   reg(0x37, 0x08);
+  reg(0x45, 0x00);  // undo powerDownCodec()
   return true;
+}
+
+// The analog side stays powered after playback, also through deep sleep, so
+// power it down whenever the output closes (es8311_suspend() in the same
+// driver); openOutput() runs initCodec() again. Needs MCLK, so before i2s.end().
+static void powerDownCodec() {
+  reg(0x32, 0x00);  // DAC volume
+  reg(0x17, 0x00);  // ADC volume
+  reg(0x0E, 0xFF);  // PGA and ADC modulator off
+  reg(0x12, 0x02);  // DAC off
+  reg(0x14, 0x00);  // mic PGA off
+  reg(0x0D, 0xFA);  // analog, bias and references off
+  reg(0x15, 0x00);
+  reg(0x37, 0x08);
+  reg(0x45, 0x01);
+  codecReady = false;
 }
 
 // Volume and the amplifier follow the settings; checked before every buffer.
@@ -180,6 +197,7 @@ static void closeOutput() {
   static const Tone silence[] = {{0, 40}};  // flush the DMA buffers before muting
   playTones(silence, 1);
   digitalWrite(PIN_PA_EN, LOW);
+  powerDownCodec();
   i2s.end();
   outputOpen = false;
 }

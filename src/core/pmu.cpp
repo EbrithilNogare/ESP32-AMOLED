@@ -47,6 +47,30 @@ static void readLevel() {
   lastLevelMs = millis();
 }
 
+// Which AXP2101 outputs are on, for the deep-sleep current budget
+// (HARDWARE.md, Power): everything switched on stays on while the ESP sleeps.
+static void logRails() {
+  struct Rail {
+    const char *name;
+    bool on;
+    uint16_t mv;
+  };
+  const Rail rails[] = {
+      {"DC1", axp.isEnableDC1(), axp.getDC1Voltage()},       {"DC2", axp.isEnableDC2(), axp.getDC2Voltage()},
+      {"DC3", axp.isEnableDC3(), axp.getDC3Voltage()},       {"DC4", axp.isEnableDC4(), axp.getDC4Voltage()},
+      {"DC5", axp.isEnableDC5(), axp.getDC5Voltage()},       {"ALDO1", axp.isEnableALDO1(), axp.getALDO1Voltage()},
+      {"ALDO2", axp.isEnableALDO2(), axp.getALDO2Voltage()}, {"ALDO3", axp.isEnableALDO3(), axp.getALDO3Voltage()},
+      {"ALDO4", axp.isEnableALDO4(), axp.getALDO4Voltage()}, {"BLDO1", axp.isEnableBLDO1(), axp.getBLDO1Voltage()},
+      {"BLDO2", axp.isEnableBLDO2(), axp.getBLDO2Voltage()}, {"CPUSLDO", axp.isEnableCPUSLDO(), axp.getCPUSLDOVoltage()},
+      {"DLDO1", axp.isEnableDLDO1(), axp.getDLDO1Voltage()}, {"DLDO2", axp.isEnableDLDO2(), axp.getDLDO2Voltage()},
+  };
+  char line[200];
+  size_t n = 0;
+  for (const Rail &r : rails)
+    if (r.on && n < sizeof line) n += snprintf(line + n, sizeof line - n, " %s %u", r.name, r.mv);
+  ESP_LOGI(TAG, "rails on (mV):%s", n ? line : " none");
+}
+
 bool begin() {
   ok = axp.begin(I2C_ADDR_AXP2101, regRead, regWrite);
   if (!ok) {
@@ -71,6 +95,7 @@ bool begin() {
   vbus = axp.isVbusIn();
   readLevel();
   ESP_LOGI(TAG, "battery %d %% (%u mV), %s", percent, millivolts, vbus ? "on USB" : "on battery");
+  logRails();
   return true;
 }
 
@@ -89,6 +114,10 @@ KeyEvents poll() {
   }
   if (millis() - lastLevelMs > BATTERY_REFRESH_MS) readLevel();
   return k;
+}
+
+void refreshLevel() {
+  if (ok) readLevel();
 }
 
 bool onCharger() { return vbus; }

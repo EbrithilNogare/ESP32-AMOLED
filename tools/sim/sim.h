@@ -1,6 +1,7 @@
 #pragma once
 #include <level_core.h>
 #include <power_fsm.h>
+#include <sleep_log.h>
 #include <stdint.h>
 
 #include <string>
@@ -16,6 +17,7 @@ namespace sim {
 extern uint32_t nowMs;
 extern bool wifi;
 extern int batteryPct;
+extern sleeplog::Log sleepLog;  // what System shows as Standby
 extern bool charger;
 extern power::Stage stage;
 extern core::ota::State otaState;

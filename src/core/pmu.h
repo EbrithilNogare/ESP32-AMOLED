@@ -17,5 +17,6 @@ bool onCharger();  // VBUS present
 bool charging();
 int batteryPercent();  // -1 if no battery
 uint16_t batteryMillivolts();
+void refreshLevel();  // read the level now instead of waiting for the next poll
 
 }  // namespace core::pmu

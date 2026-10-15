@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <sleep_log.h>
 #include <stdint.h>
 
 // Persistence (ARCHITECTURE §8.5):
@@ -9,8 +10,9 @@
 namespace core::store {
 
 struct RtcState {
-  uint32_t magic;
+  uint32_t magic = 0;
   uint8_t haStates[16];  // ha::LightState by list position (HA_MAX_LIGHTS), shown as "stale" after wake
+  sleeplog::Log sleep;   // battery drain while asleep (core::power)
 };
 
 void begin();
