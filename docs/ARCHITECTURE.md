@@ -330,7 +330,7 @@ lib/       Arduino-free logic (host-testable):
            EightBall/  Game2048/  PetCore/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
-tools/     assets.py, version.py, size_check.py, gen_brush.py, power_model.py, sim/ (PC simulator + screenshots)
+tools/     assets.py, version.py, size_check.py, power_model.py, sim/ (PC simulator + screenshots)
 docs/apps/ one spec per app
 ```
 

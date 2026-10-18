@@ -9,7 +9,7 @@
 <title>ESP32-AMOLED Screens</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Permanent+Marker&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block">
 <style>
 /* Layout: lab bench — live device on the left, readout panel on the right, screen gallery below. */
@@ -354,6 +354,73 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
 .nz-chrome { transition: opacity .4s; }
 .nz-chrome.hide { opacity: 0; }
 
+/* ---------- Magic 8 ---------- */
+.m8-text { position: absolute; left: 0; right: 0; top: 200px; text-align: center; font: 44px/52px "Permanent Marker", cursive;
+  white-space: pre; pointer-events: none; will-change: transform, opacity; }
+.m8-cap { position: absolute; left: 0; right: 0; top: 386px; text-align: center; color: #5A5A5A; font: 30px/36px "Permanent Marker", cursive;
+  white-space: pre; pointer-events: none; }
+.m8-hit { position: absolute; inset: 0; cursor: pointer; }
+
+/* ---------- 2048 ---------- */
+.g-chip { position: absolute; top: 18px; width: 124px; height: 56px; border-radius: 14px; background: #141414; display: grid;
+  justify-items: center; align-content: space-between; padding: 5px 0 4px; }
+.g-chip small { font: 500 16px/18px Inter, sans-serif; color: #9A9A9A; }
+.g-chip b { font: 500 24px/28px "Roboto Mono", monospace; font-variant-numeric: tabular-nums; }
+.scr .g-new { position: absolute; left: 300px; top: 18px; color: #EDEDED; transition: background .15s, color .15s; }
+.scr .g-new.arm { background: #FFB020; color: #000; }
+.g-gain { position: absolute; left: 176px; font: 500 20px Inter, sans-serif; color: #EDC22E; pointer-events: none; }
+.g-board { position: absolute; left: 12px; top: 86px; width: 344px; height: 344px; border-radius: 16px; background: #141414;
+  touch-action: none; cursor: grab; }
+.g-cell, .g-tile { position: absolute; width: 76px; height: 76px; border-radius: 10px; }
+.g-cell { background: #242424; }
+.g-tile { display: grid; place-items: center; font-family: "Roboto Mono", monospace; font-weight: 500; pointer-events: none; }
+.g-tile.slide { transition: left 90ms ease-out, top 90ms ease-out; }
+.g-tile.pop { animation: gPop 120ms linear; }
+.g-tile.grow { animation: gGrow 120ms ease-out; }
+@keyframes gPop { 50% { transform: scale(1.12); } }
+@keyframes gGrow { from { transform: scale(0); } }
+.g-over { position: absolute; inset: 0; border-radius: 16px; background: rgba(0,0,0,.8); }
+.g-over-t { position: absolute; left: 0; right: 0; top: 84px; height: 88px; display: grid; place-items: center; }
+.scr .g-over-b { position: absolute; left: 72px; top: 188px; width: 200px; height: 56px; border-radius: 28px; background: #141414;
+  font: 500 20px Inter, sans-serif; }
+.scr .g-over-b:active { background: #242424; }
+
+/* ---------- Hephy ---------- */
+.hp-layer { position: absolute; inset: 0; }
+.hp-face { position: absolute; left: 70px; top: 70px; width: 228px; height: 180px; cursor: pointer; }
+.hp-title { position: absolute; left: 24px; top: 20px; font: 600 28px/34px Inter, sans-serif; }
+.hp-lv { position: absolute; left: 122px; top: 27px; padding: 3px 10px; border-radius: 10px; font: 500 16px/20px Inter, sans-serif; color: #FF5E3A; background: #2E110A; }
+.hp-count { position: absolute; right: 24px; top: 28px; font: 500 20px/24px Inter, sans-serif; color: #9A9A9A; }
+.scr .hp-shelf { position: absolute; left: 288px; top: 14px; color: #EDEDED; }
+.hp-status { position: absolute; left: 24px; right: 24px; top: 264px; text-align: center; font: 400 20px/24px Inter, sans-serif; color: #9A9A9A;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.hp-meter { position: absolute; top: 305px; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.hp-meter .tr { width: 112px; height: 8px; border-radius: 4px; background: #1E1E1E; overflow: hidden; }
+.hp-meter .fl { height: 100%; border-radius: 4px; transition: width .4s ease-out; }
+.scr .hp-btn { position: absolute; top: 350px; transition: color .2s; }
+.hp-cap { position: absolute; top: 410px; width: 104px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; pointer-events: none; }
+.hp-res { position: absolute; left: 0; right: 0; top: 260px; text-align: center; font: 600 28px/34px Inter, sans-serif; pointer-events: none; }
+.hp-bar { position: absolute; left: 34px; top: 330px; width: 300px; height: 28px; border-radius: 14px; background: #1E1E1E; pointer-events: none; }
+.hp-zone { position: absolute; top: 0; width: 54px; height: 28px; border-radius: 14px; background: #FF5E3A; box-shadow: 0 0 18px rgba(255,94,58,.6); }
+.hp-mark { position: absolute; top: 320px; width: 6px; height: 48px; border-radius: 3px; background: #EDEDED; pointer-events: none; }
+.hp-hint { position: absolute; left: 0; right: 0; top: 388px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; pointer-events: none; }
+.hp-catch { position: absolute; inset: 0; cursor: pointer; }
+.scr .hp-slot { position: absolute; width: 48px; height: 48px; border-radius: 12px; background: #141414; display: grid; place-items: center;
+  font: 500 20px Inter, sans-serif; color: #5A5A5A; }
+.scr .hp-slot.sel { box-shadow: inset 0 0 0 2px #3A3A3A; }
+.hp-name { position: absolute; left: 0; right: 0; top: 312px; text-align: center; font: 500 20px/24px Inter, sans-serif; }
+.hp-info { position: absolute; left: 0; right: 0; top: 346px; text-align: center; font: 500 16px/20px Inter, sans-serif; color: #9A9A9A; }
+.hp-reveal { position: absolute; inset: 0; background: #000; cursor: pointer; animation: hpIn .25s ease-out; }
+@keyframes hpIn { from { opacity: 0; } }
+.hp-glow { position: absolute; left: 118px; top: 96px; width: 132px; height: 132px; border-radius: 50%; display: grid; place-items: center; }
+.hp-glow .ms { animation: hpPop .5s ease-out; }
+@keyframes hpPop { from { transform: scale(.4); opacity: 0; } 70% { transform: scale(1.1); } }
+.hp-rname { position: absolute; left: 0; right: 0; top: 256px; text-align: center; font: 600 28px/34px Inter, sans-serif; }
+.hp-rkind { position: absolute; left: 0; right: 0; top: 300px; text-align: center; font: 500 20px/24px Inter, sans-serif; }
+.hp-spark { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #FFC24A; pointer-events: none; }
+.hp-coal { position: absolute; width: 24px; height: 24px; border-radius: 50%; background: #2A2422; box-shadow: inset 0 0 0 2px #FF5E3A; pointer-events: none; }
+.hp-z { position: absolute; color: #9A9A9A; pointer-events: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .scr, .tile, .dimmer { transition: none; }
   .crt.off, .crt.on { animation-duration: .01s; }
@@ -365,7 +432,7 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
   <header>
     <span class="eyebrow">Waveshare ESP32-S3-Touch-AMOLED-1.8 · 368 × 448 · firmware mock</span>
     <h1>ESP32-AMOLED screens</h1>
-    <p class="lede">Every screen of the current firmware, clickable, at the panel's real pixel size with its tokens, fonts and icons: the nine apps, the quick settings you pull down from the menu's status bar, and the Wi-Fi setup with its phone keypad. The side buttons behave like a phone's: Power turns the screen off and on (hold it to power off), the other one is Back (press) and Home (hold). The idle timeline runs for real.</p>
+    <p class="lede">Every screen of the current firmware, clickable, at the panel's real pixel size with its tokens, fonts and icons: the twelve apps, the quick settings you pull down from the menu's status bar, and the Wi-Fi setup with its phone keypad. The side buttons behave like a phone's: Power turns the screen off and on (hold it to power off), the other one is Back (press) and Home (hold). The idle timeline runs for real.</p>
   </header>
 
   <section class="bench" aria-label="Interactive device">
@@ -434,8 +501,11 @@ h2 { font-size: 18px; margin: 0; font-weight: 600; text-wrap: balance; }
         <li><b>Power</b> (upper side button, BOOT on the board, or P): press to turn the screen off (it collapses to a line, then a dot), press again to turn it back on in the same app. With the screen off, touch does nothing.</li>
         <li><b>Hold Power</b> for 1.5 s: a red ring winds round the power symbol and the device powers off; Power then starts it again, in the menu.</li>
         <li><b>Back</b> (lower side button, PWR on the board, or Esc): one step back. <b>Hold it</b> for 1 s (or H) for <b>Home</b>: the menu.</li>
-        <li>On battery the screen dims after 30 s and goes off after 40 s (Bot face, Espresso, Level and Wi-Fi setup stay bright 60 s). While dimmed, the first tap or press only wakes the screen.</li>
+        <li>On battery the screen dims after 30 s and goes off after 40 s (Bot face, Hephy, Espresso, Level and Wi-Fi setup stay bright 60 s). While dimmed, the first tap or press only wakes the screen.</li>
         <li><b>Bot face:</b> it wanders slowly round the screen and now and then winks, glances aside, hums (two hops) or yawns (mostly when dimmed). Tap it for a smile, twice quickly for surprise.</li>
+        <li><b>Magic 8:</b> ask a yes/no question and tap anywhere (the device takes a shake): the text jitters away and the answer rises in, in its own colour.</li>
+        <li><b>2048:</b> swipe on the board (or use the arrow keys). Restart asks again mid-game: tap it twice.</li>
+        <li><b>Hephy:</b> feed him Coal (refused when full), play Strike (tap anywhere when the marker is in the orange zone, five times), Forge a trinket and look at the Shelf. Tap his face to pet him. In this mock time runs 360× faster: a 1 h forge is done in 10 s, then the reveal shows.</li>
         <li><b>System → Touch:</b> tap the five crosses, then drag to check the dot follows; Reset to factory drops the calibration.</li>
         <li>Start the Pomodoro and leave it alone: after 30 s it switches to its minimal view instead of going off.</li>
         <li><b>Timer:</b> the Clock tab never blanks: after 30 s it drops to a minimal clock at 25 % that moves every minute. A running stopwatch or countdown does the same, even from the menu. Set the countdown by dragging a column up or down, or tapping above / below its middle; at 0 it turns the screen on, flashes and beeps (Back or Power silences it).</li>
@@ -470,9 +540,12 @@ const APPS = [
   { id: 'pomodoro', name: 'Pomodoro', icon: 'timer', accent: '#FF5A4E' },
   { id: 'espresso', name: 'Espresso', icon: 'coffee', accent: '#C8915A' },
   { id: 'dice', name: 'Dice', icon: 'casino', accent: '#FF8A1F' },
+  { id: 'magic8', name: 'Magic 8', icon: 'counter_8', accent: '#C8102E' },
   { id: 'level', name: 'Level', icon: 'straighten', accent: '#FFD54F' },
   { id: 'timer', name: 'Timer', icon: 'alarm', accent: '#B388FF' },
   { id: 'noise', name: 'Noise', icon: 'rainy', accent: '#6E8BFF' },
+  { id: 'g2048', name: '2048', icon: 'grid_view', accent: '#EDC22E' },
+  { id: 'hephy', name: 'Hephy', icon: 'hardware', accent: '#FF5E3A' },
   { id: 'system', name: 'System', icon: 'memory', accent: '#8FA3BF' },
 ];
 const appById = id => APPS.find(a => a.id === id);
@@ -577,26 +650,32 @@ function buildLights(state, live) {
   return { el: s };
 }
 
-/* bot face: parametric, tweened; lively: it wanders, and every 5–11 s does an idle act */
+/* bot face: parametric, tweened; lively: it wanders, and every 5–11 s does an idle act.
+   opt (Hephy reuses it): color, scale + cx/cy (the face's centre, between eyes and mouth, (184, 257) at
+   full size, like bot::scaled), mood() → 'normal' | 'happy' | 'sleepy' | 'sad' | 'focused' | 'asleep'. */
 const faces = new Set();
-function buildBot(live, isDim, lively = true) {
+function buildBot(live, isDim, lively = true, opt = {}) {
   const s = el('div', 'scr');
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('viewBox', '0 0 368 448'); svg.setAttribute('width', 368); svg.setAttribute('height', 448);
-  const C = '#00E5FF';
+  svg.style.position = 'absolute'; svg.style.left = 0; svg.style.top = 0;
+  const C = opt.color || '#00E5FF';
+  const g = document.createElementNS(NS, 'g');
+  if (opt.scale) g.setAttribute('transform', `translate(${opt.cx} ${opt.cy}) scale(${opt.scale}) translate(-184 -257)`);
   const eL = document.createElementNS(NS, 'rect'), eR = document.createElementNS(NS, 'rect');
   const mouth = document.createElementNS(NS, 'path'), mo = document.createElementNS(NS, 'ellipse');
   [eL, eR, mo].forEach(e => e.setAttribute('fill', C));
   mouth.setAttribute('fill', 'none'); mouth.setAttribute('stroke', C); mouth.setAttribute('stroke-width', 12); mouth.setAttribute('stroke-linecap', 'round');
-  svg.append(eL, eR, mouth, mo);
+  g.append(eL, eR, mouth, mo);
+  svg.append(g);
   s.append(svg);
   const t0 = now();
   const f = {
     p: { open: 1, lx: 0, ly: 0, curve: 0.55, mo: 0, bounce: 0, w: 1 },
     tg: { open: 1, lx: 0, ly: 0, curve: 0.55, mo: 0, bounce: 0, w: 1 },
     nextBlink: t0 + 1500, blinkAt: -1e9, nextLook: t0 + 1200, reactUntil: 0, lastTap: 0, isDim,
-    lively, act: null, actAt: 0, nextAct: t0 + 5000, winkLeft: false,
+    lively, act: null, actAt: 0, nextAct: t0 + 5000, winkLeft: false, mood: opt.mood,
     // An idle act: targets held for its length, like a tap's reaction.
     startAct(t, dimmed) {
       const tg = this.tg, r = Math.random(), yawn = dimmed ? 0.6 : 0.1;
@@ -615,18 +694,27 @@ function buildBot(live, isDim, lively = true) {
     draw(t) {
       const p = this.p, tg = this.tg;
       const sleepy = !!(this.isDim && this.isDim());
+      const md = this.mood ? this.mood() : sleepy ? 'sleepy' : 'normal';
       if (this.act && t > this.reactUntil) this.act = null;
-      if (this.lively && t > this.reactUntil && t > this.nextAct) this.startAct(t, sleepy);
+      if (this.lively && md !== 'asleep' && t > this.reactUntil && t > this.nextAct) this.startAct(t, sleepy);
       if (this.act === 'hum') { const e = t - this.actAt; tg.bounce = e < 600 && Math.floor(e / 150) % 2 === 0 ? -8 : 0; }   // two quick hops
+      if (this.act === 'shake') tg.lx = Math.sin((t - this.actAt) / 60) * 0.9;   // shakes his head
+      if (this.act === 'chew') tg.mo = Math.floor((t - this.actAt) / 160) % 2 ? 0.2 : 0.75;
       if (t > this.reactUntil) {
-        tg.open = sleepy ? 0.45 : 1; tg.curve = sleepy ? 0.25 : 0.55; tg.mo = 0; tg.bounce = 0; tg.w = 1;
+        const R = { normal: [1, 0.55], happy: [1, 0.95], sleepy: [0.45, 0.2], sad: [0.8, 0], focused: [0.55, 0.3], asleep: [0, 0.12] }[md] || [1, 0.55];
+        tg.open = R[0]; tg.curve = R[1]; tg.mo = 0; tg.bounce = 0; tg.w = md === 'focused' ? 1.08 : 1;
+        if (md === 'asleep') { tg.lx = 0; tg.ly = 0; }
+        if ((md === 'focused' || md === 'sad') && t > this.nextLook) {   // the gaze stays low
+          tg.lx = Math.random() * 1.2 - 0.6; tg.ly = md === 'focused' ? 0.55 : 0.45; this.nextLook = t + 1400 + Math.random() * 2200;
+        }
       }
-      if (t > this.nextLook) {
+      if (md === 'asleep' || md === 'focused' || md === 'sad') { /* gaze handled above */ }
+      else if (t > this.nextLook) {
         const center = Math.random() < 0.3;
         tg.lx = center ? 0 : Math.random() * 2 - 1; tg.ly = center ? 0 : Math.random() * 1.2 - 0.6;
         this.nextLook = t + 1400 + Math.random() * 2200;
       }
-      if (t > this.nextBlink) {
+      if (t > this.nextBlink && md !== 'asleep') {
         this.blinkAt = t;
         const dbl = Math.random() < 0.2;
         this.nextBlink = t + (dbl ? 260 : 2000 + Math.random() * 4000) * ((this.isDim && this.isDim()) ? 1.8 : 1);
@@ -637,7 +725,7 @@ function buildBot(live, isDim, lively = true) {
       const breathe = Math.sin((t - t0) / 900) * 3;
       // lively: the whole face wanders on two slow sines (37 s and 23 s)
       const up = t - t0, wx = this.lively ? 16 * Math.sin(2 * Math.PI * up / 37000) : 0, wy = this.lively ? 10 * Math.sin(2 * Math.PI * up / 23000) : 0;
-      const h0 = Math.max(8, 118 * p.open * blink), w = 86 * p.w;
+      const h0 = Math.max(md === 'asleep' ? 6 : 8, 118 * p.open * blink), w = 86 * p.w;
       const cy = 196 + p.ly * 14 + breathe + p.bounce + wy;
       const we = this.act === 'wink' && t - this.actAt < 380 ? Math.sin(Math.PI * (t - this.actAt) / 380) : 0;   // one eye closes and opens
       [[124, eL, true], [244, eR, false]].forEach(([cx, e, left]) => {
@@ -665,6 +753,14 @@ function buildBot(live, isDim, lively = true) {
         setTimeout(() => { this.tg.bounce = 0; }, 180);
       }
       this.lastTap = t;
+    },
+    // Hephy's reactions: 'shake' (no), 'chew' (coal), 'startle' (wide eyes, a hop)
+    react(kind, t = now()) {
+      this.act = kind; this.actAt = t;
+      if (kind === 'shake') { this.reactUntil = t + 650; this.tg.curve = 0.1; }
+      else if (kind === 'chew') { this.reactUntil = t + 900; this.tg.curve = 0; }
+      else { Object.assign(this.tg, { open: 1.25, w: 1.12, mo: 0.8, curve: 0, bounce: -10 }); this.reactUntil = t + 900; this.act = null; }
+      this.nextLook = t + 900;
     },
     svg,
   };
@@ -1841,6 +1937,437 @@ function buildNoise(live, preset) {
   };
 }
 
+/* ---------------- Magic 8 (docs/apps/magic8.md) ---------------- */
+// Text only, on black: each answer in brush capitals, in its own colour
+const M8_ANSWERS = [['IT IS\nCERTAIN', '#EDEDED'], ['WITHOUT\nA DOUBT', '#4CD07D'], ['YES.\nOBVIOUSLY.', '#FFC93C'], ['SIGNS POINT\nTO YES', '#00E5FF'],
+  ['THE STARS\nSAY YES', '#B388FF'], ['HELL\nYES!', '#FF6B3D'], ['DO IT.\nNO REGRETS.', '#FF8A1F'], ['MOST\nLIKELY', '#EDEDED'],
+  ['YES, BUT\nWEAR A\nHELMET', '#FFD54F'], ['100 %.\nTRUST ME.', '#4CD07D'], ['ASK AGAIN\nLATER', '#9A9A9A'], ['REPLY HAZY,\nTRY AGAIN', '#B388FF'],
+  ['ASK YOUR\nCAT', '#FF6FA8'], ['NEED\nCOFFEE\nFIRST', '#C8915A'], ['CONCENTRATE\nAND ASK\nAGAIN', '#6E8BFF'], ["FLIP A COIN.\nI'M BUSY.", '#FFB020'],
+  ["DON'T COUNT\nON IT", '#FF5A4E'], ['NOPE.', '#FF3B3B'], ['VERY\nDOUBTFUL', '#FF8A80'], ['NOT IN THIS\nTIMELINE', '#E040FB'],
+  ['ABSOLUTELY\nNOT', '#FF5A4E'], ['MY SOURCES\nSAY NO', '#FF7043']];
+const rnd = n => { const a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] % n + 1; };   // 1..n, like the dice's
+const m8St = { phase: 'idle', answer: -1, prev: -1, t0: 0 };
+// One of the others, uniformly: never the same answer twice in a row
+const m8Pick = last => { const n = M8_ANSWERS.length; if (last < 0) return rnd(n) - 1; const i = rnd(n - 1) - 1; return i >= last ? i + 1 : i; };
+function buildMagic8(live, preset) {
+  const st = preset ? { ...preset } : m8St;
+  const SHAKE = 450, REVEAL = 900;
+  const s = el('div', 'scr');
+  s.innerHTML = `<div class="m8-text"></div><div class="m8-cap"></div><div class="m8-hit" aria-label="Tap to ask"></div>`;
+  const txt = s.querySelector('.m8-text'), cap = s.querySelector('.m8-cap');
+  const outCubic = t => 1 - Math.pow(1 - t, 3);
+  const put = i => { const [t, c] = i < 0 ? ['ASK ME\nANYTHING', '#EDEDED'] : M8_ANSWERS[i]; txt.textContent = t; txt.style.color = c; };
+  const draw = tm => {
+    const t = tm - st.t0;
+    if (st.phase === 'shaking') {   // what's on screen jitters sideways and fades
+      const p = Math.min(1, t / SHAKE), amp = 10 * (1 - p) + 3;
+      put(st.prev);
+      txt.style.opacity = (1 - p).toFixed(3);
+      txt.style.transform = `translate(${(amp * Math.sin(t * 0.06)).toFixed(1)}px, -50%)`;
+    } else if (st.phase === 'idle') {
+      put(-1); txt.style.opacity = 1; txt.style.transform = 'translateY(-50%)';
+    } else {   // the answer rises 24 px and fades in
+      const p = st.phase === 'answer' ? 1 : outCubic(Math.min(1, t / REVEAL));
+      put(st.answer);
+      txt.style.opacity = p.toFixed(3);
+      txt.style.transform = `translateY(calc(-50% + ${(24 * (1 - p)).toFixed(1)}px))`;
+    }
+    cap.textContent = st.phase === 'idle' || (st.phase === 'shaking' && st.prev < 0) ? 'THEN SHAKE' : 'SHAKE AGAIN';
+  };
+  if (live) s.querySelector('.m8-hit').addEventListener('click', () => {
+    if (st.phase === 'shaking') return;
+    st.prev = st.phase === 'idle' ? -1 : st.answer;
+    st.phase = 'shaking'; st.t0 = now(); draw(now());
+  });
+  draw(preset && preset.t ? st.t0 + preset.t : now());
+  return {
+    el: s,
+    frame: live ? tm => {
+      if (st.phase === 'shaking' && tm - st.t0 >= SHAKE) { st.answer = m8Pick(st.answer); st.phase = 'revealing'; st.t0 = tm; }
+      else if (st.phase === 'revealing' && tm - st.t0 >= REVEAL) { st.phase = 'answer'; draw(tm); }
+      if (st.phase === 'shaking' || st.phase === 'revealing') draw(tm);
+    } : null,
+  };
+}
+
+/* ---------------- 2048 (docs/apps/g2048.md) ---------------- */
+const G_TILE = 76, G_GAP = 8;
+// tileStyle() in src/apps/g2048/g2048_app.cpp: 2 and 4 dark, then the classic warm run, then near-black
+const G_STYLE = { 2: ['#3A3A3C', '#EDEDED'], 4: ['#4A4540', '#F2E8DA'], 8: ['#F2B179', '#1A1208'], 16: ['#F59563', '#1A1208'],
+  32: ['#F67C5F', '#1A0A06'], 64: ['#F65E3B', '#1A0A06'], 128: ['#EDCF72', '#1A1606'], 256: ['#EDCC61', '#1A1606'],
+  512: ['#EDC850', '#1A1606'], 1024: ['#EDC53F', '#1A1606'], 2048: ['#EDC22E', '#1A1606'] };
+const gStyle = v => G_STYLE[v] || ['#1E1C14', '#EDC22E'];
+const gFont = v => v < 100 ? 44 : v < 1000 ? 32 : 24;
+const gPos = c => [G_GAP + (c % 4) * (G_TILE + G_GAP), G_GAP + Math.floor(c / 4) * (G_TILE + G_GAP)];
+const gSpawn = cells => {
+  const free = cells.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+  if (!free.length) return -1;
+  const c = free[rnd(free.length) - 1];
+  cells[c] = rnd(10) === 1 ? 4 : 2;   // 2 at 90 %, 4 at 10 %
+  return c;
+};
+function gNew(st) { st.cells = Array(16).fill(0); st.score = 0; st.winSeen = false; gSpawn(st.cells); gSpawn(st.cells); }
+// lib/Game2048 slide: each line slides toward the wall; equal neighbours merge once, the pair nearest the wall first.
+function gSlide(cells, dir) {
+  const out = cells.slice(), slides = [], merged = [];
+  let gain = 0;
+  for (let k = 0; k < 4; k++) {
+    // the line's cells, nearest the wall first
+    const line = [0, 1, 2, 3].map(j => dir === 'left' ? k * 4 + j : dir === 'right' ? k * 4 + 3 - j : dir === 'up' ? j * 4 + k : (3 - j) * 4 + k);
+    const vals = line.map(c => cells[c]);
+    line.forEach(c => { out[c] = 0; });
+    let tgt = 0, open = false;
+    vals.forEach((v, j) => {
+      if (!v) return;
+      if (open && out[line[tgt - 1]] === v) {
+        out[line[tgt - 1]] = v * 2; gain += v * 2; slides.push([line[j], line[tgt - 1]]); merged.push(line[tgt - 1]); open = false;
+      } else { out[line[tgt]] = v; slides.push([line[j], line[tgt]]); tgt++; open = true; }
+    });
+  }
+  const moved = out.some((v, i) => v !== cells[i]);
+  return { out, slides, merged, gain, moved };
+}
+const gOver = c => !c.includes(0) && !c.some((v, i) => (i % 4 < 3 && v === c[i + 1]) || (i < 12 && v === c[i + 4]));
+const g2048St = { cells: null, score: 0, best: 0, winSeen: false };
+function buildG2048(live, preset) {
+  const st = preset ? { ...preset, cells: preset.cells.slice() } : g2048St;
+  if (!st.cells) gNew(st);
+  const s = el('div', 'scr');
+  s.innerHTML = `<div class="g-chip" style="left:12px"><small>SCORE</small><b></b></div><div class="g-chip" style="left:146px"><small>BEST</small><b></b></div>
+    <button class="round g-new" aria-label="New game">${ic('restart_alt', 28, 0)}</button><div class="g-gain" hidden></div>
+    <div class="g-board" aria-label="Board: swipe or use the arrow keys">${Array.from({ length: 16 }, (_, i) => `<div class="g-cell" style="left:${gPos(i)[0]}px;top:${gPos(i)[1]}px"></div>`).join('')}</div>`;
+  const [scoreV, bestV] = s.querySelectorAll('.g-chip b'), btn = s.querySelector('.g-new'), gainEl = s.querySelector('.g-gain'), board = s.querySelector('.g-board');
+  let tiles = [], overlay = null, anim = null, armUntil = 0, gainT = -1e9;
+  const syncScore = () => { st.best = Math.max(st.best, st.score); scoreV.textContent = st.score; bestV.textContent = st.best; };
+  const makeTile = (c, v, cls = '') => {
+    const [bg, fg] = gStyle(v), [x, y] = gPos(c);
+    const t = el('div', 'g-tile ' + cls, String(v));
+    t.style.cssText = `left:${x}px;top:${y}px;background:${bg};color:${fg};font-size:${gFont(v)}px`;
+    board.append(t); return t;
+  };
+  // tiles[c]: the DOM tile at cell c
+  const build = (fx = {}) => {
+    tiles.forEach(t => t && t.remove()); tiles = Array(16).fill(null);
+    st.cells.forEach((v, c) => { if (v) tiles[c] = makeTile(c, v, fx.merged && fx.merged.includes(c) ? 'pop' : c === fx.spawned ? 'grow' : ''); });
+    if (overlay) board.append(overlay);
+  };
+  const closeOverlay = () => { if (overlay) overlay.remove(); overlay = null; };
+  const showOverlay = won => {
+    closeOverlay();
+    if (won) st.winSeen = true;
+    overlay = el('div', 'g-over', `<div class="g-over-t">${won ? '<span style="font:500 80px/1 \'Roboto Mono\',monospace;color:#EDC22E">2048</span>' : '<span style="font:600 28px Inter,sans-serif">Game over</span>'}</div>
+      <button class="g-over-b" style="color:${won ? '#EDEDED' : '#EDC22E'}">${won ? 'Keep going' : 'New game'}</button>`);
+    const b = overlay.querySelector('button');
+    if (live) b.addEventListener('click', () => { if (won) closeOverlay(); else newGame(); }); else b.tabIndex = -1;
+    board.append(overlay);
+  };
+  const arm = on => { armUntil = on ? now() + 3000 : 0; btn.classList.toggle('arm', on); };
+  const finish = () => {
+    if (!anim) return;
+    clearTimeout(anim.timer); const fx = anim; anim = null;
+    build(fx);
+    if (fx.justWon && !st.winSeen) showOverlay(true); else if (gOver(st.cells)) showOverlay(false);
+  };
+  const newGame = () => { finish(); closeOverlay(); gNew(st); arm(false); build({}); syncScore(); };
+  const swipe = dir => {
+    if (overlay) return;
+    finish(); arm(false);
+    const m = gSlide(st.cells, dir);
+    if (!m.moved) return;   // nothing moved: no new tile
+    const justWon = !st.cells.includes(2048) && m.out.includes(2048);
+    st.cells = m.out; st.score += m.gain;
+    const spawned = gSpawn(st.cells);
+    syncScore();
+    if (m.gain) { gainEl.textContent = '+' + m.gain; gainEl.hidden = false; gainT = now(); }
+    // slide the old tiles over 90 ms, then the merged ones pop and the new one grows in
+    m.slides.forEach(([from, to]) => { const t = tiles[from]; if (!t) return; t.classList.add('slide'); const [x, y] = gPos(to); t.style.left = x + 'px'; t.style.top = y + 'px'; });
+    anim = { merged: m.merged, spawned, justWon, timer: setTimeout(() => finish(), 90) };
+  };
+  if (live) {
+    let p0 = null;
+    board.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; board.setPointerCapture(e.pointerId); p0 = { x: e.clientX, y: e.clientY }; });
+    board.addEventListener('pointercancel', () => { p0 = null; });
+    board.addEventListener('pointerup', e => {
+      if (!p0) return;
+      const k = devK(), dx = (e.clientX - p0.x) / k, dy = (e.clientY - p0.y) / k;
+      p0 = null;
+      if (Math.abs(dx) < 30 && Math.abs(dy) < 30) return;   // ≥ 30 px, dominant axis
+      swipe(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down'));
+    });
+    // New game: straight away when nothing is lost, else tap again within 3 s
+    btn.addEventListener('click', () => { if (armUntil || st.score === 0 || gOver(st.cells)) newGame(); else arm(true); });
+  } else btn.tabIndex = -1;
+  build({}); syncScore();
+  if (preset && preset.overlay) showOverlay(preset.overlay === 'won');
+  else if (gOver(st.cells)) showOverlay(false);
+  return {
+    el: s,
+    key: live ? dir => swipe(dir) : null,
+    frame: live ? tm => {
+      if (armUntil && tm > armUntil) arm(false);
+      if (gainEl.hidden) return;
+      const p = (tm - gainT) / 700;   // the "+N" floats up from the score chip and fades
+      if (p >= 1) { gainEl.hidden = true; return; }
+      gainEl.style.top = (64 - 40 * p) + 'px'; gainEl.style.opacity = 1 - p * p;
+    } : null,
+    onBack() { finish(); return false; },
+  };
+}
+
+/* ---------------- Hephy (docs/apps/hephy.md) ---------------- */
+const HP_C = '#FF5E3A', HP_JOY = '#FF6FA8';
+const HP_RAR = [['Common', '#B0B0B0', 10, 3600], ['Rare', '#4DA3FF', 25, 3 * 3600], ['Epic', '#B388FF', 60, 6 * 3600], ['Legendary', '#FFC93C', 150, 12 * 3600]];
+// lib/PetCore's 24 trinkets: name, rarity, Material Symbols icon
+const HP_ITEMS = [['Key', 0, 'key'], ['Anchor', 0, 'anchor'], ['Cog', 0, 'settings'], ['Bell', 0, 'notifications'], ['Hourglass', 0, 'hourglass_top'],
+  ['Lamp', 0, 'lightbulb'], ['Kettle', 0, 'kettle'], ['Wrench', 0, 'build'], ['Coin', 0, 'token'], ['Bolt', 0, 'bolt'], ['Shield', 1, 'shield'],
+  ['Crossed swords', 1, 'swords'], ['Knight', 1, 'chess_knight'], ['Compass', 1, 'explore'], ['Pocket watch', 1, 'watch'], ['Rocket', 1, 'rocket'],
+  ['Castle', 1, 'castle'], ['Diamond', 2, 'diamond'], ['Crown', 2, 'crown'], ['Medal', 2, 'workspace_premium'], ['Trophy', 2, 'emoji_events'],
+  ['Star wand', 2, 'wand_stars'], ['Golden owl', 3, 'owl'], ['Sun spark', 3, 'flare']];
+const HP_SPEED = 360;   // mock time: a 1 h forge takes 10 s here
+const hpLevel = xp => { let n = 1; while (n < 20 && 25 * (n + 1) * n / 2 <= xp) n++; return n; };
+const heph = { energy: 80, joy: 70, xp: 0, forging: -1, forgeEndAt: 0, gift: -1, owned: [], forged: 0, asleep: false };
+function buildHephy(live, isDim, preset) {
+  const h = preset ? { ...heph, owned: [], ...preset } : heph;
+  const ui = { view: preset && preset.view || 'main', msg: '', msgUntil: 0, reveal: false, strikes: 0, scores: [], zone: 0.4, strikeT0: now(), roundOver: false, roundEnd: 0, sel: -1, levelShown: hpLevel(h.xp), revealAt: 0 };
+  const mood = () => {
+    if (h.asleep) return 'asleep';
+    if (ui.view === 'strike' || h.forging >= 0) return 'focused';
+    if (h.energy < 30) return 'sleepy';
+    if (h.joy < 35) return 'sad';
+    return h.joy >= 75 && h.energy >= 50 ? 'happy' : 'normal';
+  };
+  const bot = buildBot(false, isDim, !!live, { color: HP_C, scale: 0.72, cx: 184, cy: 168, mood });
+  const s = bot.el, face = bot.face, svg = s.querySelector('svg');
+  const layer = el('div', 'hp-layer'), fx = el('div', 'hp-layer');
+  fx.style.pointerEvents = 'none';
+  s.append(layer, fx);
+  const forgeLeft = () => Math.max(0, (h.forgeEndAt - Date.now()) * HP_SPEED / 1000);
+  const lower = n => n[0].toLowerCase() + n.slice(1);
+  const status = () => {
+    if (h.asleep) return 'Zzz…';
+    if (ui.msg && now() < ui.msgUntil) return ui.msg;
+    if (h.gift >= 0) return `Your ${lower(HP_ITEMS[h.gift][0])} is ready!`;
+    if (h.forging >= 0) {
+      const left = forgeLeft(), hh = Math.floor(left / 3600), mm = Math.floor(left % 3600 / 60), nm = HP_ITEMS[h.forging][0];
+      return hh ? `${nm} on the anvil · ${hh} h ${mm} m` : mm ? `${nm} on the anvil · ${mm} m` : `${nm} on the anvil · almost`;
+    }
+    if (h.energy < 30) return 'Hungry for coal';
+    if (h.joy < 35) return 'A little lonely';
+    return h.energy >= 25 ? 'Ready to forge' : 'All good';
+  };
+  const say = (m, ms = 2000) => { ui.msg = m; ui.msgUntil = now() + ms; sync(); };
+  const canStrike = () => h.energy >= 10, canForge = () => h.forging < 0 && h.gift < 0 && h.energy >= 25;
+  let refs = {};
+  const roundBtn = (cls, icon, color, x, label) => {
+    const b = el('button', 'round ' + cls, ic(icon, 28, 1)); b.style.left = x + 'px'; b.style.color = color; b.setAttribute('aria-label', label);
+    if (!live) b.tabIndex = -1;
+    return b;
+  };
+  const render = () => {
+    layer.innerHTML = ''; refs = {};
+    svg.style.display = ui.view === 'shelf' ? 'none' : '';
+    if (ui.view === 'main') {
+      const hit = el('div', 'hp-face'); hit.setAttribute('aria-label', 'Pet Hephy');
+      layer.append(hit, el('div', 'hp-title', 'Hephy'), refs.lv = el('div', 'hp-lv'), refs.status = el('div', 'hp-status'));
+      const shelf = roundBtn('hp-shelf', 'shelves', '#EDEDED', 288, 'Shelf');
+      layer.append(shelf);
+      [['energy', 'local_fire_department', HP_C, 36], ['joy', 'favorite', HP_JOY, 196]].forEach(([k, icn, col, x]) => {
+        const m = el('div', 'hp-meter', `<span style="color:${col};width:18px">${ic(icn, 18, 1)}</span><div class="tr"><div class="fl" style="background:${col}"></div></div>`);
+        m.style.left = x + 'px'; layer.append(m); refs[k] = m.querySelector('.fl');
+      });
+      const acts = [['coal', 'local_fire_department', 'Coal', feed], ['strike', 'hardware', 'Strike', startStrike], ['forge', 'construction', 'Forge', forge]];
+      acts.forEach(([k, icn, lab, fn], i) => {
+        const cx = 184 + (i - 1) * 104, b = roundBtn('hp-btn', icn, i ? '#EDEDED' : HP_C, cx - 28, lab);
+        const cap = el('div', 'hp-cap', lab); cap.style.left = (cx - 52) + 'px';
+        layer.append(b, cap); refs[k] = b;
+        if (live) b.addEventListener('click', fn);
+      });
+      if (live) { hit.addEventListener('pointerdown', petFace); shelf.addEventListener('click', () => { if (h.asleep) return petFace(); setView('shelf'); }); }
+    } else if (ui.view === 'strike') {
+      layer.innerHTML = `<div class="hp-title">Strike</div><div class="hp-count"></div><div class="hp-res"></div>
+        <div class="hp-bar"><div class="hp-zone"></div></div><div class="hp-mark"></div><div class="hp-hint">Tap to strike</div><div class="hp-catch"></div>`;
+      refs = { count: layer.querySelector('.hp-count'), res: layer.querySelector('.hp-res'), zone: layer.querySelector('.hp-zone'), mark: layer.querySelector('.hp-mark') };
+      if (preset && preset.result) { refs.res.textContent = preset.result; refs.res.style.color = preset.result === 'Miss' ? '#9A9A9A' : HP_C; }
+      if (live) layer.querySelector('.hp-catch').addEventListener('pointerdown', strike);
+    } else {
+      const n = h.owned.length;
+      layer.innerHTML = `<div class="hp-title">Shelf</div><div class="hp-count">${n} / 24</div><div class="hp-name"></div><div class="hp-info"></div>`;
+      if (ui.sel < 0 || !h.owned.includes(ui.sel)) ui.sel = HP_ITEMS.findIndex((_, i) => h.owned.includes(i));
+      HP_ITEMS.forEach(([nm, r, icn], i) => {
+        const own = h.owned.includes(i);
+        const b = el('button', 'hp-slot', own ? `<span style="color:${HP_RAR[r][1]}">${ic(icn, 28, 1)}</span>` : '?');
+        b.style.left = (25 + (i % 6) * 54) + 'px'; b.style.top = (76 + Math.floor(i / 6) * 54) + 'px';
+        b.setAttribute('aria-label', own ? nm : 'Not forged yet');
+        if (live) b.addEventListener('click', () => { ui.sel = i; shelfDetail(); }); else b.tabIndex = -1;
+        layer.append(b);
+      });
+      shelfDetail();
+    }
+    if (ui.reveal) showReveal();
+    sync();
+  };
+  const shelfDetail = () => {
+    const nm = layer.querySelector('.hp-name'), info = layer.querySelector('.hp-info');
+    layer.querySelectorAll('.hp-slot').forEach((b, i) => b.classList.toggle('sel', i === ui.sel));
+    if (ui.sel < 0 || !h.owned.includes(ui.sel)) { nm.textContent = ui.sel < 0 ? 'Nothing forged yet' : 'Not forged yet'; nm.style.color = '#9A9A9A'; }
+    else { const [n, r] = HP_ITEMS[ui.sel]; nm.textContent = `${n} · ${HP_RAR[r][0]}`; nm.style.color = HP_RAR[r][1]; }
+    info.textContent = `Forged ${h.forged} · Lv ${hpLevel(h.xp)}`;
+  };
+  const sync = () => {
+    if (ui.view === 'main' && refs.status) {
+      refs.lv.textContent = 'Lv ' + hpLevel(h.xp);
+      refs.status.textContent = status();
+      refs.energy.style.width = h.energy + '%'; refs.joy.style.width = h.joy + '%';
+      refs.strike.style.color = canStrike() ? '#EDEDED' : '#5A5A5A';   // dimmed, but a tap still says why not
+      refs.forge.style.color = canForge() ? '#EDEDED' : '#5A5A5A';
+    }
+  };
+  const setView = v => { ui.view = v; coal = null; render(); };
+
+  // ---- effects: sparks, the flying coal, the z's
+  let sparks = [], coal = null, nextForgeSpark = 0, lastT = now();
+  const burst = (x, y, n, speed) => {
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI * (0.15 + 0.7 * Math.random()), v = speed * (0.6 + 0.8 * Math.random());
+      const d = el('i', 'hp-spark'); fx.append(d);
+      sparks.push({ x, y, vx: v * Math.cos(a), vy: v * Math.sin(a), life: 450 + Math.random() * 350, age: 0, d });
+    }
+  };
+  const zs = [0, 1, 2].map(i => { const z = el('span', 'hp-z', i ? 'Z' : 'z'); z.style.font = i ? '600 28px Inter, sans-serif' : '500 20px Inter, sans-serif'; z.hidden = true; fx.append(z); return z; });
+  const coalEl = el('i', 'hp-coal'); coalEl.hidden = true; fx.append(coalEl);
+
+  // ---- actions (lib/PetCore rules)
+  function petFace() {
+    if (ui.view !== 'main' || ui.reveal) return;
+    if (h.asleep) { h.asleep = false; face.react('startle'); say('Missed you!', 3000); return; }
+    face.tap(now()); h.joy = Math.min(100, h.joy + 2); sync();
+  }
+  function feed() {
+    if (h.asleep) return petFace();
+    if (h.energy >= 90) { face.react('shake'); say("I'm full!"); return; }
+    h.energy = Math.min(100, h.energy + 25);
+    coal = { t0: now() }; coalEl.hidden = false;
+    say('+25 energy');
+  }
+  function startStrike() {
+    if (h.asleep) return petFace();
+    if (!canStrike()) { face.react('shake'); say('Too tired. Coal?'); return; }
+    Object.assign(ui, { strikes: 0, scores: [], roundOver: false, zone: 0.25 + Math.random() * 0.5, strikeT0: now() });
+    setView('strike');
+  }
+  function forge() {
+    if (h.asleep) return petFace();
+    if (h.gift >= 0) { ui.reveal = true; showReveal(); return; }
+    if (h.forging >= 0) { say('One thing at a time'); return; }
+    if (h.energy < 25) { face.react('shake'); say('Too tired to forge. Coal?'); return; }
+    // rarity by level, then preferably a trinket not on the shelf yet
+    const lv = hpLevel(h.xp), odds = lv <= 2 ? [75, 22, 3, 0] : lv <= 5 ? [60, 28, 10, 2] : [45, 32, 17, 6];
+    let r = 0, x = Math.random() * 100;
+    while (r < 3 && x >= odds[r]) { x -= odds[r]; r++; }
+    const pool = HP_ITEMS.map((it, i) => it[1] === r ? i : -1).filter(i => i >= 0), fresh = pool.filter(i => !h.owned.includes(i));
+    const pick = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
+    h.energy -= 25; h.forging = pick; h.forgeEndAt = Date.now() + HP_RAR[r][3] * 1000 / HP_SPEED;
+    face.tap(now()); burst(184, 250, 10, 0.25); sync();
+  }
+  const markerPos = (t, n) => { const per = 1400 - n * 125, ph = (t % per) / per; return ph < 0.5 ? ph * 2 : 2 - ph * 2; };
+  function strike() {
+    if (ui.view !== 'strike' || ui.roundOver) return;
+    const t = now(), pos = markerPos(t - ui.strikeT0, ui.strikes), d = Math.abs(pos - ui.zone) / 0.09;
+    const sc = d < 1 / 3 ? 2 : d <= 1 ? 1 : 0;
+    ui.scores.push(sc); ui.strikes++;
+    refs.res.textContent = ['Miss', 'Good', 'Perfect!'][sc]; refs.res.style.color = sc ? HP_C : '#9A9A9A';
+    if (sc) { face.tap(t); burst(34 + pos * 300, 330, sc === 2 ? 10 : 5, sc === 2 ? 0.28 : 0.18); } else face.react('shake');
+    ui.zone = 0.2 + Math.random() * 0.6; ui.strikeT0 = t;
+    if (ui.strikes >= 5) endRound();
+  }
+  function endRound() {
+    const perfect = ui.scores.filter(x => x === 2).length, good = ui.scores.filter(x => x === 1).length, xp = ui.scores.reduce((a, b) => a + b, 0);
+    h.joy = Math.min(100, h.joy + 4 * perfect + 2 * good); h.energy = Math.max(0, h.energy - 5); h.xp += xp;
+    let cut = 0;
+    if (h.forging >= 0 && perfect) { cut = Math.min(forgeLeft(), perfect * 600); h.forgeEndAt -= cut * 1000 / HP_SPEED; }
+    ui.roundOver = true; ui.roundEnd = now();
+    if (refs.res) { refs.res.textContent = perfect >= 3 ? 'Masterful!' : perfect + good >= 3 ? 'Nice work' : 'Done'; refs.res.style.color = HP_C; }
+    ui.msg = `${perfect} perfect · +${xp} xp` + (cut >= 60 ? ` · forge −${Math.round(cut / 60)} min` : ''); ui.msgUntil = now() + 4000;
+  }
+  function showReveal() {
+    if (h.gift < 0 || s.querySelector('.hp-reveal')) return;
+    const [nm, r, icn] = HP_ITEMS[h.gift], [rn, col, xp] = HP_RAR[r], isNew = !h.owned.includes(h.gift);
+    const ov = el('div', 'hp-reveal', `<div class="hp-glow" style="background:${mix(col, 0.16)};box-shadow:0 0 48px ${col}66"><span style="color:${col}">${ic(icn, 64, 1)}</span></div>
+      <div class="hp-rname">${nm}</div><div class="hp-rkind" style="color:${col}">${isNew ? 'New · ' + rn : `Duplicate · +${xp / 2} xp`}</div><div class="hp-hint" style="top:392px">Tap to keep</div>`);
+    s.append(ov); ui.reveal = true;
+    if (live) ov.addEventListener('click', keep);
+  }
+  function keep() {
+    const ov = s.querySelector('.hp-reveal'); if (ov) ov.remove();
+    ui.reveal = false;
+    if (h.gift < 0) return;
+    const r = HP_ITEMS[h.gift][1], isNew = !h.owned.includes(h.gift), xp = isNew ? HP_RAR[r][2] : HP_RAR[r][2] / 2;
+    if (isNew) h.owned.push(h.gift);
+    h.forged++; h.xp += xp; h.gift = -1;
+    face.tap(now());
+    const lv = hpLevel(h.xp);
+    say(lv > ui.levelShown ? `Level ${lv}! · +${xp} xp` : `On the shelf · +${xp} xp`, 3000);
+    ui.levelShown = lv;
+  }
+
+  render();
+  if (preset && preset.reveal) showReveal();
+  if (preset && preset.view === 'strike') {   // a still frame: the zone and the marker where the preset puts them
+    refs.count.textContent = `${preset.strikes + 1} / 5`;
+    refs.zone.style.left = ((preset.zone - 0.09) * 300) + 'px'; refs.mark.style.left = (34 + preset.mark * 300 - 3) + 'px';
+  }
+  if (preset && h.asleep) zs.forEach((z, i) => { const p = (0.15 + i * 0.33); z.hidden = false; z.style.left = (184 + 70 + 26 * p) + 'px'; z.style.top = (168 - 60 - 70 * p) + 'px'; z.style.opacity = 1 - p * 0.6; });
+
+  return {
+    el: s,
+    tick() {
+      if (h.forging >= 0 && forgeLeft() <= 0) {   // the forge is done: the reveal shows a moment later
+        h.gift = h.forging; h.forging = -1; ui.revealAt = now() + 900;
+      }
+      if (ui.revealAt && now() > ui.revealAt) { ui.revealAt = 0; if (ui.view === 'main' && !h.asleep) showReveal(); }
+      sync();
+    },
+    frame: live ? tm => {
+      const dt = Math.min(100, tm - lastT); lastT = tm;
+      if (ui.view === 'main' && h.forging >= 0 && !h.asleep && tm > nextForgeSpark) { nextForgeSpark = tm + 220 + Math.random() * 260; burst(184 + Math.random() * 60 - 30, 250, 2, 0.16); }
+      sparks = sparks.filter(p => {
+        p.age += dt;
+        if (p.age >= p.life) { p.d.remove(); return false; }
+        p.vy += 0.0006 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+        p.d.style.left = (p.x - 3) + 'px'; p.d.style.top = (p.y - 3) + 'px'; p.d.style.opacity = 1 - p.age / p.life;
+        return true;
+      });
+      if (coal) {   // from the Coal button into his mouth, on an arc; he chews when it lands
+        const p = (tm - coal.t0) / 480;
+        if (p >= 1) { coal = null; coalEl.hidden = true; face.react('chew'); burst(184, 218, 4, 0.12); }
+        else { const x = 80 + 104 * p, y = 366 + (216 - 366) * p - 480 * p * (1 - p); coalEl.style.left = (x - 12) + 'px'; coalEl.style.top = (y - 12) + 'px'; }
+      } else coalEl.hidden = true;
+      zs.forEach((z, i) => {   // asleep: three z's float up from the right of his head
+        z.hidden = !h.asleep || ui.view === 'shelf';
+        if (z.hidden) return;
+        const p = ((tm + i * 900) % 2700) / 2700;
+        z.style.left = (254 + 26 * p + 6 * Math.sin(p * 9)) + 'px'; z.style.top = (168 - 40 - 70 * p) + 'px';
+        z.style.opacity = p < 0.2 ? p / 0.2 : 1 - (p - 0.2) / 0.8;
+      });
+      if (ui.view === 'strike' && refs.mark) {
+        refs.count.textContent = `${Math.min(5, ui.strikes + 1)} / 5`;
+        refs.zone.style.left = ((ui.zone - 0.09) * 300) + 'px';
+        const pos = ui.roundOver ? ui.zone : markerPos(tm - ui.strikeT0, ui.strikes);
+        refs.mark.style.left = (34 + pos * 300 - 3) + 'px';
+        if (ui.roundOver && tm - ui.roundEnd >= 1500) setView('main');
+      }
+    } : null,
+    onBack() {
+      if (ui.reveal) { keep(); return true; }
+      if (ui.view !== 'main') {
+        if (ui.view === 'strike' && ui.strikes > 0 && !ui.roundOver) endRound();   // what was struck counts
+        setView('main'); return true;
+      }
+      return false;
+    },
+  };
+}
+
 /* ---------------- device controller ---------------- */
 // power: 'on'; 'anim' (the screen turning off or on); 'off' (screen off: touch is dead, the apps carry
 // on and the device dozes or sleeps); 'shutdown' (the power-off animation); 'down' (powered off).
@@ -1858,6 +2385,9 @@ function make(id) {
   if (id === 'level') return LevelKit.build(true);
   if (id === 'timer') return buildTimer(tmr, true);
   if (id === 'noise') return buildNoise(true);
+  if (id === 'magic8') return buildMagic8(true);
+  if (id === 'g2048') return buildG2048(true);
+  if (id === 'hephy') return buildHephy(true, () => D.stage === 'dim');
   if (id === 'wifi') return buildWifi(true);
   return buildMenu(true, open);
 }
@@ -1912,7 +2442,7 @@ const STAGES = {
   battery: [['active', 0], ['dim', 30], ['off', 40]],
   charger: [['active', 0], ['dim', 120], ['off', 600]],
 };
-const APP_DIM = { bot: 60, espresso: 60, level: 60, wifi: 60 };
+const APP_DIM = { bot: 60, espresso: 60, level: 60, wifi: 60, hephy: 60 };
 function stages(prof) {
   const dim = APP_DIM[D.app];
   if (!dim) return STAGES[prof];
@@ -2100,6 +2630,12 @@ function nav(action) {
 document.addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input')) return;
   if (e.repeat) return;
+  // Arrow keys: swipes, for the apps that take them (2048)
+  if (e.key.startsWith('Arrow') && D.power === 'on' && D.scr && D.scr.key) {
+    e.preventDefault();
+    if (D.stage !== 'active') { wakeScreen(); return; }
+    D.lastInput = now(); D.scr.key(e.key.slice(5).toLowerCase()); return;
+  }
   if (e.key === 'h' || e.key === 'H') { nav(doHome); return; }
   const k = { p: 'power', P: 'power', Escape: 'nav', Backspace: 'nav' }[e.key];
   if (!k) return;
@@ -2438,6 +2974,9 @@ thumb('Dice', '6d6 with advantage: the higher total is kept', () => DiceKit.buil
 thumb('Dice, d20', 'Advantage: 19 kept, 18 dropped', () => DiceKit.build(false, {
   state: { die: 20, count: 1, mode: 'adv' },
   roll: { die: 20, count: 1, mode: 'adv', sets: [[19], [18]], totals: [19, 18], kept: 0, crit: null, idle: false } }).el);
+thumb('Magic 8', 'Brush capitals on black; tap (or shake the device) to ask', () => buildMagic8(false, { phase: 'idle', answer: -1, prev: -1 }).el);
+thumb('Magic 8, shaking', 'The old text jitters sideways and fades', () => buildMagic8(false, { phase: 'shaking', answer: -1, prev: -1, t0: 0, t: 160 }).el);
+thumb('Magic 8, answer', 'Rises in, each answer in its own colour; never the same twice in a row', () => buildMagic8(false, { phase: 'answer', answer: 8 }).el);
 thumb('Level, lying flat', 'Bullseye: the bubble sits on the high side', () => LevelKit.build(false, { mode: 'flat', x: 2.4, y: -1.1, a: 0, p: 0 }).el);
 thumb('Level, on an edge', 'Horizon: rotation from level, plus the lean', () => LevelKit.build(false, { mode: 'edge', x: 0, y: 0, a: 12, p: 4 }).el);
 const gNow = new Date(2026, 9, 10, 18, 11, 10).getTime();
@@ -2452,6 +2991,15 @@ thumb('Noise, paused', 'Still and dimmed, a play button in the middle', () => bu
 thumb('Noise, rain', 'Streaks in three depths, splashes; labels hide after 4 s', () => buildNoise(false, { kind: 0, playing: true }).el);
 thumb('Noise, white', 'Soft snow drifting down', () => buildNoise(false, { kind: 1, playing: true }).el);
 thumb('Noise, blue', 'A jittered grid of twinkling points rising slowly', () => buildNoise(false, { kind: 2, playing: true }).el);
+thumb('2048', 'Swipe to slide; equal tiles merge', () => buildG2048(false, { cells: [4, 4, 8, 128, 16, 32, 64, 4, 256, 512, 1024, 0, 4, 2, 2, 0], score: 9624, best: 9624, winSeen: false }).el);
+thumb('2048, won', 'Once per game; a game can go on past it', () => buildG2048(false, { cells: [2048, 0, 0, 2, 2, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], score: 22048, best: 22048, winSeen: false, overlay: 'won' }).el);
+thumb('2048, game over', 'No empty cell and no equal neighbours', () => buildG2048(false, { cells: [2, 4, 2, 4, 4, 2, 4, 2, 2, 4, 2, 4, 4, 2, 4, 2], score: 3120, best: 22048, winSeen: false }).el);
+thumb('Hephy', 'The Bot face at 72 %, in ember; Coal, Strike, Forge', () => buildHephy(false, null, {}).el);
+thumb('Hephy, forging', 'Focused on the anvil; a forge takes 1–12 h of wall clock', () => buildHephy(false, null, { energy: 55, forging: 5, forgeEndAt: Date.now() + 1e4 + 100 }).el);
+thumb('Hephy, Strike', 'Tap when the marker is in the hot zone, 5 times', () => buildHephy(false, null, { view: 'strike', strikes: 2, zone: 0.33, mark: 0.8, result: 'Miss' }).el);
+thumb('Hephy, asleep', 'Away over 24 h: Zzz… until a tap wakes him', () => buildHephy(false, null, { energy: 22, joy: 30, asleep: true }).el);
+thumb('Hephy, reveal', 'A finished forge: the trinket in its rarity colour', () => buildHephy(false, null, { gift: 5, reveal: true }).el);
+thumb('Hephy, shelf', '24 trinkets in four rarities; tap one for its name', () => buildHephy(false, null, { view: 'shelf', owned: [5, 0, 2, 10, 18, 22], forged: 7, xp: 260 }).el);
 thumb('System', 'Info list; wireless update and touch calibration', () => buildSystem({ view: 'info' }, false).el);
 thumb('Touch calibration', 'Tap five crosses; Reset to factory drops the calibration', () => buildSystem({ view: 'touch', calStep: 0 }, false).el);
 thumb('Wireless update', 'Receiving firmware, 42 %', () => buildSystem({ view: 'ota', phase: 'receiving', pct: 42 }, false).el);

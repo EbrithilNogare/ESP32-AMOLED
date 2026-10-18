@@ -57,7 +57,7 @@ APPS = [
     ("Pomodoro",        0.05, 0.01, [],        "deep+timer:1500", "running: a silent wake at every phase end (25 min)"),
     ("Espresso",        0.05, 0.05, [],        "deep",       "a running shot stops on sleep"),
     ("Dice",            0.04, 0.05, [],        "deep",       "rolling: ~60 % render for 1.2 s"),
-    ("Magic 8",         0.08, 0.02, ["imu"],   "deep",       "IMU at 50 Hz reads while open"),
+    ("Magic 8",         0.03, 0.02, ["imu"],   "deep",       "text only; IMU at 50 Hz reads while open"),
     ("Level",           0.06, 0.20, ["imu"],   "deep",       "IMU off with the screen"),
     ("Timer: clock",    0.10, 0.01, [],        "deep",       "LowPowerDisplay on the clock tab"),
     ("Timer: countdown", 0.08, 0.01, [],       "deep+timer:86400", "one silent wake at the end, then the alarm"),

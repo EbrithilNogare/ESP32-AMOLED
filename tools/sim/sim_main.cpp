@@ -534,7 +534,8 @@ int main() {
   advance(400);
   CHECK(apps::manager::inMenu());
 
-  // ---- magic 8-ball: idle, a shake (IMU jolts), the answer; a tap asks too
+  // ---- magic 8-ball: idle, a shake (IMU jolts), the answer; a tap asks too.
+  // Text only, each answer in its own colour.
   tapIcon(&magic8App);
   CHECK(apps::manager::current() == &magic8App);
   sim::accel = {0, 0, 1};
@@ -560,15 +561,15 @@ int main() {
     advance(600 + MAGIC8_REVEAL_MS);
     CHECK(magic8App.phase() == apps::Magic8App::Phase::Answer && magic8App.answer() != first);
   }
-  // Every answer's lines fit across the paint swipe (its solid part is ~300 px).
+  // Every answer's lines fit the screen, inside the pixel-shift margin.
   for (int i = 0; i < eightball::kAnswers; i++) {
-    char buf[32];
+    char buf[40];
     strlcpy(buf, eightball::answer(i).text, sizeof buf);
     for (char *p = buf, *line; (line = strsep(&p, "\n"));) {
       lv_point_t sz;
-      lv_text_get_size(&sz, line, &font_marker_30, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
-      if (sz.x > 290) printf("FAIL: 8-ball answer line \"%s\" is %d px wide\n", line, int(sz.x));
-      failures += sz.x > 290;
+      lv_text_get_size(&sz, line, &font_marker_44, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+      if (sz.x > LCD_WIDTH - 2 * 16) printf("FAIL: 8-ball answer line \"%s\" is %d px wide\n", line, int(sz.x));
+      failures += sz.x > LCD_WIDTH - 2 * 16;
     }
   }
   apps::manager::prepareSleep(sleepplan::Kind::Sleep);  // the answer is on screen again after a sleep

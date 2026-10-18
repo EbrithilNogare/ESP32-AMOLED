@@ -20,8 +20,9 @@ In RGB565, green has 6 bits and red and blue 5. A faint white overlay (a
 highlight at opacity 9–16 on near-black) moves the green channel one step
 before red and blue move at all, so it shows as a greenish blob. Neutral
 near-black greys tint the same way. Tint such overlays slightly
-toward red and blue (the 8-ball's highlight is `#FFB8C4`, its ball
-`#0C080A`), or keep them bright enough that every channel moves.
+toward red and blue (`#FFB8C4` instead of white, `#0C080A` instead of
+`#0B0B0B`), or keep them bright enough that every channel moves. (Seen on
+the first, ball-shaped Magic 8-ball.)
 
 ## Deleting the object whose event is running
 

@@ -51,7 +51,7 @@ Battery: 400 mAh. Screen on at 60% brightness.
 | Pomodoro | 48 mA | 8.3 h | deep sleep + timer wake: 0.16 mA | 3 months | running: a silent wake at every phase end (25 min) |
 | Espresso | 50 mA | 8.1 h | deep sleep: 0.15 mA | 4 months | a running shot stops on sleep |
 | Dice | 49 mA | 8.2 h | deep sleep: 0.15 mA | 4 months | rolling: ~60 % render for 1.2 s |
-| Magic 8 | 51 mA | 7.9 h | deep sleep: 0.15 mA | 4 months | IMU at 50 Hz reads while open |
+| Magic 8 | 47 mA | 8.4 h | deep sleep: 0.15 mA | 4 months | text only; IMU at 50 Hz reads while open |
 | Level | 56 mA | 7.2 h | deep sleep: 0.15 mA | 4 months | IMU off with the screen |
 | Timer: clock | 51 mA | 7.8 h | deep sleep: 0.15 mA | 4 months | LowPowerDisplay on the clock tab |
 | Timer: countdown | 50 mA | 8.0 h | deep sleep + timer wake: 0.15 mA | 4 months | one silent wake at the end, then the alarm |

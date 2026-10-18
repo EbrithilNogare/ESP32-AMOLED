@@ -233,9 +233,9 @@ and mute in quick settings.
 
 ### M22 — Magic 8-ball ◐ — [spec](apps/magic8.md)
 
-`lib/EightBall` (the 20 answers, shake detector; host-tested), the ball
-drawn in one stage object, the red paint swipe (`tools/gen_brush.py`, an A8
-image) and Permanent Marker lettering; IMU on only while it's on screen.
+`lib/EightBall` (22 answers with their colours, the shake detector;
+host-tested), text only in Permanent Marker, rattling out and rising in;
+IMU on only while it's on screen.
 
 **On device:** spec acceptance list; does a real shake trigger it, and a
 tilt not?

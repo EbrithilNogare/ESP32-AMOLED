@@ -16,20 +16,28 @@ static void test_answers() {
     const Answer &a = answer(i);
     TEST_ASSERT_NOT_NULL(a.text);
     TEST_ASSERT_TRUE(strlen(a.text) > 0);
-    for (const char *p = a.text; *p; p++) TEST_ASSERT_FALSE(*p >= 'a' && *p <= 'z');  // capitals only (the font)
+    int lines = 1;
+    for (const char *p = a.text; *p; p++) {
+      TEST_ASSERT_FALSE(*p >= 'a' && *p <= 'z');  // capitals only (the font)
+      lines += *p == '\n';
+    }
+    TEST_ASSERT_TRUE(lines <= 3);
+    // Readable on black: its brightest channel is at least half way up.
+    const uint32_t r = a.color >> 16 & 0xFF, g = a.color >> 8 & 0xFF, b = a.color & 0xFF;
+    TEST_ASSERT_TRUE(a.color <= 0xFFFFFF && (r >= 0x80 || g >= 0x80 || b >= 0x80));
     yes += a.kind == Kind::Yes;
     maybe += a.kind == Kind::Maybe;
     no += a.kind == Kind::No;
   }
   TEST_ASSERT_EQUAL_INT(10, yes);
-  TEST_ASSERT_EQUAL_INT(5, maybe);
-  TEST_ASSERT_EQUAL_INT(5, no);
+  TEST_ASSERT_EQUAL_INT(6, maybe);
+  TEST_ASSERT_EQUAL_INT(6, no);
   TEST_ASSERT_EQUAL_PTR(answer(0).text, answer(99).text);  // out of range: the first
 }
 
 static void test_pick_never_repeats_and_covers_all() {
   bool seen[kAnswers] = {};
-  for (uint32_t r = 0; r < 200; r++) {
+  for (uint32_t r = 0; r < 400; r++) {
     const int a = pick(r * 2654435761u, 7);
     TEST_ASSERT_TRUE(a >= 0 && a < kAnswers);
     TEST_ASSERT_NOT_EQUAL(7, a);
@@ -37,8 +45,8 @@ static void test_pick_never_repeats_and_covers_all() {
   }
   for (int i = 0; i < kAnswers; i++)
     if (i != 7) TEST_ASSERT_TRUE(seen[i]);
-  TEST_ASSERT_EQUAL_INT(19, pick(19, -1));
-  TEST_ASSERT_EQUAL_INT(0, pick(20, -1));
+  TEST_ASSERT_EQUAL_INT(kAnswers - 1, pick(kAnswers - 1, -1));
+  TEST_ASSERT_EQUAL_INT(0, pick(kAnswers, -1));
 }
 
 // Sample at 100 Hz: still (1 g on z) except for jolts at the given ms.

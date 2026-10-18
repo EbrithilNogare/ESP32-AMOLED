@@ -35,15 +35,15 @@ LV_FONT_DECLARE(font_digits_56)    /* RobotoMono-Medium.ttf, 56 px, 4 bpp, 0x221
 LV_FONT_DECLARE(font_digits_80)    /* RobotoMono-Medium.ttf, 80 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_120)   /* RobotoMono-Medium.ttf, 120 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_160)   /* RobotoMono-Medium.ttf, 160 px, 4 bpp, "0123456789-" */
-LV_FONT_DECLARE(font_marker_30)    /* PermanentMarker-Regular.ttf, 30 px, 4 bpp, 0x2019, 0x2026, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-" */
-LV_FONT_DECLARE(font_marker_96)    /* PermanentMarker-Regular.ttf, 96 px, 4 bpp, "8" */
+LV_FONT_DECLARE(font_marker_44)    /* PermanentMarker-Regular.ttf, 44 px, 4 bpp, 0x2019, 0x2026, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%" */
+LV_FONT_DECLARE(font_marker_30)    /* PermanentMarker-Regular.ttf, 30 px, 4 bpp, 0x2019, 0x2026, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%" */
 LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 73 icons */
 LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 73 icons */
 LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 73 icons */
 LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 73 icons */
 
 /* ---- Images ---- */
-extern const lv_image_dsc_t img_brush;  /* images/brush.png, A8 */
+/* (none) */
 
 /* ---- Sprites ---- */
 /* (none) */

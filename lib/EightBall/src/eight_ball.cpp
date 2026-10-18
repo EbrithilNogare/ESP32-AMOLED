@@ -7,26 +7,28 @@ namespace eightball {
 namespace {
 
 const Answer kTable[kAnswers] = {
-    {"IT IS\nCERTAIN", Kind::Yes},
-    {"IT IS\nDECIDEDLY SO", Kind::Yes},
-    {"WITHOUT\nA DOUBT", Kind::Yes},
-    {"YES,\nDEFINITELY", Kind::Yes},
-    {"YOU MAY\nRELY ON IT", Kind::Yes},
-    {"AS I SEE IT,\nYES", Kind::Yes},
-    {"MOST\nLIKELY", Kind::Yes},
-    {"OUTLOOK\nGOOD", Kind::Yes},
-    {"YES", Kind::Yes},
-    {"SIGNS POINT\nTO YES", Kind::Yes},
-    {"REPLY HAZY,\nTRY AGAIN", Kind::Maybe},
-    {"ASK AGAIN\nLATER", Kind::Maybe},
-    {"BETTER NOT\nTELL YOU NOW", Kind::Maybe},
-    {"CANNOT\nPREDICT NOW", Kind::Maybe},
-    {"CONCENTRATE\nAND ASK AGAIN", Kind::Maybe},
-    {"DON'T\nCOUNT ON IT", Kind::No},
-    {"MY REPLY\nIS NO", Kind::No},
-    {"MY SOURCES\nSAY NO", Kind::No},
-    {"OUTLOOK NOT\nSO GOOD", Kind::No},
-    {"VERY\nDOUBTFUL", Kind::No},
+    {"IT IS\nCERTAIN", Kind::Yes, 0xEDEDED},
+    {"WITHOUT\nA DOUBT", Kind::Yes, 0x4CD07D},
+    {"YES.\nOBVIOUSLY.", Kind::Yes, 0xFFC93C},
+    {"SIGNS POINT\nTO YES", Kind::Yes, 0x00E5FF},
+    {"THE STARS\nSAY YES", Kind::Yes, 0xB388FF},
+    {"HELL\nYES!", Kind::Yes, 0xFF6B3D},
+    {"DO IT.\nNO REGRETS.", Kind::Yes, 0xFF8A1F},
+    {"MOST\nLIKELY", Kind::Yes, 0xEDEDED},
+    {"YES, BUT\nWEAR A\nHELMET", Kind::Yes, 0xFFD54F},
+    {"100 %.\nTRUST ME.", Kind::Yes, 0x4CD07D},
+    {"ASK AGAIN\nLATER", Kind::Maybe, 0x9A9A9A},
+    {"REPLY HAZY,\nTRY AGAIN", Kind::Maybe, 0xB388FF},
+    {"ASK YOUR\nCAT", Kind::Maybe, 0xFF6FA8},
+    {"NEED\nCOFFEE\nFIRST", Kind::Maybe, 0xC8915A},
+    {"CONCENTRATE\nAND ASK\nAGAIN", Kind::Maybe, 0x6E8BFF},
+    {"FLIP A COIN.\nI'M BUSY.", Kind::Maybe, 0xFFB020},
+    {"DON'T COUNT\nON IT", Kind::No, 0xFF5A4E},
+    {"NOPE.", Kind::No, 0xFF3B3B},
+    {"VERY\nDOUBTFUL", Kind::No, 0xFF8A80},
+    {"NOT IN THIS\nTIMELINE", Kind::No, 0xE040FB},
+    {"ABSOLUTELY\nNOT", Kind::No, 0xFF5A4E},
+    {"MY SOURCES\nSAY NO", Kind::No, 0xFF7043},
 };
 
 }  // namespace
@@ -35,8 +37,8 @@ const Answer &answer(int i) { return kTable[i >= 0 && i < kAnswers ? i : 0]; }
 
 int pick(uint32_t random, int last) {
   if (last < 0 || last >= kAnswers) return int(random % kAnswers);
-  // One of the other 19, uniformly: skip over `last`. (random % 19 is
-  // biased by under 1e-8: fine for a toy.)
+  // One of the others, uniformly: skip over `last`. (The modulo bias is
+  // under 1e-8: fine for a toy.)
   const int i = int(random % (kAnswers - 1));
   return i >= last ? i + 1 : i;
 }

@@ -149,24 +149,24 @@ size    = 160
 bpp     = 4
 symbols = "0123456789-"
 
-# Magic 8-ball answers (docs/apps/magic8.md): Permanent Marker, a hand-painted
-# brush capital in the spirit of the Far Cry 3 menus. Capitals and the
-# answers' punctuation only.
+# Magic 8-ball (docs/apps/magic8.md): Permanent Marker, a hand-painted brush
+# capital in the spirit of the Far Cry 3 menus. Capitals, digits and the
+# answers' punctuation only. 44 px: the answers; 30 px: the caption.
+[[font]]
+name    = "marker_44"
+file    = "fonts/PermanentMarker-Regular.ttf"
+size    = 44
+bpp     = 4
+symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%"
+range   = ["0x2019", "0x2026"]
+
 [[font]]
 name    = "marker_30"
 file    = "fonts/PermanentMarker-Regular.ttf"
 size    = 30
 bpp     = 4
-symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-"
+symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%"
 range   = ["0x2019", "0x2026"]
-
-# The "8" on the idle ball.
-[[font]]
-name    = "marker_96"
-file    = "fonts/PermanentMarker-Regular.ttf"
-size    = 96
-bpp     = 4
-symbols = "8"
 
 # ---------------------------------------------------------------------------
 # Icon fonts — Material Symbols Rounded, filled (FILL 1), weight 500, grade 0.
@@ -269,19 +269,7 @@ icons      = [
 ]
 
 # ---------------------------------------------------------------------------
-# Images
-# ---------------------------------------------------------------------------
-
-# The Magic 8-ball's paint swipe: an alpha mask drawn by tools/gen_brush.py,
-# tinted with MAGIC8_COLOR in code.
-[[image]]
-name   = "brush"
-file   = "images/brush.png"
-format = "A8"
-dest   = "flash"
-
-# ---------------------------------------------------------------------------
-# More images and sprites — templates:
+# Images and sprites — none yet. Templates:
 #
 # [[image]]
 # name   = "bulb_on"                 # -> const lv_image_dsc_t img_bulb_on

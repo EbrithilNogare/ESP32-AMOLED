@@ -1,5 +1,6 @@
-// Magic 8-ball (docs/apps/magic8.md): the 20 classic answers and a shake
-// detector for the accelerometer. No LVGL, no Arduino.
+// Magic 8-ball (docs/apps/magic8.md): the answers (a few classics, mostly
+// funnier ones, each with its own colour) and a shake detector for the
+// accelerometer. No LVGL, no Arduino.
 #pragma once
 
 #include <stdint.h>
@@ -9,14 +10,15 @@ namespace eightball {
 enum class Kind : uint8_t { Yes, Maybe, No };
 
 struct Answer {
-  const char *text;  // capitals, '\n' where the line breaks
+  const char *text;  // capitals, '\n' where the line breaks (up to 3 lines)
   Kind kind;
+  uint32_t color;  // 0xRRGGBB on black
 };
 
-constexpr int kAnswers = 20;  // 10 yes, 5 maybe, 5 no
+constexpr int kAnswers = 22;  // 10 yes, 6 maybe, 6 no
 const Answer &answer(int i);
 
-// An answer index from a random number, never `last` again (-1: any of 20).
+// An answer index from a random number, never `last` again (-1: any).
 int pick(uint32_t random, int last);
 
 struct ShakeConfig {

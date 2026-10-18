@@ -159,13 +159,12 @@
 #define NOISE_FADE_MS 400     // sound fades in and out instead of clicking
 
 // ---- magic 8-ball (docs/apps/magic8.md) ----
-#define MAGIC8_COLOR 0xC8102E  // the paint swipe (and menu accent)
-#define MAGIC8_GLOW 0x5A0A14   // the red glow behind the ball (built up from faint washes)
+#define MAGIC8_COLOR 0xC8102E  // menu accent
 #define MAGIC8_SHAKE_G 0.6f    // a jolt: |a| differs from 1 g by this much
 #define MAGIC8_SETTLE_MS 500   // still this long after shaking: the answer surfaces
 #define MAGIC8_REVEAL_MS 900   // the answer fading in
 #define MAGIC8_SAMPLE_MS 20    // IMU reads while open (50 Hz)
-#define MAGIC8_FPS 30          // while the ball shakes or the answer surfaces
+#define MAGIC8_FPS 30          // while the text rattles or the answer surfaces
 
 // ---- hephy (docs/apps/hephy.md) ----
 #define HEPHY_COLOR 0xFF5E3A      // the face, menu accent: ember

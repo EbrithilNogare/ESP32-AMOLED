@@ -45,8 +45,8 @@ and look after Hephy, a little forge spirit.
   in), a stopwatch, and a countdown up to 99:59.
 - **Noise**: rain with falling rain on screen; swipe for white or blue
   noise. Keeps playing while you use other apps.
-- **Magic 8**: shake (or tap) for one of the 20 classic answers, in brush
-  lettering on a red paint swipe.
+- **Magic 8**: shake (or tap) for an answer, some classic, most of them
+  sillier, in big coloured brush lettering.
 - **2048**: the sliding-tile game, swipe to play; your board and best score
   are kept.
 - **Hephy**: a pet with the Bot face's face that forges trinkets for your
@@ -228,11 +228,14 @@ quick settings.
 <img src="docs/design/screens/53-magic8-shaking.png" width="184" alt="Shaking">
 <img src="docs/design/screens/54-magic8-answer.png" width="184" alt="An answer">
 
-Ask a yes/no question, then **shake** the device (or tap the ball). When it's
-still again, the answer floats up on a red paint swipe, lettered like the
-Far Cry 3 menus (Permanent Marker, the closest open font). It's one of the
-20 classic answers, never the same twice in a row. The motion sensor only
-runs while the ball is on screen.
+Ask a yes/no question, then **shake** the device (or tap the screen). When
+it's still again, the answer rises out of the dark. It's just text, in brush
+capitals like the Far Cry 3 menus (Permanent Marker, the closest open font),
+and each answer has its own colour.
+
+There are 22 answers, from IT IS CERTAIN to YES, BUT WEAR A HELMET, ASK YOUR
+CAT and NOT IN THIS TIMELINE, and never the same one twice in a row. The
+motion sensor only runs while the app is on screen.
 
 ### 2048
 
@@ -395,7 +398,7 @@ Everything you'd want to tweak is in **`include/config.h`**:
 | Timer colour, first countdown, minimal-view brightness | `TIMER_COLOR`, `TIMER_DEFAULT_COUNTDOWN_S`, `TIMER_MINIMAL_BRIGHTNESS` |
 | How long a finished countdown beeps | `SOUND_ALARM_MS` |
 | Noise colour, animation speed, fade | `NOISE_*` |
-| Magic 8-ball colours, shake strength, reveal speed | `MAGIC8_*` |
+| Magic 8-ball shake strength, reveal speed (answers and their colours: `lib/EightBall`) | `MAGIC8_*` |
 | Hephy colours, how long he stays bright | `HEPHY_*` |
 | 2048 accent, slide speed | `G2048_*` |
 | Volume default and range (the level itself is set in quick settings) | `SOUND_VOLUME_DEFAULT_PCT`, `SOUND_VOLUME_RANGE_DB` |

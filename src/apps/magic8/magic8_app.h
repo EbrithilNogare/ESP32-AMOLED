@@ -5,11 +5,11 @@
 
 namespace apps {
 
-// Magic 8-ball (docs/apps/magic8.md): shake or tap, read the answer on a red
-// paint swipe in brush lettering. The answers and the shake detector are
-// lib/EightBall; this class draws the ball into one stage object (its
-// LV_EVENT_DRAW_MAIN) and animates it frame by frame. The IMU runs only
-// while it's on screen.
+// Magic 8-ball (docs/apps/magic8.md): shake or tap, and the answer rises out
+// of the dark in big brush lettering, in its own colour. Nothing but text
+// on black. The answers and the shake detector are lib/EightBall; this
+// class draws the text into one stage object (its LV_EVENT_DRAW_MAIN) and
+// animates it frame by frame. The IMU runs only while it's on screen.
 class Magic8App : public App {
  public:
   Magic8App();
