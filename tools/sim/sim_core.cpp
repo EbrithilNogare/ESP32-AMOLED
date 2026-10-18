@@ -20,6 +20,7 @@
 #include "core/settings.h"
 #include "core/sound.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "core/touch.h"
 #include "sim.h"
 
@@ -53,12 +54,19 @@ int brightnessApplied = 0;
 int volumeApplied = 0;
 int noise = -1;
 std::vector<int> beeps;
+bool radio = true;
+int wakes = 0;
+int64_t monoOffset = 0;
 touchcal::Cal touchCal;
 bool touchRaw = false;
 PanelError panel;
 }  // namespace sim
 
 SimEsp ESP;
+
+namespace core {
+uint64_t mono(uint32_t ms) { return uint64_t(int64_t(extend(ms)) + sim::monoOffset); }
+}  // namespace core
 
 namespace core {
 namespace net {
@@ -68,6 +76,7 @@ void acquire() {}
 void release() {}
 void shutdown() {}
 bool connected() { return sim::wifi; }
+bool radioOn() { return sim::radio; }
 int rssi() { return sim::wifi ? -61 : 0; }
 const char *ip() { return sim::wifi ? "192.168.1.57" : ""; }
 const char *ssid() { return sim::ssid.c_str(); }
@@ -112,6 +121,10 @@ namespace power {
 ::power::Stage stage() { return sim::stage; }
 void activity() {}
 bool onPress() { return true; }
+void wake() {
+  sim::wakes++;
+  sim::stage = ::power::Stage::Active;
+}
 void applyBrightness() { sim::brightnessApplied++; }
 const sleeplog::Log &sleepLog() { return sim::sleepLog; }
 }  // namespace power
@@ -135,9 +148,20 @@ const char *revisionName() { return "V2"; }
 namespace store {
 static RtcState rtcState;
 static std::map<std::string, std::vector<uint8_t>> nvs;
+static std::map<std::string, std::vector<uint8_t>> parked;
 RtcState &rtc() { return rtcState; }
-bool rtcValid() { return false; }
-void rtcCommit() {}
+bool rtcValid() { return rtcState.magic != 0; }
+void rtcCommit() { rtcState.magic = 1; }
+bool park(const char *key, const void *data, size_t len) {
+  parked[key].assign(static_cast<const uint8_t *>(data), static_cast<const uint8_t *>(data) + len);
+  return true;
+}
+bool unpark(const char *key, void *data, size_t len) {
+  auto it = parked.find(key);
+  if (it == parked.end() || it->second.size() != len) return false;
+  memcpy(data, it->second.data(), len);
+  return true;
+}
 bool load(const char *key, void *data, size_t len) {
   auto it = nvs.find(key);
   if (it == nvs.end() || it->second.size() != len) return false;

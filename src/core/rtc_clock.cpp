@@ -7,11 +7,15 @@
 #include "board.h"
 #include "config.h"
 #include "i2c_bus.h"
+#include "store.h"
+#include "ticks.h"
 
 namespace core::clock {
 
 [[maybe_unused]] static const char *TAG = "clock";
 static bool timeValid;
+static int64_t monoOffset;                     // mono() - extend(): the time before the last deep sleep
+static constexpr int64_t kKeepDriftMs = 1500;  // after a deep sleep: keep the ESP time within this of the RTC
 
 // PCF85063 time registers 0x04..0x0A: seconds (bit 7 = oscillator stopped),
 // minutes, hours, days, weekdays, months, years — all BCD, 24 h mode.
@@ -20,7 +24,13 @@ static constexpr uint8_t REG_SECONDS = 0x04;
 static uint8_t bcd2bin(uint8_t v) { return (v >> 4) * 10 + (v & 0x0F); }
 static uint8_t bin2bcd(uint8_t v) { return uint8_t(((v / 10) << 4) | (v % 10)); }
 
-bool begin() {
+int64_t wallMs() {
+  timeval tv;
+  gettimeofday(&tv, nullptr);
+  return int64_t(tv.tv_sec) * 1000 + tv.tv_usec / 1000;
+}
+
+bool begin(bool afterDeepSleep) {
   setenv("TZ", TIMEZONE, 1);
   tzset();
 
@@ -46,9 +56,14 @@ bool begin() {
   time_t utc = mktime(&t);
   setenv("TZ", TIMEZONE, 1);
   tzset();
-  timeval tv = {utc, 0};
-  settimeofday(&tv, nullptr);
   timeValid = true;
+  // The RTC counts whole seconds: utc + 0.5 s is the best guess of "now".
+  const int64_t rtcMs = int64_t(utc) * 1000 + 500;
+  const int64_t drift = wallMs() - rtcMs;
+  if (afterDeepSleep && drift > -kKeepDriftMs && drift < kKeepDriftMs) return true;
+  if (afterDeepSleep) ESP_LOGI(TAG, "ESP clock drifted %lld ms in deep sleep; RTC time taken", (long long)drift);
+  timeval tv = {utc, 500000};
+  settimeofday(&tv, nullptr);
   return true;
 }
 
@@ -75,4 +90,22 @@ void onNtpSynced() {
   }
 }
 
+void noteSleep(uint64_t monoNow) {
+  store::rtc().monoAtSleep = monoNow;
+  store::rtc().wallAtSleepMs = wallMs();
+}
+
+void resume() {
+  const store::RtcState &r = store::rtc();
+  if (!store::rtcValid() || !r.monoAtSleep) return;
+  int64_t slept = wallMs() - r.wallAtSleepMs;
+  if (slept < 0) slept = 0;  // the clock was set backwards meanwhile
+  monoOffset = int64_t(r.monoAtSleep) + slept - int64_t(extend(millis()));
+  ESP_LOGI(TAG, "asleep %lld s", (long long)(slept / 1000));
+}
+
 }  // namespace core::clock
+
+namespace core {
+uint64_t mono(uint32_t ms) { return uint64_t(int64_t(extend(ms)) + clock::monoOffset); }
+}  // namespace core

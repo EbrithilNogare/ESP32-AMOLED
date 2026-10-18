@@ -8,7 +8,8 @@ namespace apps {
 // Level (docs/apps/level.md): a bullseye bubble vial while the board lies
 // flat, an attitude horizon (rotation + lean) while it stands on an edge.
 // The maths is lib/LevelCore; this class samples the IMU, keeps Zero / Hold /
-// units, and draws in the stage object's draw event. Standing on its left
+// units, and draws in the stage object's draw event. The IMU is powered only
+// while the app is on screen. Standing on its left
 // edge the whole screen turns to landscape (the only app that does).
 class LevelApp : public App {
  public:
@@ -17,6 +18,7 @@ class LevelApp : public App {
   void onCreate(lv_obj_t *root) override;
   void onDestroy() override;
   void onTick(uint32_t nowMs) override;
+  void onScreen(bool on) override;
   uint32_t idleDimMs() const override;
   bool landscape() const override { return stage_ && landscape_; }
   void onRotated() override;

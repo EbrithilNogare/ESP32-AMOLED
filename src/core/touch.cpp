@@ -71,6 +71,10 @@ bool begin(uint8_t i2cAddress, bool (*onPress)(), void (*onActivity)()) {
 }
 
 void kick() { intFlag = true; }
+void wake() {
+  down = swallowing = false;
+  intFlag = false;
+}
 void setCalibration(const touchcal::Cal &c) { cal = c; }
 void setRaw(bool on) { raw = on; }
 

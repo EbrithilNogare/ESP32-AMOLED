@@ -1,9 +1,9 @@
 #include "dice_app.h"
 
 #include <Arduino.h>
-#include <esp_random.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_random.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -72,11 +72,34 @@ void DiceApp::save() {
   core::store::save("dice", s, sizeof s);
 }
 
+void DiceApp::onSleep(sleepplan::Kind) {
+  if (animating_) roll_ = dice::idle(die_, count_, mode_), idle_ = true;  // mid-roll: nothing to show yet
+  struct {
+    dice::Roll roll;
+    uint8_t idle;
+  } p{roll_, uint8_t(idle_)};
+  core::store::park("dice", &p, sizeof p);
+}
+
+void DiceApp::onWake(Wake wake) {
+  struct {
+    dice::Roll roll;
+    uint8_t idle;
+  } p;
+  if (wake == Wake::Cold || !core::store::unpark("dice", &p, sizeof p) || p.idle) return;
+  roll_ = p.roll;
+  resumed_ = true;
+}
+
 void DiceApp::setDie(uint8_t die) {
   die_ = die;
   if (count_ > dice::maxCount(die_)) count_ = uint8_t(dice::maxCount(die_));
-  roll_ = dice::idle(die_, count_, mode_);
-  idle_ = true;
+  // Back from a sleep: the roll that was on screen, if it still matches the
+  // settings (they're in NVS, the roll only in RTC memory).
+  const bool same = resumed_ && roll_.die == die_ && roll_.count == count_ && roll_.mode == mode_;
+  if (!same) roll_ = dice::idle(die_, count_, mode_);
+  idle_ = !same;
+  resumed_ = false;
   animating_ = false;
   layout();
   syncControls();
@@ -96,9 +119,9 @@ void DiceApp::setMode(Mode mode) {
 void DiceApp::startRoll() {
   roll_ = dice::roll(die_, count_, mode_, hwRandom);
   idle_ = false;
+  animating_ = true;  // before layout(): it draws the first frame of the throw, not the landing
   layout();
   t0_ = millis();
-  animating_ = true;
   nextFrameMs_ = millis();
   frames_ = 0;
 }
@@ -154,7 +177,7 @@ void DiceApp::layout() {
     }
   }
   endMs_ = end + kSettleMs;
-  update(idle_ ? UINT32_MAX / 2 : 0);
+  update(idle_ || !animating_ ? UINT32_MAX / 2 : 0);  // not thrown now (idle, or back from a sleep): landed
   renderWires();
   if (stage_) lv_obj_invalidate(stage_);
 }
@@ -435,8 +458,12 @@ void DiceApp::onCreate(lv_obj_t *root) {
   modes_ = segmented(root, kModes, 3, &font_caption, 0, onModeClick, this);
   lv_obj_align(modes_, LV_ALIGN_BOTTOM_RIGHT, -kEdge, -kBarBottom);
 
-  roll_ = dice::idle(die_, count_, mode_);
-  idle_ = true;
+  // Back from a sleep: the roll that was on screen, if it still matches the
+  // settings (they're in NVS, the roll only in RTC memory).
+  const bool same = resumed_ && roll_.die == die_ && roll_.count == count_ && roll_.mode == mode_;
+  if (!same) roll_ = dice::idle(die_, count_, mode_);
+  idle_ = !same;
+  resumed_ = false;
   animating_ = false;
   layout();
   syncControls();

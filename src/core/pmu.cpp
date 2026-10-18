@@ -56,13 +56,20 @@ static void logRails() {
     uint16_t mv;
   };
   const Rail rails[] = {
-      {"DC1", axp.isEnableDC1(), axp.getDC1Voltage()},       {"DC2", axp.isEnableDC2(), axp.getDC2Voltage()},
-      {"DC3", axp.isEnableDC3(), axp.getDC3Voltage()},       {"DC4", axp.isEnableDC4(), axp.getDC4Voltage()},
-      {"DC5", axp.isEnableDC5(), axp.getDC5Voltage()},       {"ALDO1", axp.isEnableALDO1(), axp.getALDO1Voltage()},
-      {"ALDO2", axp.isEnableALDO2(), axp.getALDO2Voltage()}, {"ALDO3", axp.isEnableALDO3(), axp.getALDO3Voltage()},
-      {"ALDO4", axp.isEnableALDO4(), axp.getALDO4Voltage()}, {"BLDO1", axp.isEnableBLDO1(), axp.getBLDO1Voltage()},
-      {"BLDO2", axp.isEnableBLDO2(), axp.getBLDO2Voltage()}, {"CPUSLDO", axp.isEnableCPUSLDO(), axp.getCPUSLDOVoltage()},
-      {"DLDO1", axp.isEnableDLDO1(), axp.getDLDO1Voltage()}, {"DLDO2", axp.isEnableDLDO2(), axp.getDLDO2Voltage()},
+      {"DC1", axp.isEnableDC1(), axp.getDC1Voltage()},
+      {"DC2", axp.isEnableDC2(), axp.getDC2Voltage()},
+      {"DC3", axp.isEnableDC3(), axp.getDC3Voltage()},
+      {"DC4", axp.isEnableDC4(), axp.getDC4Voltage()},
+      {"DC5", axp.isEnableDC5(), axp.getDC5Voltage()},
+      {"ALDO1", axp.isEnableALDO1(), axp.getALDO1Voltage()},
+      {"ALDO2", axp.isEnableALDO2(), axp.getALDO2Voltage()},
+      {"ALDO3", axp.isEnableALDO3(), axp.getALDO3Voltage()},
+      {"ALDO4", axp.isEnableALDO4(), axp.getALDO4Voltage()},
+      {"BLDO1", axp.isEnableBLDO1(), axp.getBLDO1Voltage()},
+      {"BLDO2", axp.isEnableBLDO2(), axp.getBLDO2Voltage()},
+      {"CPUSLDO", axp.isEnableCPUSLDO(), axp.getCPUSLDOVoltage()},
+      {"DLDO1", axp.isEnableDLDO1(), axp.getDLDO1Voltage()},
+      {"DLDO2", axp.isEnableDLDO2(), axp.getDLDO2Voltage()},
   };
   char line[200];
   size_t n = 0;
@@ -118,6 +125,15 @@ KeyEvents poll() {
 
 void refreshLevel() {
   if (ok) readLevel();
+}
+
+void prepareSleep() {
+  if (!ok) return;
+  axp.disableBattVoltageMeasure();
+  axp.disableVbusVoltageMeasure();
+  axp.disableSystemVoltageMeasure();
+  axp.disableTemperatureMeasure();
+  axp.clearIrqStatus();
 }
 
 bool onCharger() { return vbus; }

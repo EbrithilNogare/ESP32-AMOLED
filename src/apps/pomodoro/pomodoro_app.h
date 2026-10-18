@@ -8,7 +8,8 @@ namespace apps {
 
 // Pomodoro (docs/apps/pomodoro.md): the timer logic is lib/PomodoroCore; this
 // class draws the full view and the minimal view, beeps at phase ends and
-// keeps running while other apps are open.
+// keeps running while other apps are open, and through a sleep: a phase end
+// wakes the device.
 class PomodoroApp : public App {
  public:
   PomodoroApp();
@@ -25,7 +26,9 @@ class PomodoroApp : public App {
   void exitMinimal() override;
   void minimalTick(uint32_t nowMs) override;
   uint32_t minimalRefreshMs(uint32_t nowMs) const override;
-  void onSleep() override;
+  sleepplan::Need sleepNeed(uint64_t monoNow) const override;
+  void onSleep(sleepplan::Kind kind) override;
+  void onWake(Wake wake) override;
 
  private:
   void render(uint32_t nowMs);
@@ -38,7 +41,6 @@ class PomodoroApp : public App {
   static constexpr int kMinDots = 40;  // minimal view: dotted ring of the remaining time
 
   pomo::Pomodoro timer_;
-  bool loaded_ = false;
   uint32_t confirmResetUntil_ = 0;
 
   lv_obj_t *root_ = nullptr;

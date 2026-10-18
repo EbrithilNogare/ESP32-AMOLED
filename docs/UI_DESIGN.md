@@ -13,8 +13,8 @@ the launcher and the first apps (Dice and Level are in
 [`dice-wireframe.html`](design/dice-wireframe.html) and
 [`level.html`](design/level.html)), at the panel's real 368 × 448 size, using these tokens,
 fonts and icons. Open it in a browser (it loads fonts from Google Fonts). It
-simulates the side buttons, the long-press power-off animation and the
-battery/charger idle timelines.
+simulates the side buttons (Power: press = screen off, hold = power off;
+Back / Home), both power animations and the battery/charger idle timelines.
 
 ![UI mockup](design/ui-mockup.png)
 
@@ -116,7 +116,8 @@ The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
   | `normal` | 220 ms | ease-in-out | screen transitions (zoom + fade), tile state |
   | `slow` | 400 ms | ease-in-out | expressions, large moves |
   | `fade_brightness` | 300 ms | linear | dim/brighten |
-  | `power_anim` | 1000 ms | custom | power-off (CRT collapse) / power-on |
+  | `power_anim` off / on | 1000 / 600 ms | ease-in-out | screen off (CRT collapse: covers meet in the middle, line → dot, line and glow fade together) / screen on (the reverse) |
+  | `power_anim` shutdown | 2200 ms | ease-in-out | power off: picture fades to black, a red 132 px ring winds round the power symbol, unwinds and takes it along, down to a red dot that fades. Different from screen-off on purpose: it's the one that stops everything. Both end on an all-black screen. |
 
   Nothing loops faster than needed. Idle screens either stay static or animate
   at ≤ 10 fps (power).
@@ -148,9 +149,12 @@ Drawn by LVGL, no bitmap needed:
 2. Static elements stay small and dim (`text_dim`) where possible.
 3. The display driver shifts the whole picture by up to ±4 px every few
    minutes, so nothing may touch the screen edge (safe margin).
-4. Long-lived views (pomodoro minimal) use thin lines and low brightness, and
-   move their content themselves on each refresh.
-5. On the charger the screen goes plain black after 5 min idle.
+4. Long-lived views (pomodoro and timer minimal) use thin lines and low
+   brightness, and move their content themselves on each refresh; the bot
+   face wanders around the screen while it's on.
+5. The screen goes off after 40 s idle on battery and 10 min on the charger
+   (dim at 30 s / 2 min); apps that need longer ask for it (`idleDimMs()`:
+   bot face, level, espresso 1 min).
 
 ## 7. Assets: where they live and how they're built
 

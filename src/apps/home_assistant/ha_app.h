@@ -15,7 +15,7 @@ class HomeAssistantApp : public App {
   void onCreate(lv_obj_t *root) override;
   void onDestroy() override;
   void onTick(uint32_t nowMs) override;
-  void onSleep() override;
+  void onSleep(sleepplan::Kind kind) override;
 
   // From Ev::HaResult; `toggle` = the answer to a tap rather than a poll,
   // `gen` = the list generation the request was made for.
@@ -44,7 +44,7 @@ class HomeAssistantApp : public App {
   lv_obj_t *root_ = nullptr, *grid_ = nullptr, *banner_ = nullptr, *empty_ = nullptr;
   bool open_ = false;
   bool clientStarted_ = false;
-  bool listLoaded_ = false;  // answered by Home Assistant since the app opened
+  bool listLoaded_ = false;              // answered by Home Assistant since the app opened
   ha::Result problem_ = ha::Result::Ok;  // what the banner explains
   uint32_t nextPollMs_ = 0, nextListMs_ = 0, retryMs_ = 0;
 };

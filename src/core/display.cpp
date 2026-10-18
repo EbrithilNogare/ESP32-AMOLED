@@ -54,6 +54,7 @@ static uint8_t level;
 static volatile bool flushing;
 static uint8_t *turned;  // a band turned for landscape (allocated on first use)
 static size_t bufBytes;
+static bool awake;
 
 static esp_err_t txParam(uint8_t cmd, const void *data, size_t len) {
   return esp_lcd_panel_io_tx_param(io, (int)((OPCODE_WRITE_CMD << 24) | (uint32_t(cmd) << 8)), data, len);
@@ -117,7 +118,7 @@ static void rounderCb(lv_event_t *e) {
   a->y2 |= 1;
 }
 
-bool begin(uint16_t columnOffset) {
+bool begin(uint16_t columnOffset, bool panelOn) {
   xGap = columnOffset;
   const size_t bufPixels = size_t(LCD_WIDTH) * LCD_DRAW_BUF_LINES;
   bufBytes = bufPixels * 2;
@@ -154,10 +155,7 @@ bool begin(uint16_t columnOffset) {
     return false;
   }
 
-  for (const InitCmd &c : kInit) {
-    txParam(c.cmd, c.len ? c.data : nullptr, c.len);
-    if (c.delayMs) delay(c.delayMs);
-  }
+  if (panelOn) wakePanel();
 
   lv_init();
   lv_tick_set_cb([]() -> uint32_t { return millis(); });
@@ -208,11 +206,25 @@ void setPanelOn(bool on) { txParam(on ? 0x29 : 0x28, nullptr, 0); }
 
 void enterSleep() {
   lv_anim_delete(&level, nullptr);
+  if (!awake) return;
   setBrightness(0);
   setPanelOn(false);
   txParam(0x10, nullptr, 0);  // sleep in
   delay(120);
+  awake = false;
 }
+
+void wakePanel() {
+  for (const InitCmd &c : kInit) {
+    txParam(c.cmd, c.len ? c.data : nullptr, c.len);
+    if (c.delayMs) delay(c.delayMs);
+  }
+  level = 0;
+  awake = true;
+  if (disp) lv_obj_invalidate(lv_screen_active());  // the panel RAM was cleared by the reset
+}
+
+bool panelAwake() { return awake; }
 
 void setRefreshPeriod(uint32_t ms) {
   lv_timer_t *t = lv_display_get_refr_timer(disp);

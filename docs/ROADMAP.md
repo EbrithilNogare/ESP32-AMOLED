@@ -1,8 +1,9 @@
 # Roadmap
 
 Design: [ARCHITECTURE.md](ARCHITECTURE.md) · app specs: [apps/](apps/README.md).
-Work happens on branch `feature/launcher-home-assistant`, which merges into
-`main` via a PR.
+Large features happen on a `feature/<name>` branch that merges into `main`
+via a PR (the launcher and apps: `feature/launcher-home-assistant`, merged;
+phone-style power: `feature/phone-power`).
 
 Every milestone is small enough to flash and check on the board. Agents can't
 flash, so each one ends with the owner running its **On device** checklist.
@@ -13,8 +14,9 @@ then Wi-Fi + Home Assistant.
 
 Status: ☐ not started · ◐ code written, on-device check pending · ☑ done
 
-**Where we are (2026-10-10):** M1–M14, M16 (Dice), M17 (Level), M18 (quick
-settings), M19 (Timer) and M20 (Noise) are implemented on this branch. Both firmware envs build with 0 warnings, the
+**Where we are (2026-10-18):** M1–M14, M16 (Dice), M17 (Level), M18 (quick
+settings), M19 (Timer), M20 (Noise) and M21 (phone-style power, which
+replaces the button roles and timings of M4–M7) are implemented. Both firmware envs build with 0 warnings, the
 `lib/` logic passes the host unit tests, and the PC simulator taps through
 every app (`docs/design/firmware-screens.png`). **Nothing has been flashed
 yet**: the next step is the owner working through the **On device**
@@ -79,7 +81,7 @@ Remove the temporary back button.
 
 **On device:** Back steps back one level, Home always reaches the menu, from
 every app; no repeats when held; long press is logged; PWR held 6 s still
-powers off.
+powers off. *(The roles changed in M21: BOOT = Power, PWR = Back / Home.)*
 
 ### M5 — Power profiles + idle timeline ◐
 
@@ -88,6 +90,8 @@ on VBUS IRQs; per-profile brightness caps and dim/black timings; wake locks
 and `PowerPolicy` (policies beat profiles); the waking touch is swallowed.
 Status bar: battery % or ⚡. The state machine lives in `lib/PowerFsm`, which
 brings in `[env:native]` + the first Unity tests and a CI test job.
+
+*(Timings and the Off stage changed in M21.)*
 
 **On device:** on battery 10 s full → 5 s dim → 5 s black (no sleep yet);
 plugging in the charger switches the profile live (max 80 %, dim after 60 s);
@@ -102,6 +106,9 @@ power-on animation. Long press on either button → power-off animation
 2. **Experiment:** does PWR reach any RTC GPIO (Option A, ARCHITECTURE §8.4)?
    If yes, PWR wakes too; if not, BOOT alone is fine (decided).
 
+*(The wake path changed in M21: a button wake reopens the last app, the
+idle timeline ends in the screen going off, and the apps decide the sleep.)*
+
 **On device:** sleeps after 20 s idle on battery, never on the charger by
 idle; long press sleeps in any profile and the held button doesn't
 immediately wake it; BOOT wakes into the menu; holding BOOT through the wake doesn't enter download
@@ -114,8 +121,50 @@ Power → Deep-sleep current; goal ≥ a month asleep, System → Standby agrees
 Pixel shift in the display driver (Lissajous, ±4 px every 3 min), 4 px safe
 margins in the theme, charger plain-black stage (display off after 5 min idle).
 
+*(The charger's plain-black stage became the screen going off after
+10 min in M21.)*
+
 **On device:** the shift is visible but not distracting; on the charger the
 screen goes black after 5 min and a touch restores the app.
+
+### M21 — Phone-style power ◐
+
+BOOT = Power (press: CRT animation, screen off; hold 1.5 s: shutdown
+animation, power off), PWR = Back (press) / Home (hold). Stages Active →
+Dimmed → Off (battery 30 / 40 s, charger 2 / 10 min) or → Minimal.
+`App::sleepNeed()` merged and decided by `lib/SleepPlan`: doze (80 MHz,
+light sleep), deep sleep with a deadline timer, or deep sleep until the
+button. Timer wakes boot dark; `manager::attention()` lights the screen.
+RTC-memory parking (`store::park()`), `core::mono()` across deep sleep, the
+last app reopened on a button wake, power-off restarts in the menu. IMU
+powered down outside Level, touch asleep with the screen, SD untouched, AXP
+ADCs off asleep. Bot face 1 min and lively; System → Touch → Reset to
+factory; quick settings show the Wi-Fi state. ([DECISIONS](DECISIONS.md)
+2026-10-18, ARCHITECTURE §2.2, §8.)
+
+**On device:**
+- [ ] Which side button is BOOT? The power button must be BOOT (only it
+      wakes the chip); if BOOT is the lower one, tell the agent.
+- [ ] Power press: the CRT animation ends on a fully black screen (no strip,
+      no glow); the screen is off and touch does nothing; Power brings back
+      the same app in < 0.5 s, from deep sleep too (Dice shows its last roll,
+      the menu its scroll position).
+- [ ] Power held 1.5 s: the ring animation; afterwards only Power starts it,
+      into the menu; a stopwatch that ran is paused with its time.
+- [ ] Holding BOOT through a wake doesn't enter download mode and doesn't
+      power off.
+- [ ] PWR press = Back, PWR held 1 s = Home; neither wakes the screen off.
+- [ ] Idle on battery: dim at 30 s, off at 40 s; on the charger 2 min /
+      10 min, and Power wakes it at once (doze).
+- [ ] A 2-minute countdown, screen off by Power: the device deep-sleeps,
+      wakes at the end with the alarm and the Timer in front; Power silences
+      it. A pomodoro phase end does the same with its beep.
+- [ ] Noise playing, screen off: the rain goes on (doze); stopping it from
+      the app lets the next screen-off deep-sleep.
+- [ ] Level: the IMU is powered only while it's on screen (the debug log's
+      `imu: raw` lines stop with the screen off).
+- [ ] Currents (HARDWARE.md, Power): deep sleep, power-off, dozing with
+      noise, the minimal clock; System → Standby after a day or two.
 
 ## Offline apps
 
@@ -176,7 +225,8 @@ moving every minute), countdown alarm.
 ### M20 — Noise ◐ — [spec](apps/noise.md)
 
 `lib/NoiseGen` (rain, white, blue; host-tested), noise streaming with fades
-in `core::sound`, policy `NoSleep`, rain / snow / shimmer animations; volume
+in `core::sound`, playing keeps the chip dozing with the screen off (M21; first
+a policy `NoSleep`), rain / snow / shimmer animations; volume
 and mute in quick settings.
 
 **On device:** spec acceptance list; listen to the rain first.

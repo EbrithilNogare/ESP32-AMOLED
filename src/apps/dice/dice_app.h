@@ -12,18 +12,22 @@ namespace apps {
 // lib/WireRaster, once per frame (LVGL's own line drawing was ~2 fps for
 // 2 × 10 d20); the stage's draw event copies that buffer and draws the landed
 // faces, numbers and totals on top with LVGL. Only the stage area is redrawn
-// while they spin.
+// while they spin. The last roll is parked through a sleep, so the device
+// wakes up showing it.
 class DiceApp : public App {
  public:
   const AppInfo &info() const override;
   void onCreate(lv_obj_t *root) override;
   void onDestroy() override;
   void onTick(uint32_t nowMs) override;
+  void onSleep(sleepplan::Kind kind) override;
+  void onWake(Wake wake) override;
 
   uint8_t die() const { return die_; }
   uint8_t count() const { return count_; }
   dice::Mode mode() const { return mode_; }
   bool rolling() const { return animating_; }
+  bool showingRoll() const { return !idle_; }  // a thrown roll, not the idle dice
 
  private:
   struct Piece {
@@ -68,6 +72,7 @@ class DiceApp : public App {
   bool loaded_ = false;
   dice::Roll roll_;
   bool idle_ = true;
+  bool resumed_ = false;  // roll_ came back from a sleep: show it, not the idle dice
   bool animating_ = false;
   uint32_t t0_ = 0, endMs_ = 0, nextFrameMs_ = 0;
   unsigned frames_ = 0;  // drawn this roll, for the fps in the debug log

@@ -1,6 +1,7 @@
 #pragma once
 #include <lvgl.h>
 #include <power_fsm.h>
+#include <sleep_plan.h>
 #include <stdint.h>
 
 // The contract every app implements (ARCHITECTURE §6.1). An app object lives
@@ -14,6 +15,13 @@ struct AppInfo {
   uint32_t accent;   // 0xRRGGBB
 };
 
+// How the device came up, for onWake() (ARCHITECTURE §8.4).
+enum class Wake : uint8_t {
+  Cold,          // power-on, reset, flashing: RTC memory is empty
+  FromSleep,     // a deep sleep ended (power button or a deadline): carry on
+  FromPowerOff,  // a power-off ended: what onSleep(PowerOff) parked, paused
+};
+
 class App {
  public:
   virtual const AppInfo &info() const = 0;
@@ -23,8 +31,8 @@ class App {
   virtual void onCreate(lv_obj_t *root) = 0;
   // The widgets are about to be deleted: drop pointers to them.
   virtual void onDestroy() {}
-  virtual void onTick(uint32_t nowMs) { (void)nowMs; }   // every loop while visible
-  virtual void service(uint32_t nowMs) { (void)nowMs; }  // every loop, visible or not
+  virtual void onTick(uint32_t nowMs) { (void)nowMs; }   // every loop while visible and the screen is on
+  virtual void service(uint32_t nowMs) { (void)nowMs; }  // every loop, visible or not, screen on or off
   // Back button: true if handled inside the app; false returns to the menu.
   virtual bool onBack() { return false; }
   // Home/Back are ignored while this returns true (e.g. OTA transfer running).
@@ -51,7 +59,27 @@ class App {
   }
   virtual uint8_t minimalBrightness() const { return 0; }  // panel level; 0 = BRIGHTNESS_MINIMAL
 
-  virtual void onSleep() {}  // deep sleep is coming: persist what matters
+  // ---- the screen off (ARCHITECTURE §8): every app's answer is merged ----
+  // What this app needs while the screen is off, open or not: `awake` keeps
+  // the chip running (sound), `wakeAtMs` (core::mono() time) wakes it from
+  // deep sleep for a deadline. service() then runs as usual, and an app that
+  // needs the user calls manager::attention().
+  virtual sleepplan::Need sleepNeed(uint64_t monoNow) const {
+    (void)monoNow;
+    return {false, 0};
+  }
+  // Deep sleep (Sleep) or power-off is coming: park what must outlive it
+  // with core::store::park() (RTC memory, no flash wear). PowerOff stops
+  // everything: timers pause, sound stops.
+  virtual void onSleep(sleepplan::Kind kind) { (void)kind; }
+  // Once per boot, before any onCreate(): load settings (NVS) and, unless
+  // Cold, unpark what onSleep() left.
+  virtual void onWake(Wake wake) { (void)wake; }
+  // The screen went off (on) while the chip keeps running (dozing): stop
+  // (restart) what only matters on screen, e.g. a sensor. Open app only.
+  virtual void onScreen(bool on) { (void)on; }
+  // Reopened when the power button wakes the device from a sleep with it open.
+  virtual bool resumable() const { return true; }
   virtual ~App() = default;
 };
 

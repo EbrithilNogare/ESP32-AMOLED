@@ -6,8 +6,9 @@
 namespace apps {
 
 // The approved mockup face (docs/apps/bot-face.md). All behaviour lives in
-// lib/BotFace; this class only maps its geometry onto LVGL objects. LVGL
-// redraws just the moved shapes, so a frame touches the face area only.
+// lib/BotFace (lively: it wanders, winks, glances, hums, yawns); this class
+// only maps its geometry onto LVGL objects. LVGL redraws just the moved
+// shapes, so a frame touches the face area only. It stays bright a minute.
 class BotFaceApp : public App {
  public:
   explicit BotFaceApp(bool (*isDimmed)());
@@ -15,6 +16,7 @@ class BotFaceApp : public App {
   void onCreate(lv_obj_t *root) override;
   void onDestroy() override;
   void onTick(uint32_t nowMs) override;
+  uint32_t idleDimMs() const override;
 
  private:
   static void onPressed(lv_event_t *e);

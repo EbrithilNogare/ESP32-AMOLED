@@ -97,6 +97,10 @@ character. Logic: `lib/MultiTap` (host-tested).
   lease is older than `WIFI_LEASE_REUSE_S`; a DHCP reservation for the
   device on the router avoids it.
 
+A sleep doesn't come back to this screen: it isn't resumable (a half-typed
+password shouldn't outlive the screen going off), so the power button opens
+the menu instead.
+
 ## Security
 
 The password is stored in plain text in NVS (flash encryption is off), like

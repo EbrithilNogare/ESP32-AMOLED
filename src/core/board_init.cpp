@@ -45,15 +45,7 @@ bool begin() {
 
   // The panel and touch controller only reset through the expander: an ESP
   // restart (or deep-sleep wake) leaves them in whatever state they were.
-  expanderOutput(EXIO_SD_D3, true);
-  expanderOutput(EXIO_LCD_TOUCH_RST0, false);
-  expanderOutput(EXIO_LCD_TOUCH_RST1, false);
-  expanderOutput(EXIO_LCD_TOUCH_RST2, false);
-  delay(kResetPulseMs);
-  expanderOutput(EXIO_LCD_TOUCH_RST0, true);
-  expanderOutput(EXIO_LCD_TOUCH_RST1, true);
-  expanderOutput(EXIO_LCD_TOUCH_RST2, true);
-  delay(kTouchBootMs);
+  resetPanelAndTouch();
 
   // Same detection as the vendor BSP: CST820 (V2) or FT3168 (V1).
   if (i2c::probe(I2C_ADDR_TOUCH_CST820)) {
@@ -67,6 +59,17 @@ bool begin() {
   }
   ESP_LOGI(TAG, "board %s, touch 0x%02X", revisionName(), touchAddr);
   return true;
+}
+
+void resetPanelAndTouch() {
+  expanderOutput(EXIO_LCD_TOUCH_RST0, false);
+  expanderOutput(EXIO_LCD_TOUCH_RST1, false);
+  expanderOutput(EXIO_LCD_TOUCH_RST2, false);
+  delay(kResetPulseMs);
+  expanderOutput(EXIO_LCD_TOUCH_RST0, true);
+  expanderOutput(EXIO_LCD_TOUCH_RST1, true);
+  expanderOutput(EXIO_LCD_TOUCH_RST2, true);
+  delay(kTouchBootMs);
 }
 
 const char *revisionName() { return rev == Revision::V2 ? "V2" : "V1"; }

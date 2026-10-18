@@ -25,4 +25,10 @@ inline uint64_t extend(uint32_t ms) {
   return (ms <= newest || epoch == 0 ? epoch : epoch - (1ULL << 32)) | ms;
 }
 
+// extend(), carried on through deep sleep: after a wake it continues from
+// where it was plus the time asleep (core::clock). Anything that has to
+// outlive a sleep keeps its timestamps on this clock (TimerCore,
+// PomodoroCore), so a running countdown can be parked in RTC memory as is.
+uint64_t mono(uint32_t ms);
+
 }  // namespace core

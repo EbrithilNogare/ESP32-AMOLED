@@ -60,8 +60,10 @@ a second tap marks the main extraction; both times are shown.
 
 - Running → `KeepAwake`: the screen stays at full brightness, no dimming.
 - Ready / Done → `Normal`, with a longer dim delay for this app
-  (`ESPRESSO_IDLE_DIM_MS`, 30 s) so the result can be read while handling the
+  (`ESPRESSO_IDLE_DIM_MS`, 60 s) so the result can be read while handling the
   cup.
+- Power pressed during a shot ends it there (recorded); the result is still
+  on screen after the wake (the timer is parked in RTC memory).
 - Wi-Fi not used.
 
 ## Persistence
@@ -75,7 +77,7 @@ saved shot.
 // ---- espresso ----
 #define ESPRESSO_TARGET_MIN_S   25
 #define ESPRESSO_TARGET_MAX_S   30
-#define ESPRESSO_IDLE_DIM_MS    30000   // overrides the battery dim delay in this app
+#define ESPRESSO_IDLE_DIM_MS    60000   // overrides the battery dim delay in this app
 ```
 
 The history size is `shot::kHistory` (20) in

@@ -1,0 +1,7 @@
+{
+  "name": "SleepPlan",
+  "version": "0.1.0",
+  "description": "How deep to sleep with the screen off: doze, deep sleep with a timer, or deep sleep until the power button",
+  "platforms": "*",
+  "frameworks": "*"
+}

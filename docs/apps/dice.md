@@ -75,7 +75,10 @@ The last die, count and mode are kept in NVS (`dice`).
 ## Power
 
 Policy `Normal`; spins are short. Only the stage redraws while dice spin,
-at `DICE_FPS`; nothing redraws at rest.
+at `DICE_FPS`; nothing redraws at rest. Nothing needed with the screen off:
+a sleep parks the last roll in RTC memory, and the power button brings the
+Dice back showing it (if the die, count and mode, saved in NVS, still match;
+a roll caught mid-spin comes back as the idle dice).
 
 ## Implementation
 

@@ -8,7 +8,9 @@ namespace apps {
 // Timer (docs/apps/timer.md): three tabs. Clock: hours over minutes, big,
 // for presenting; the screen never goes off, it drops to a dim minimal view
 // that moves every minute. Stopwatch, and a countdown set up to 99:59. The
-// logic is lib/TimerCore; both timers keep running while other apps are open.
+// logic is lib/TimerCore; both timers keep running while other apps are open
+// and through a sleep (their clock is core::mono()): a running countdown
+// wakes the device when it ends.
 class TimerApp : public App {
  public:
   enum class Tab : uint8_t { Clock, Stopwatch, Countdown };
@@ -27,7 +29,10 @@ class TimerApp : public App {
   void minimalTick(uint32_t nowMs) override;
   uint32_t minimalRefreshMs(uint32_t nowMs) const override;
   uint8_t minimalBrightness() const override;
-  void onSleep() override;
+  sleepplan::Need sleepNeed(uint64_t monoNow) const override;
+  void onSleep(sleepplan::Kind kind) override;
+  void onWake(Wake wake) override;
+  void onScreen(bool on) override;
 
   Tab tab() const { return tab_; }
   const timer::Stopwatch &stopwatch() const { return sw_; }
@@ -36,8 +41,13 @@ class TimerApp : public App {
 
  private:
   enum class Show : uint8_t { None, Clock, Stopwatch, Countdown };  // what a minimal view shows
-  struct Saved {
+  struct Saved {                                                    // NVS: the settings
     uint16_t countdownS;
+    uint8_t tab;
+  };
+  struct Parked {  // RTC memory: the running state, through a sleep
+    timer::Stopwatch sw;
+    timer::Countdown cd;
     uint8_t tab;
   };
 
@@ -63,7 +73,6 @@ class TimerApp : public App {
   timer::Stopwatch sw_;
   timer::Countdown cd_;
   Tab tab_ = Tab::Clock;
-  bool loaded_ = false;
   bool alarm_ = false;  // a finished countdown is beeping
   uint32_t alarmUntil_ = 0, nextAlarmMs_ = 0;
   int32_t pressY_ = 0, dragSteps_ = 0;

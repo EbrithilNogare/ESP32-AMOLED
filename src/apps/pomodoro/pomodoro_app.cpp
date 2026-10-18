@@ -3,9 +3,11 @@
 #include <Arduino.h>
 #include <math.h>
 
+#include <type_traits>
+
+#include "apps/app_manager.h"
 #include "board.h"
 #include "config.h"
-#include "core/power.h"
 #include "core/sound.h"
 #include "core/store.h"
 #include "core/ticks.h"
@@ -19,10 +21,12 @@ static const AppInfo kInfo = {"pomodoro", "Pomodoro", ICON_TIMER, 0xFF5A4E};  //
 static constexpr int32_t kMinRadius = 62;
 static constexpr uint32_t kConfirmResetMs = 2000;
 static_assert(POMO_SET_SIZE >= 1 && POMO_SET_SIZE <= 8, "the set dots fit up to 8 sessions");
+static_assert(std::is_trivially_copyable<pomo::Pomodoro>::value, "parked in RTC memory as is");
 
-// PomodoroCore keeps absolute timestamps, so it gets a clock that doesn't wrap.
-static uint64_t now64(uint32_t ms) { return core::extend(ms); }
-static uint64_t now64() { return core::extend(millis()); }
+// PomodoroCore keeps absolute timestamps, on the clock that doesn't wrap and
+// counts on through deep sleep.
+static uint64_t now64(uint32_t ms) { return core::mono(ms); }
+static uint64_t now64() { return core::mono(millis()); }
 
 static uint32_t phaseColor(Phase p) {
   switch (p) {
@@ -51,27 +55,38 @@ power::Policy PomodoroApp::powerPolicy() const {
 }
 power::Policy PomodoroApp::backgroundPolicy() const { return powerPolicy(); }
 
+// Sleep: the raw timer goes to RTC memory, its end time still good on the
+// clock that counted through the sleep. Cold boot or power-off: the paused
+// state from NVS (written only at a power-off: flash wear).
+void PomodoroApp::onWake(Wake wake) {
+  if (wake != Wake::Cold && core::store::unpark("pomo", &timer_, sizeof timer_)) return;
+  pomo::Saved s;
+  if (core::store::load("pomo", &s, sizeof s)) timer_.restore(s, now64());
+}
+
 void PomodoroApp::service(uint32_t nowMs) {
-  if (!loaded_) {  // NVS is ready by the first loop, not at static construction
-    pomo::Saved s;
-    if (core::store::load("pomo", &s, sizeof s)) timer_.restore(s, now64(nowMs));
-    loaded_ = true;
-  }
   if (timer_.update(now64(nowMs))) {
-    // Phase end: beep and show the full view for a while (it wakes the
-    // screen like a touch would, which also ends the minimal view).
+    // Phase end: beep and bring the full view to the front with the screen on
+    // (ends a minimal view; after a deep sleep this is what woke it).
     if (POMO_SOUND) core::sound::play(core::sound::Pattern::PhaseEnd);
-    core::power::activity();
+    apps::manager::attention(this);
     flash();
     lastRenderSec_ = UINT32_MAX;
   }
 }
 
-void PomodoroApp::onSleep() {
+sleepplan::Need PomodoroApp::sleepNeed(uint64_t monoNow) const {
+  return {false, timer_.running() ? monoNow + timer_.remainingMs(monoNow) : 0};
+}
+
+void PomodoroApp::onSleep(sleepplan::Kind kind) {
   const uint64_t now = now64();
-  if (timer_.running()) timer_.pause(now);  // a long-press sleep pauses the timer
-  pomo::Saved s = timer_.save(now);
-  core::store::save("pomo", &s, sizeof s);
+  if (kind == sleepplan::Kind::PowerOff) {
+    timer_.pause(now);  // power-off pauses the timer
+    pomo::Saved s = timer_.save(now);
+    core::store::save("pomo", &s, sizeof s);
+  }
+  core::store::park("pomo", &timer_, sizeof timer_);
 }
 
 // ---------------------------------------------------------------- full view

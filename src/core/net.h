@@ -31,6 +31,7 @@ void shutdown();  // radio off now (before deep sleep)
 // stays off even if apps hold it; it comes back when the suspension ends.
 void suspend(bool on);
 bool connected();
+bool radioOn();  // on (connecting or connected); off while nobody needs it, or suspended
 int rssi();
 const char *ip();    // "" when not connected
 const char *ssid();  // the network it is on or trying ("" if none is set up)

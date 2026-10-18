@@ -14,6 +14,8 @@ class MenuApp : public App {
   void onCreate(lv_obj_t *root) override;
   void onTick(uint32_t nowMs) override;
   bool onBack() override;  // Home/Back in the menu: close the shade, else scroll to top
+  void onSleep(sleepplan::Kind kind) override;
+  void onWake(Wake wake) override;
 
   QuickSettings &quickSettings() { return quick_; }
 
@@ -30,6 +32,7 @@ class MenuApp : public App {
   lv_obj_t *batText_ = nullptr;
   lv_obj_t *list_ = nullptr;
   uint32_t nextStatusMs_ = 0;
+  int32_t scrollY_ = 0;  // restored after a sleep
 };
 
 }  // namespace apps

@@ -9,8 +9,9 @@
 ## 1. Goals
 
 1. An **app menu** for 10+ apps: round icons in pairs, scrolling vertically.
-   Tap an icon to open the app. Two side buttons, like a modern smartwatch:
-   one goes **back** one step, the other goes **home** to the menu.
+   Tap an icon to open the app. Two side buttons, like a phone: one is
+   **Power** (screen off / power off), the other goes **back** one step
+   (press) or **home** to the menu (hold).
 2. Apps (first set, each specified in `docs/apps/`):
    - [Home Assistant lights](apps/home-assistant.md): 2×2 grid toggling 4 lights on the LAN
    - [Bot face](apps/bot-face.md): animated smiley face
@@ -19,12 +20,16 @@
    - [Dice](apps/dice.md): wireframe dice roller
    - [Level](apps/level.md): spirit level and inclinometer (QMI8658 IMU)
    - [System](apps/system.md): version, battery, Wi-Fi, memory, and **wireless firmware update (OTA)**
-3. **Two power profiles:**
-   - **On battery** (small ~400 mAh cell): aggressive dim → black → deep sleep.
-   - **On charger**: never sleep; protect the AMOLED from burn-in instead
-     (brightness ≤ 80 %, no static picture for long).
-4. **Side buttons wake the device** from deep sleep. A **long press** plays a
-   short power-off animation and puts the device into deep sleep on demand.
+3. **Power like a phone's, at a fraction of the drain:** the screen dims and
+   goes off after a while or when the power button is pressed. With the
+   screen off the apps say what they still need (§8): sound keeps the chip
+   dozing, a deadline (a countdown) sets a deep-sleep timer, anything else is
+   plain deep sleep. Waking brings back the app that was on screen. Holding
+   the power button powers off: deep sleep with everything stopped.
+4. **Two power profiles:** on battery (~400 mAh cell) the screen goes off
+   after 40 s idle and the chip deep-sleeps whenever it can; on the charger
+   the screen stays on longer and the chip only dozes. The AMOLED is
+   protected by pixel shift, drifting minimal views and the screen going off.
 5. Adding an app = one folder + one line of registration, no core changes.
 
 ### Non-goals (for now)
@@ -63,29 +68,31 @@ audio beyond short beeps, settings UI (later app).
   down to ~60 %) instead of scaling them, which would need a layer per row;
   a tap shrinks the disc while pressed, then the app fades in.
 
-### 2.2 Navigation — two side buttons
-
-Like Wear OS and similar watches: one button is **Back**, the other **Home**.
+### 2.2 Navigation — two side buttons, like a phone
 
 | Button | Role | Signal path |
 | --- | --- | --- |
-| **BOOT** (GPIO0) | **Back** — one step back | GPIO, debounced in firmware |
-| **PWR** (AXP2101 PEK) | **Home** — straight to the menu | PMU short/long-press IRQ via EXIO5 |
+| **BOOT** (GPIO0) | **Power**: press = screen off (sleep), hold = power off; wakes the device | GPIO, debounced in firmware; an RTC GPIO, so it wakes light and deep sleep (ext1) |
+| **PWR** (AXP2101 PEK) | **Back** (press) and **Home** (hold) | PMU short/long-press IRQs, polled over I2C |
 
-The mapping is a config swap (`BUTTON_BACK_IS_BOOT`) once we know which one
-is physically on top; see §12.
+The power button has to be BOOT: PWR only reaches the ESP through the
+AXP2101 (whose IRQ goes to the TCA9554, not to a GPIO), so it can't wake the
+chip (§8.4, DECISIONS 2026-10-18).
 
 | Input | Effect |
 | --- | --- |
 | Tap icon in the menu | open the app |
-| **Back, short press** | the app handles it first (`onBack()`: close a dialog, leave a sub-screen, …); if the app has nothing to go back to → menu. In the menu: scroll to top. |
-| **Home, short press** | always → menu (scroll to top if already there) |
-| **Either button, long press (≥ `BUTTON_LONG_PRESS_MS`, 1 s)** | **power-off animation → deep sleep** (§8.3) |
-| PWR held ~6 s | hardware power-off by the AXP2101 (firmware can't block it; the sleep animation finishes long before that) |
-| Any button / touch while dimmed or black | wake the screen only; the touch is swallowed |
-| Any side button while in deep sleep | wake up → **always the menu** (§8.4) |
+| **Back** (PWR press) | the app handles it first (`onBack()`: close a dialog, leave a sub-screen, silence an alarm …); if the app has nothing to go back to → menu. In the menu: close the shade, else scroll to top. |
+| **Home** (PWR held ≥ `BUTTON_LONG_PRESS_MS`, 1 s) | always → menu (scroll to top if already there) |
+| **Power** (BOOT press) with the screen on | the CRT screen-off animation → screen off; the apps decide how deep the chip sleeps (§8) |
+| **Power** with the screen off, or on a minimal view | screen on, same app as before (after a deep sleep too, §8.4) |
+| **Power held** (≥ `BUTTON_POWER_OFF_MS`, 1.5 s) | the longer shutdown animation → **power off**: deep sleep until the power button, timers paused, sound stopped; the next start shows the menu |
+| PWR held ~6 s | hardware power-off by the AXP2101 (firmware can't block it) |
+| Touch, Back or Home while dimmed or on a minimal view | wake the screen only; the input is swallowed |
+| Touch, Back or Home with the screen off | nothing: touch is asleep, only Power wakes |
 
-"Home" can never be overridden by an app, so no app can trap the user.
+"Home" can never be overridden by an app, so no app can trap the user. During
+an OTA transfer (`blocksNavigation()`) Back, Home and Power are ignored.
 
 ### 2.3 Visual rules (AMOLED)
 
@@ -105,40 +112,41 @@ live.
 | | Battery | Charger |
 | --- | --- | --- |
 | Active brightness | the user's setting, 5–70 % (quick settings, default 60 %) | same |
-| Idle → dim | 10 s → half of it, at most 25 % | 60 s → half of it, at most 40 % |
-| Idle → black | 15 s | **5 min → plain black** (display off; touch/button restores, §7) |
-| Idle → deep sleep | 20 s | never |
-| Wi-Fi | only while an app needs it | can stay connected |
+| Idle → dim | 30 s → half of it, at most 25 % | 2 min → half of it, at most 40 % |
+| Idle → screen off | 40 s | 10 min |
+| Screen off | deep sleep unless an app needs the chip (§8) | doze: the chip stays up, light-sleeping |
+| Wi-Fi | only while an app needs it, never with the screen off | same |
 | Pixel shift | yes | yes |
 
 All numbers live in `config.h` (§9).
 
 ### 3.1 Per-app power policy
 
-Each app declares how it interacts with the idle timeline:
+Each app declares how it interacts with the idle timeline while the screen
+is on:
 
 | Policy | Meaning | Used by |
 | --- | --- | --- |
-| `Normal` | follow the profile's dim → black → sleep timeline | menu, Home Assistant, bot face, dice, level (longer dim delay), espresso and System when idle |
+| `Normal` | follow the profile's dim → screen off timeline | menu, Home Assistant, bot face (1 min dim delay), dice, level (1 min), espresso and System when idle, Noise |
 | `KeepAwake` | full UI stays on while the app says it's busy | espresso timer *while running*, System *while the update screen is open* |
-| `LowPowerDisplay` | never deep sleep; after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) | pomodoro *while a timer runs* (also in the background); Timer *on the clock tab* and *while a stopwatch or countdown runs* |
-| `NoSleep` | the `Normal` timeline without deep sleep: dims and goes black, the chip stays up | Noise *while playing* (also in the background) |
+| `LowPowerDisplay` | after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) instead of going off | pomodoro *while a timer runs* (also in the background); Timer *on the clock tab* and *while a stopwatch or countdown runs* |
 
 A policy can change at runtime: the manager asks the open app for
 `powerPolicy()` every loop (and closed apps for `backgroundPolicy()`), so the
 espresso timer is `KeepAwake` only while the stopwatch runs. An app can also
-lengthen its dim delay with `idleDimMs()` (espresso, level).
-
-When several apps ask, `KeepAwake` (open app) beats a minimal view (open or
-background app), which beats `NoSleep` (open or background app), which beats
-`Normal`. A minimal view never deep-sleeps either, and while sound plays it
-skips light sleep, so noise and a running pomodoro or timer coexist.
+lengthen its dim delay with `idleDimMs()` (espresso, level, bot face).
+`KeepAwake` (open app) beats a minimal view (open or background app), which
+beats `Normal`.
 
 **Policies beat profiles.** A non-`Normal` policy behaves the same on the
 charger as on battery. A running pomodoro switches to its minimal view after
 the *battery* dim delay even while charging; the charger profile only keeps
-its 80 % brightness cap. The charger timeline (dim → plain black) applies
-only to `Normal` apps.
+its brightness cap. The charger timeline (2 min dim, 10 min off) applies only
+to `Normal` apps.
+
+What happens **once the screen is off** is a separate question every app
+answers with `sleepNeed()` (§8.2): Noise needs the chip awake while it plays,
+a running countdown or pomodoro needs a wake at its end.
 
 ## 4. Hardware used
 
@@ -146,13 +154,14 @@ only to `Normal` apps.
 | --- | --- | --- |
 | CO5300 AMOLED (QSPI) | UI | brightness cmd `0x51`; display off `0x28` / on `0x29`; sleep-in `0x10` / out `0x11`; partial updates must be **even-aligned** (x1, y1 even; x2, y2 odd); the panel keeps its image in its own RAM, so the ESP can light-sleep while it stays on |
 | CST820 touch (I2C `0x15`, INT GPIO21) | input | LVGL pointer device; INT is an RTC GPIO → light-sleep wake source |
-| TCA9554 (I2C `0x20`) | LCD/touch reset EXIO0–2, PWR key EXIO4, PMU IRQ EXIO5 | reset pulse at every boot, including wake |
-| BOOT button (GPIO0) | side button **Back**, wake, long-press sleep | RTC GPIO → deep-sleep wake via ext1 (active low) |
-| PWR button (AXP2101 PEK) | side button **Home**, wake, long-press sleep; 6 s hold = hardware off | short/long-press IRQs via EXIO5; deep-sleep wake path: §8.4 |
+| TCA9554 (I2C `0x20`) | LCD/touch reset EXIO0–2, PWR key EXIO4, PMU IRQ EXIO5 | reset pulse at every boot, and when the screen comes back on (the touch controller only leaves its sleep through it) |
+| BOOT button (GPIO0) | side button **Power**: screen off / power off, the only wake button | RTC GPIO → light-sleep GPIO wake and deep-sleep ext1 wake (active low) |
+| PWR button (AXP2101 PEK) | side button **Back** (press) / **Home** (hold); 6 s hold = hardware off | short/long-press IRQs via EXIO5, polled; can't wake the chip (§8.4) |
 | AXP2101 PMU | VBUS detect, charging, battery %, power-off/on | XPowersLib: `isVbusIn()`, `isCharging()`, `getBatteryPercent()`, `shutdown()`, VBUS insert/remove + PEK IRQs |
 | ES8311 + speaker amp (PA GPIO46) | short beeps (pomodoro phase end) | amp off except while beeping |
-| QMI8658 IMU | Level app (accelerometer, own `core/imu` driver, standby outside the app); later: shake/tilt for bot face, pump-vibration auto-start for espresso | optional |
-| PCF85063 RTC | wall clock in the status bar | keeps time through deep sleep and AXP power-off |
+| QMI8658 IMU | Level app (accelerometer, own `core/imu` driver): powered down, oscillator off, except while Level is on screen | optional |
+| microSD slot | not used (no card, and none planned): its lines stay untouched | — |
+| PCF85063 RTC | wall clock in the status bar; the time asleep for `core::mono()` (§8.5) | keeps time through deep sleep and AXP power-off |
 | ESP32-S3 Wi-Fi | Home Assistant | station mode, only when needed on battery |
 
 ## 5. Software stack
@@ -259,7 +268,13 @@ class App {
 
   virtual bool landscape() const { return false; }  // turn the screen (Level on its left edge)
   virtual void onRotated() {}                       // lay the widgets out again
-  virtual void onSleep() {}  // deep sleep is coming: persist what matters
+
+  // The screen off (§8): every app's answer is merged by apps::manager.
+  virtual sleepplan::Need sleepNeed(uint64_t monoNow) const { return {false, 0}; }  // awake? wake at?
+  virtual void onSleep(sleepplan::Kind kind) {}  // deep sleep (Sleep) or power-off: park state
+  virtual void onWake(Wake wake) {}              // once per boot, before onCreate: restore
+  virtual void onScreen(bool on) {}              // screen off/on while the chip runs (open app)
+  virtual bool resumable() const { return true; }  // reopened by a button wake
   virtual ~App() = default;
 };
 ```
@@ -267,8 +282,11 @@ class App {
 `apps::manager` holds the registered apps (static instances in `main.cpp`,
 `apps::manager::add()`). Opening an app calls `onCreate()` on a fresh root
 container; closing it calls `onDestroy()` and deletes the widgets, so only the
-menu and the current app have widgets. Apps persist their own state (NVS via
-`core::store`) when they change or in `onSleep()`.
+menu and the current app have widgets. Apps keep settings in NVS
+(`core::store::save()`) when they change, and park their running state in RTC
+memory in `onSleep()` (`core::store::park()`), to restore it in `onWake()`.
+`manager::attention(app)` is how an app with news (a countdown ended) turns
+the screen on and comes to the front.
 
 ### 6.2 File layout
 
@@ -290,12 +308,13 @@ src/
 │   └── system/           info + wireless update
 └── ui/
     ├── theme.{h,cpp}     design tokens and shared widgets
-    ├── power_anim.{h,cpp} power-off / power-on animation
+    ├── power_anim.{h,cpp} screen off / on and power-off animations
     ├── draw.{h,cpp}      immediate-mode drawing helpers (Dice, Level)
     └── generated/        fonts + icon codepoints from tools/assets.py (committed)
 include/   board.h  config.h  secrets.example.h  lv_conf.h
 lib/       Arduino-free logic (host-testable):
-           PowerFsm/  ButtonLogic/  PomodoroCore/  ShotTimer/  BotFace/  HaParse/  PixelShift/  DiceCore/  LevelCore/  MultiTap/
+           PowerFsm/  SleepPlan/  ButtonLogic/  PomodoroCore/  TimerCore/  ShotTimer/  BotFace/  HaParse/
+           PixelShift/  DiceCore/  LevelCore/  MultiTap/  NoiseGen/  SleepLog/  TouchCal/  WireRaster/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
 tools/     assets.py, version.py, size_check.py, sim/ (PC simulator + screenshots)
@@ -325,7 +344,7 @@ and dispatched to services and the current app:
 
 ```cpp
 // src/core/events.h
-enum class Ev : uint8_t { Back, Home, LongPress, WifiChanged, HaResult, TimeSynced };
+enum class Ev : uint8_t { Back, Home, Power, PowerOff, WifiChanged, HaResult, HaLights, TimeSynced };
 struct Event { Ev type; uint32_t a; uint32_t b; };
 bool events::post(const Event &e);  // any task
 ```
@@ -354,6 +373,10 @@ created on open and deleted on close.
 **Time.** The PCF85063 RTC is the clock source (it survives sleep and
 power-off). When Wi-Fi is up, SNTP corrects it. Timezone is a POSIX TZ
 string in `config.h` (`TIMEZONE`, e.g. `"CET-1CEST,M3.5.0,M10.5.0/3"`).
+After a deep sleep the ESP's own clock, which kept running with sub-second
+precision, is kept unless it drifted more than 1.5 s from the RTC. Timers
+use `core::mono()`, a 64-bit millisecond clock that carries on through deep
+sleep (§8.5).
 
 **Settings.** Compile-time defaults in `config.h`. The settings changed on
 the device, brightness, volume + mute and the Wi-Fi networks, live in
@@ -384,108 +407,152 @@ screen is on for hours.
    Implemented in the display driver: on each shift the whole screen is
    invalidated and the flush draws at the new offset, so apps don't have to
    care. Layouts keep a 4 px black safe margin on every edge.
-3. **Plain black after 5 min idle on the charger** (`Normal` apps): the
-   panel's display-off command, so every pixel is off. A touch or button
-   brings back the previous screen.
-4. **Minimal render modes** (pomodoro) use thin, dim elements, a ring rather
-   than filled shapes, and also drift.
+3. **The screen goes off** after 40 s idle on battery and 10 min on the
+   charger (`Normal` apps): panel asleep, every pixel off. The power button
+   brings back the previous screen. (Before 2026-10-18 the timings were
+   much shorter; they were relaxed to feel like a phone, which pixel shift
+   and the drifting minimal views make safe.)
+4. **Minimal render modes** (pomodoro, timer) use thin, dim elements, a ring
+   rather than filled shapes, and also drift. The bot face wanders slowly
+   around the screen while it's on (it stays bright a minute).
 5. No app may show a full-screen bright fill for more than a few seconds.
 
 ## 8. Sleep, wake and persistence
 
-### 8.1 Battery idle timeline (policy `Normal`)
+*Rewritten 2026-10-18* for the phone-style power model (DECISIONS). The
+pieces: `core::power` (stages, light/deep sleep), `lib/PowerFsm` (the idle
+timeline), `lib/SleepPlan` (how deep to sleep), `apps::manager` (asks the
+apps), `core::store` (RTC memory), `core::clock` (`mono()`).
+
+### 8.1 Stages
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Active: boot / wake
-    Active --> Dimmed: idle 10 s
-    Dimmed --> Black: idle 15 s
-    Black --> Sleep: idle 20 s
+    [*] --> Active: boot / button wake
+    [*] --> Off: timer wake (screen stays dark)
+    Active --> Dimmed: idle 30 s (charger 2 min)
+    Dimmed --> Off: idle 40 s (charger 10 min)
+    Active --> Minimal: idle 30 s, an app has a minimal view
     Dimmed --> Active: touch / button
-    Black --> Active: touch / button
-    Sleep --> [*]: deep sleep (or AXP power-off, §8.4)
-    Active --> PowerOffAnim: long press (any state)
-    PowerOffAnim --> Sleep: animation done + buttons released
+    Minimal --> Active: touch / button
+    Active --> Off: power button (CRT animation)
+    Dimmed --> Off: power button
+    Off --> Active: power button, or an app calls attention()
+    Off --> DeepSleep: nothing needs the chip (battery)
+    Off --> Off: doze: sound plays, deadline soon, or charger
+    DeepSleep --> [*]: power button or deadline timer (a reboot)
+    Active --> PowerOff: power button held (shutdown animation)
+    PowerOff --> [*]: power button only (a reboot → menu)
 ```
 
-Brightness changes fade over ~300 ms. "Black" is brightness 0 with the panel
-on, so a touch restores the picture instantly.
+Brightness changes fade over ~300 ms. **Off** means the panel is in its
+sleep mode (display off `0x28`, sleep-in `0x10`), the touch controller is
+asleep, LVGL rendering is paused and Wi-Fi is suspended. Coming back needs a
+reset pulse through the expander (the only way out of the touch
+controller's sleep, and it clears the panel), the panel init sequence and a
+full redraw: about 200 ms, hidden behind the power-on animation.
 
-### 8.2 `LowPowerDisplay` (pomodoro, timer)
+### 8.2 With the screen off: what the apps need
+
+Every app answers `sleepNeed(monoNow)` with a `sleepplan::Need`:
+
+| Field | Meaning | Who |
+| --- | --- | --- |
+| `awake` | keep the chip running | Noise while it plays; Timer while its alarm rings |
+| `wakeAtMs` | run again at this `core::mono()` time | a running countdown (its end), a running pomodoro (its phase end) |
+
+`apps::manager::sleepNeed()` merges them (awake if any is, the earliest
+wake) and `sleepplan::decide()` picks:
+
+| Situation | What the chip does |
+| --- | --- |
+| power-off | deep sleep, only the power button wakes |
+| an app needs it awake, or on the charger | **doze**: the loop keeps running with the CPU at 80 MHz; between passes it light-sleeps (up to `SLEEP_POLL_MS`, 5 s, or until the next deadline; wake on BOOT and the timer). While sound plays it doesn't light-sleep (that would stop the I2S stream). |
+| a deadline within `SLEEP_MIN_DEEP_MS + SLEEP_WAKE_LEAD_MS` (5.6 s) | doze until it (a deep sleep isn't worth its reboot) |
+| a later deadline | **deep sleep** with a timer, `SLEEP_WAKE_LEAD_MS` early (booting takes a while) |
+| nothing | **deep sleep** until the power button |
+
+In doze and after a deadline wake, apps keep getting `service()` every
+loop. The one with news calls `apps::manager::attention(this)`: the screen
+comes on (power-on animation) and the app comes to the front, whatever was
+open (unless that blocks navigation, i.e. OTA).
+
+The open app also gets `onScreen(false/true)` when the screen goes off and
+on while the chip keeps running: Level powers the IMU down and up again with
+it; Timer silences its alarm (the power button does, like a phone's).
+
+### 8.3 Minimal view (`LowPowerDisplay`: pomodoro, timer)
 
 Active → (dim timeout) → **Minimal**: the app redraws a sparse, dim view;
-Wi-Fi is suspended (`net::suspend()`, even if an app holds it); LVGL refreshes
-only when the app's `minimalRefreshMs()` is due; between refreshes the
-ESP32-S3 enters **light sleep**. The panel keeps showing its last frame from
-its own RAM. Wake sources during light sleep: timer, touch INT (GPIO21) and
-BOOT (GPIO0). The AXP2101 IRQ only reaches the expander (EXIO5), so PWR can't
-wake the chip: each light sleep lasts at most `MINIMAL_PWR_POLL_MS` (1 s) and
-a wake that isn't a redraw just polls the PMU. A touch or button returns to
-the full view. If no app offers a minimal view, the stage falls back to
-Black. While the sound output runs (Noise, a beep) the CPU stays awake
-between redraws instead of light-sleeping, which would stop the I2S stream.
-The brightness is `BRIGHTNESS_MINIMAL` (15 %) unless the app asks for more
-with `minimalBrightness()` (the Timer's clock: 25 %), always capped at the
-user's brightness.
+Wi-Fi is suspended; LVGL refreshes only when the app's `minimalRefreshMs()`
+is due; between refreshes the ESP32-S3 enters **light sleep**. The panel
+keeps showing its last frame from its own RAM. Wake sources: timer, touch
+INT (GPIO21) and the power button (GPIO0); each sleep lasts at most
+`SLEEP_POLL_MS` so the charger and PWR are still polled now and then. A
+touch, a button or the power button returns to the full view. While sound
+plays the CPU stays awake between redraws instead of light-sleeping. The
+brightness is `BRIGHTNESS_MINIMAL` (15 %) unless the app asks for more with
+`minimalBrightness()` (the Timer: 25 %), always capped at the user's.
 
-### 8.3 Deep sleep entry
+### 8.4 Deep sleep, power-off and waking
 
-There are two triggers: the battery idle timeline (§8.1), or a **long press on
-either side button** (any profile, even on the charger, and even while an
-app holds `KeepAwake`/`LowPowerDisplay`, because the user asked for it).
-
-**Power-off animation (long press only), ~1 s:** the current screen shrinks
-into a horizontal line, which collapses to a dot and fades out (CRT
-switch-off style), while the brightness ramps down. It confirms the action
-and gives the user time to let go, so the still-held button doesn't wake
-the device straight away. The sequence doesn't continue until all buttons
-read released (with a 3 s safety timeout; if one is still held, show
-"release button" and keep waiting).
-
-Sequence:
+**Entry** (`core::power::goDeepSleep()`), for a sleep and a power-off alike:
 
 1. Confirm a pending OTA image (`ota::confirmIfPending()`): getting this far
    means it works, and a deep-sleep wake would otherwise roll it back.
-2. Every app's `onSleep()` (e.g. pomodoro saves as paused); wait up to 1 s
-   for noise to fade out, which powers the audio codec down; note the
-   battery level and time for the drain log (§8.6); save `RtcState`.
-3. Wi-Fi off. IMU to standby. Speaker amp off (PA_EN, GPIO46, held low
-   through deep sleep: it isn't an RTC pin and would float).
-4. Panel: brightness 0 → display off (`0x28`) → sleep-in (`0x10`); touch IC to sleep.
-5. Arm the wake sources (§8.4), confirm the buttons are released,
-   `esp_deep_sleep_start()`.
+2. Every app's `onSleep(kind)`: running state parked in RTC memory; on a
+   power-off timers pause and noise stops first (Pomodoro also writes its
+   paused state to NVS). The manager remembers the app on screen
+   (`RtcState::lastApp`). Wait up to 1 s for noise to fade out.
+3. Note the battery level and time for the drain log (§8.6), `mono()` and
+   the wall clock for the wake (§8.5); commit `RtcState`.
+4. Wi-Fi off. IMU powered down. Speaker amp off (PA_EN, GPIO46, held low
+   through deep sleep: it isn't an RTC pin and would float). Panel and touch
+   asleep. The AXP2101's voltage ADCs off (the fuel gauge keeps counting).
+5. Wake sources: BOOT (ext1, pull-up kept in sleep); a timer if an app has a
+   deadline (not after a power-off). `esp_deep_sleep_start()`.
 
-Wake = reboot: `setup()` checks `esp_sleep_get_wakeup_cause()`, re-runs the
-expander reset + panel init and **opens the menu**. Apps restore their saved
-state when they're next opened. Target: menu visible < 500 ms after the
-press, with a short power-on animation (the dot expands into the screen).
+The **power-off** differs only in what wakes it (the button alone) and in
+step 2. It is a deep sleep, not an AXP2101 shutdown: an AXP shutdown can
+only be ended by PWR, and the power button is BOOT (DECISIONS 2026-10-18).
 
-### 8.4 Waking with the side buttons
+**Waking is a reboot.** `setup()` reads the cause (`power::bootCause()`):
 
-| Button | Path | Confidence |
+| Cause | What the apps get | Screen |
 | --- | --- | --- |
-| BOOT (GPIO0) | ESP32-S3 deep sleep, `esp_sleep_enable_ext1_wakeup(1ULL << 0, ESP_EXT1_WAKEUP_ANY_LOW)` | high — GPIO0 is an RTC GPIO. Verify that holding it through the wake doesn't enter download mode (strapping pin). |
-| PWR (AXP2101) | Option A: PEK IRQ → TCA9554 EXIO5 → TCA9554 INT → an ESP RTC GPIO → ext1 wake. Works only if the expander INT line reaches an RTC-capable GPIO — **unknown, no schematic**. Test in M6 by watching all free RTC GPIOs while pressing PWR. | unknown |
-| PWR (AXP2101) | ~~Option B~~ (not used, see below): **"deep off"** — instead of ESP deep sleep, call `pmu.shutdown()`. The AXP2101 cuts all rails (lowest drain); pressing PWR powers the board on again (cold boot, `setPowerKeyPressOnTime()` sets the press length). RTC memory is lost, so the state goes to NVS before shutdown; the PCF85063 keeps the time. BOOT can't wake from this. | high (standard AXP behaviour) |
+| cold boot (power-on, reset, flashing) | `onWake(Cold)`: settings from NVS only | menu, power-on animation |
+| power button after a sleep | `onWake(FromSleep)`: parked state | **the app that was on screen**, as it was (no menu, no fade) |
+| power button after a power-off | `onWake(FromPowerOff)`: parked state, paused | menu |
+| deadline timer | `onWake(FromSleep)` | stays off: the panel isn't even initialised. The apps run; if none calls `attention()` within `SLEEP_SILENT_WAKE_MS` (0.4 s) the device goes back to sleep with the next deadline. |
 
-**Decision:** BOOT (ext1) is the wake button; one wake button is enough
-(owner, 2026-10-09). In M6 we still try Option A, and if PWR can wake too,
-that's a bonus. If it can't, PWR simply doesn't wake the device. Option B
-(AXP power-off) isn't built. Record the outcome in HARDWARE.md and LESSONS.md.
+Target: the screen on < 500 ms after the press, behind the power-on
+animation (the dot expands into the screen).
+
+A press held from the wake is ignored (`BUTTON_WAKE_IGNORE_MS`), so waking
+never turns into a power-off. *Still to verify on the board:* that holding
+BOOT (a strapping pin) through a deep-sleep wake doesn't enter download
+mode (ROADMAP M21).
 
 ### 8.5 Persistence
 
 | What | Where | Survives |
 | --- | --- | --- |
-| cached HA states (by list position) | `RTC_DATA_ATTR RtcState` | deep sleep |
-| deep-sleep drain log (§8.6) | `RTC_DATA_ATTR RtcState` | deep sleep |
-| the Home Assistant light list (`halights`) | NVS | power-off and firmware updates |
-| same, written on "deep off" / power-off | NVS (`Store`) | power-off |
-| espresso shot history, pomodoro counters/settings | NVS | power-off |
-| brightness, saved Wi-Fi networks with channel / BSSID / lease (`bright`, `wifinets`; `wifis` and `wifi` from older firmware are read once) | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
+| running state of the apps (timers, last roll, menu scroll, last shot) | RTC memory, `core::store::park()` | deep sleep and power-off (both are deep sleeps); not a reset or a flat battery |
+| `mono()` and the wall clock at the sleep, the app on screen, the kind of sleep | `RtcState` | same |
+| cached HA states (by list position) | `RtcState` | same |
+| deep-sleep drain log (§8.6) | `RtcState` | same |
+| the Home Assistant light list (`halights`) | NVS | everything but erase flash |
+| espresso shot history, pomodoro settings and paused state (at a power-off), timer and dice settings | NVS | same |
+| brightness, volume + mute, touch calibration, saved Wi-Fi networks with channel / BSSID / lease | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
 
-NVS writes happen only on sleep/shutdown or on user actions, never
-periodically (flash wear).
+NVS writes happen only on user actions or a power-off, never periodically
+and not at every sleep (flash wear): that's what RTC memory is for.
+
+**`core::mono()`** is `core::extend(millis())` plus an offset kept across
+deep sleep: going to sleep notes `mono()` and the wall clock, and the wake
+adds the wall-clock time slept. TimerCore and PomodoroCore keep their
+timestamps on it, so a running countdown is parked as it is and is still
+right after the wake: its end is simply in the past or the future.
 
 ### 8.6 Battery life asleep
 
@@ -519,15 +586,21 @@ charger, or a level that rose (charged in between), starts the count over.
 #define BRIGHTNESS_DIM_BATTERY     64    // 25 %
 #define BRIGHTNESS_DIM_CHARGER     102   // 40 %
 #define BRIGHTNESS_FADE_MS         300
-#define BAT_IDLE_DIM_MS            10000
-#define BAT_IDLE_BLACK_MS          15000
-#define BAT_IDLE_SLEEP_MS          20000
-#define CHG_IDLE_DIM_MS            60000
-#define CHG_IDLE_BLACK_MS          300000   // plain black (display off)
+#define BAT_IDLE_DIM_MS            30000
+#define BAT_IDLE_OFF_MS            40000
+#define CHG_IDLE_DIM_MS            120000
+#define CHG_IDLE_OFF_MS            600000
+// ---- sleep with the screen off (§8.2) ----
+#define SLEEP_POLL_MS              5000  // longest light sleep (charger and PWR polls)
+#define SLEEP_MIN_DEEP_MS          5000  // a closer deadline dozes instead
+#define SLEEP_WAKE_LEAD_MS         600   // timer wakes come this early
+#define SLEEP_SILENT_WAKE_MS       400   // a timer wake nobody needed sleeps again after this
+#define DOZE_CPU_MHZ               80
 // ---- buttons ----
-#define BUTTON_BACK_IS_BOOT        1     // 1: BOOT = back, PWR = home; 0: swapped
-#define BUTTON_LONG_PRESS_MS       1000  // long press → power-off animation → deep sleep
-#define POWER_OFF_ANIM_MS          1000
+#define BUTTON_LONG_PRESS_MS       1000  // PWR held → Home
+#define BUTTON_POWER_OFF_MS        1500  // BOOT held → power off
+#define POWER_OFF_ANIM_MS          1000  // screen off (CRT)
+#define SHUTDOWN_ANIM_MS           2200  // power off
 // ---- OTA (§12) ----
 #define OTA_HOSTNAME               "esp32-amoled"
 #define OTA_MIN_BATTERY_PCT        30
@@ -631,17 +704,21 @@ update screen, logged at boot, and embedded in `esp_app_desc_t`.
 
 ## 13. Open questions
 
-None right now. All answers are recorded in DECISIONS.md (2026-10-09):
-back + home buttons like a smartwatch (BOOT = Back, PWR = Home); wake →
-always the menu; battery dim level 25 %; portrait orientation; board is V2;
-long press → animation → deep sleep; BOOT alone is enough as the wake button;
-charger: dim at 60 s to 40 %, then plain black; policies like pomodoro behave
-the same on the charger as on battery; speaker beeps OK; OTA only from the
-update screen.
+None right now. All answers are recorded in DECISIONS.md (2026-10-09,
+replaced in part on 2026-10-18): buttons like a phone (BOOT = Power,
+PWR = Back / Home); a button wake reopens the app that was on screen, a
+power-off restarts in the menu; battery dim level 25 %; portrait
+orientation; board is V2; BOOT is the only wake button; policies like
+pomodoro behave the same on the charger as on battery; speaker beeps OK; OTA
+only from the update screen.
 
 New questions found during implementation go here.
 
 - Does the CST820 keep INT low while a finger rests (it would keep waking
   light sleep in the pomodoro minimal view)? Check in M10.
+- Is the power button (BOOT) really the upper one on the case, as the owner
+  described it? The roles can't simply swap: only BOOT can wake the chip.
+- What does the board draw asleep, dozing with noise, and powered off? The
+  estimates are in HARDWARE.md; measure in M21.
 - Is plain-http Home Assistant on the LAN acceptable long term, or should the
   client get TLS (`WiFiClientSecure`, ~+40 KB)?

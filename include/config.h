@@ -20,6 +20,7 @@
 // Main loop: the longest it sleeps between passes, and how often it polls the
 // AXP2101 over I2C for PWR presses and charger changes.
 #define LOOP_DELAY_MAX_MS 5
+#define LOOP_DELAY_DOZE_MS 15  // ... while dozing (screen off, sound playing): still catches a button press
 #define PMU_POLL_MS 50
 #define BATTERY_REFRESH_MS 30000  // re-read the battery level this often
 
@@ -44,32 +45,42 @@
 #define BRIGHTNESS_DIM_CHARGER 102  // 40 %
 #define BRIGHTNESS_MINIMAL 38       // ~15 %: pomodoro minimal view
 #define BRIGHTNESS_FADE_MS 300
-#define BAT_IDLE_DIM_MS 10000
-#define BAT_IDLE_BLACK_MS 15000
-#define BAT_IDLE_SLEEP_MS 20000
-#define CHG_IDLE_DIM_MS 60000
-#define CHG_IDLE_BLACK_MS 300000  // plain black (display off)
+// Idle timeline: dim, then the screen goes off like a phone's (then the
+// device dozes or deep-sleeps, whatever the apps need: SLEEP_* below).
+#define BAT_IDLE_DIM_MS 30000
+#define BAT_IDLE_OFF_MS 40000
+#define CHG_IDLE_DIM_MS 120000
+#define CHG_IDLE_OFF_MS 600000
 // Minimal view: an app's redraw interval is clamped to this range (default
-// when no app says). PWR reaches the ESP only through the AXP2101, which can't
-// wake it from light sleep, so the CPU wakes at least every
-// MINIMAL_PWR_POLL_MS just to poll the PMU: a PWR press is seen within ~1 s.
+// when no app says); the CPU light-sleeps in between.
 #define MINIMAL_REFRESH_DEFAULT_MS 1000
 #define MINIMAL_REFRESH_MIN_MS 200
 #define MINIMAL_REFRESH_MAX_MS 60000
-#define MINIMAL_PWR_POLL_MS 1000
+
+// ---- sleep with the screen off (lib/SleepPlan, ARCHITECTURE §8) ----
+// The power button (BOOT, GPIO0) wakes the chip from light and deep sleep by
+// itself. Only the charger plug and PWR go through the AXP2101, which can't
+// wake it, so a light sleep lasts at most SLEEP_POLL_MS.
+#define SLEEP_POLL_MS 5000
+#define SLEEP_MIN_DEEP_MS 5000    // a deadline sooner than this: doze, don't deep-sleep
+#define SLEEP_WAKE_LEAD_MS 600    // a timer wake comes this early: the reboot takes a while
+#define SLEEP_SILENT_WAKE_MS 400  // a timer wake nobody needed the screen for sleeps again after this
+#define DOZE_CPU_MHZ 80           // CPU clock while dozing (noise playing with the screen off)
 
 // ---- burn-in ----
 #define PIXEL_SHIFT_PERIOD_MS 180000
 #define PIXEL_SHIFT_MAX_PX 4
 
-// ---- buttons ----
-#define BUTTON_BACK_IS_BOOT 1  // 1: BOOT = back, PWR = home; 0: swapped
+// ---- buttons (ARCHITECTURE §2.2) ----
+// Like a phone: one button is Power (press: screen off and sleep; hold:
+// power off), the other is Back (press) and Home (hold). The power button
+// must be BOOT: it's the only one that can wake the chip (GPIO0, ext1).
 #define BUTTON_DEBOUNCE_MS 25
-#define BUTTON_LONG_PRESS_MS \
-  1000                              // long press → power-off animation → deep sleep
-                                    // (also the AXP2101 PWR long press: 1000-2500 in 500 steps)
+#define BUTTON_LONG_PRESS_MS 1000   // PWR held → Home (the AXP2101 long press: 1000-2500 in 500 steps)
+#define BUTTON_POWER_OFF_MS 1500    // BOOT held → power off
 #define BUTTON_WAKE_IGNORE_MS 2000  // after a BOOT wake, a press still held this soon is ignored
-#define POWER_OFF_ANIM_MS 1000
+#define POWER_OFF_ANIM_MS 1000      // screen off: the CRT collapse
+#define SHUTDOWN_ANIM_MS 2200       // power off: the longer one
 #define POWER_ON_ANIM_MS 600
 #define RELEASE_WAIT_TIMEOUT_MS 3000  // sleep anyway if a button stays held this long
 
@@ -77,9 +88,9 @@
 #define WIFI_CONNECT_TIMEOUT_MS 8000
 #define WIFI_RETRY_MS 15000
 #define WIFI_LEASE_REUSE_S (12 * 3600)  // a remembered DHCP lease is reused as a static IP while younger than this
-#define WIFI_SCAN_FRESH_MS 30000  // with several known networks: a scan this recent picks one without rescanning
-#define WIFI_JOIN_TIMEOUT_MS 15000  // a network picked on the device: first join, DHCP included
-#define WIFI_GRACE_MS 30000         // radio stays on this long after the last release()
+#define WIFI_SCAN_FRESH_MS 30000        // with several known networks: a scan this recent picks one without rescanning
+#define WIFI_JOIN_TIMEOUT_MS 15000      // a network picked on the device: first join, DHCP included
+#define WIFI_GRACE_MS 30000             // radio stays on this long after the last release()
 
 // ---- OTA (docs/ARCHITECTURE.md §12) ----
 #define OTA_HOSTNAME "esp32-amoled"
@@ -96,10 +107,10 @@
 
 // ---- home assistant ----
 // The lights are loaded from Home Assistant (every light.* entity, by name).
-#define HA_MAX_LIGHTS 16          // the first ones by name are shown
-#define HA_POLL_MS 3000           // light states while the app is open
-#define HA_LIST_MS 60000          // the light list again (new or renamed lights)
-#define HA_RETRY_MAX_MS 30000     // polling backs off up to this while HA can't be reached
+#define HA_MAX_LIGHTS 16       // the first ones by name are shown
+#define HA_POLL_MS 3000        // light states while the app is open
+#define HA_LIST_MS 60000       // the light list again (new or renamed lights)
+#define HA_RETRY_MAX_MS 30000  // polling backs off up to this while HA can't be reached
 #define HA_HTTP_TIMEOUT_MS 1500
 
 // ---- pomodoro ----
@@ -113,12 +124,13 @@
 // ---- espresso ----
 #define ESPRESSO_TARGET_MIN_S 25
 #define ESPRESSO_TARGET_MAX_S 30
-#define ESPRESSO_IDLE_DIM_MS 30000  // longer dim delay so the result stays readable
+#define ESPRESSO_IDLE_DIM_MS 60000  // longer dim delay so the result stays readable
 
 // ---- bot face ----
 #define BOT_FACE_COLOR 0x00E5FF
 #define BOT_FACE_FPS 30
 #define BOT_FACE_FPS_DIM 10
+#define BOT_FACE_IDLE_DIM_MS 60000  // a desk companion: the face stays bright a minute
 
 // ---- dice (docs/apps/dice.md) ----
 #define DICE_COLOR 0xFF8A1F  // primary colour: wireframes, kept roll, selected die

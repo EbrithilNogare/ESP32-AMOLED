@@ -82,7 +82,8 @@ instant updates when the device is on the charger and stays awake.
 
 ## Power
 
-`Normal`. On battery: the default dim → black → deep-sleep timeline.
+`Normal`: the default dim → screen off timeline. Nothing needed with the
+screen off (Wi-Fi is never on then); a sleep reopens the lights.
 
 ## Persistence
 
