@@ -19,7 +19,7 @@ static constexpr uint32_t kOnText = 0x1E1500;  // on the accent fill
 static constexpr int32_t kGap = 8;
 static constexpr int32_t kTileW = (LCD_WIDTH - 2 * ui::kMargin - kGap) / 2;
 static constexpr int32_t kTileH = (LCD_HEIGHT - 2 * ui::kMargin - kGap) / 2;  // up to four: a 2x2 grid
-static constexpr int32_t kTileHSmall = 148;                                    // more: a scrolling grid
+static constexpr int32_t kTileHSmall = 148;                                   // more: a scrolling grid
 static_assert(sizeof(core::store::RtcState::haStates) >= ha_client::kMaxLights, "RtcState::haStates too small");
 
 // The light list, kept in NVS so the tiles are there at once next time.
@@ -74,7 +74,7 @@ void HomeAssistantApp::onDestroy() {
   nTiles_ = 0;
 }
 
-void HomeAssistantApp::onSleep() {
+void HomeAssistantApp::onSleep(sleepplan::Kind) {
   for (int i = 0; i < ha_client::kMaxLights; i++) core::store::rtc().haStates[i] = uint8_t(tiles_[i].value);
   core::store::rtcCommit();
 }
@@ -277,7 +277,8 @@ void HomeAssistantApp::updateBanner() {
   lv_obj_set_hidden(banner_, !text);
   if (text) {
     ui::setText(banner_, text);
-    lv_obj_set_style_text_color(banner_, ui::c(problem_ == Result::Unauthorized ? ui::col::error : ui::col::textDim), 0);
+    lv_obj_set_style_text_color(banner_, ui::c(problem_ == Result::Unauthorized ? ui::col::error : ui::col::textDim),
+                                0);
   }
   lv_obj_set_hidden(empty_, nTiles_ > 0);
   ui::setText(empty_, listLoaded_ ? "No lights in Home Assistant" : "Loading lights…");

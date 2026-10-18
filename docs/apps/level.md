@@ -81,13 +81,17 @@ Simulator frames: `docs/design/screens/22-level-flat.png`,
 - Zero is kept per view in NVS (`level`), with the unit.
 - A short beep (`LEVEL_BEEP`) when the reading becomes level, at most every
   1.5 s, with a little hysteresis.
-- Idle dim after `LEVEL_IDLE_DIM_MS` (60 s) instead of the usual 10 s.
+- Idle dim after `LEVEL_IDLE_DIM_MS` (60 s) instead of the usual 30 s.
+- The IMU is powered only while Level is on screen: off when the app closes
+  or the screen goes off (`onScreen()`), back on (fresh filter) when it
+  returns. A sleep reopens Level.
 
 ## Sensor
 
 - `src/core/imu.cpp`: own QMI8658 driver on the shared I2C bus (register
   values checked against SensorLib): accelerometer only, ±2 g, 112 Hz with
-  the on-chip low-pass filter. It is in standby unless the Level app is open.
+  the on-chip low-pass filter. It is powered down (oscillator off too)
+  unless Level is on screen.
 - Sampled every `LEVEL_SAMPLE_MS` (20 ms) and smoothed (exponential, α = 0.2,
   in `lib/LevelCore`); the screen redraws at most 30 times a second and only
   when a value changes by 0.05° or more.

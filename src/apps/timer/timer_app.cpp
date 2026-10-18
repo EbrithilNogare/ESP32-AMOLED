@@ -6,6 +6,9 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include <type_traits>
+
+#include "apps/app_manager.h"
 #include "board.h"
 #include "config.h"
 #include "core/power.h"
@@ -28,14 +31,18 @@ static constexpr int32_t kWheelStepPx = 16;         // drag distance per step
 static constexpr int32_t kDragSlop = 10;
 static constexpr int32_t kRing = 260, kRingY = 88;
 static_assert(TIMER_DEFAULT_COUNTDOWN_S > 0 && TIMER_DEFAULT_COUNTDOWN_S <= timer::kMaxSeconds, "1 s .. 99:59");
+static_assert(std::is_trivially_copyable<timer::Stopwatch>::value &&
+                  std::is_trivially_copyable<timer::Countdown>::value,
+              "parked in RTC memory as is");
 
 static const char *const kTabs[3] = {"Clock", "Stopwatch", "Countdown"};
 static const char *const kDays[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 static const char *const kMonths[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
                                         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
-// Both timers keep absolute timestamps, so they get a clock that doesn't wrap.
-static uint64_t now64(uint32_t ms) { return core::extend(ms); }
+// Both timers keep absolute timestamps, on the clock that doesn't wrap and
+// counts on through deep sleep.
+static uint64_t now64(uint32_t ms) { return core::mono(ms); }
 
 static bool localNow(struct tm &t) {
   if (!core::clock::valid()) return false;
@@ -61,25 +68,32 @@ const AppInfo &TimerApp::info() const { return kInfo; }
 
 // ---------------------------------------------------------------- logic
 
-void TimerApp::service(uint32_t nowMs) {
-  if (!loaded_) {  // NVS is ready by the first loop, not at static construction
-    Saved s;
-    if (core::store::load("timer", &s, sizeof s)) {
-      cd_.set(s.countdownS);
-      tab_ = s.tab < 3 ? Tab(s.tab) : Tab::Clock;
-    } else {
-      cd_.set(TIMER_DEFAULT_COUNTDOWN_S);
-    }
-    loaded_ = true;
+void TimerApp::onWake(Wake wake) {
+  Saved s;
+  if (core::store::load("timer", &s, sizeof s)) {
+    cd_.set(s.countdownS);
+    tab_ = s.tab < 3 ? Tab(s.tab) : Tab::Clock;
+  } else {
+    cd_.set(TIMER_DEFAULT_COUNTDOWN_S);
   }
+  Parked p;
+  if (wake != Wake::Cold && core::store::unpark("timer", &p, sizeof p)) {
+    sw_ = p.sw;
+    cd_ = p.cd;
+    tab_ = p.tab < 3 ? Tab(p.tab) : Tab::Clock;
+  }
+}
+
+void TimerApp::service(uint32_t nowMs) {
   if (cd_.update(now64(nowMs))) {
-    // Time's up: beep, wake the screen (ends a minimal view) and show it.
+    // Time's up: beep, and bring the countdown to the front with the screen
+    // on, whatever was showing, even after a deep sleep (the timer woke it).
     alarm_ = true;
     alarmUntil_ = nowMs + SOUND_ALARM_MS;
     nextAlarmMs_ = nowMs;
-    core::power::activity();
+    tab_ = Tab::Countdown;
+    apps::manager::attention(this);
     if (root_) {
-      tab_ = Tab::Countdown;
       showTab();
       ui::flash(root_, TIMER_COLOR);
     }
@@ -101,7 +115,29 @@ void TimerApp::save() {
   core::store::save("timer", &s, sizeof s);
 }
 
-void TimerApp::onSleep() { save(); }  // a running stopwatch or countdown stops with the device
+// A running countdown wakes the device when it ends; the alarm keeps the chip
+// up until it's over (the screen is on for it anyway, unless turned off).
+sleepplan::Need TimerApp::sleepNeed(uint64_t monoNow) const {
+  return {alarm_, cd_.running() ? monoNow + cd_.remainingMs(monoNow) : 0};
+}
+
+// Sleep: both timers carry on (their clock counts through deep sleep).
+// Power-off: they pause, and come back paused.
+void TimerApp::onSleep(sleepplan::Kind kind) {
+  const uint64_t now = now64(millis());
+  stopAlarm();
+  if (kind == sleepplan::Kind::PowerOff) {
+    if (sw_.running()) sw_.toggle(now);
+    if (cd_.running()) cd_.toggle(now);
+  }
+  const Parked p{sw_, cd_, uint8_t(tab_)};
+  core::store::park("timer", &p, sizeof p);
+}
+
+// The power button silences the alarm, like a phone's.
+void TimerApp::onScreen(bool on) {
+  if (!on) stopAlarm();
+}
 
 bool TimerApp::onBack() {
   if (!alarm_) return false;
@@ -150,7 +186,6 @@ void TimerApp::onCreate(lv_obj_t *root) {
   using namespace ui;
   root_ = root;
   if (cd_.state() == State::Done) tab_ = Tab::Countdown;  // a finished countdown is why we're here
-  stopAlarm();
 
   for (auto &v : views_) {
     v = box(root);

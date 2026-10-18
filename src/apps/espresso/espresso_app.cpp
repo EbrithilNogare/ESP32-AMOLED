@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include <type_traits>
+
 #include "board.h"
 #include "config.h"
 #include "core/store.h"
@@ -13,6 +15,7 @@ namespace apps {
 using shot::Mode;
 using shot::Zone;
 
+static_assert(std::is_trivially_copyable<shot::ShotTimer>::value, "parked in RTC memory as is");
 static const AppInfo kInfo = {"espresso", "Espresso", ICON_COFFEE, 0xC8915A};
 static constexpr int32_t kBarX = 34, kBarW = LCD_WIDTH - 2 * kBarX, kBarY = 268;
 static constexpr uint32_t kScaleS = 40;    // bar spans 0-40 s
@@ -37,10 +40,23 @@ power::Policy EspressoApp::powerPolicy() const {
 }
 uint32_t EspressoApp::idleDimMs() const { return ESPRESSO_IDLE_DIM_MS; }
 
+// A shot still running when the device sleeps ends there, recorded; the
+// result is still on screen after the wake (the whole timer is parked).
+void EspressoApp::onSleep(sleepplan::Kind) {
+  if (timer_.mode() == Mode::Running) {
+    timer_.tap(millis());
+    saveHistory();
+  }
+  core::store::park("shot", &timer_, sizeof timer_);
+}
+
+void EspressoApp::onWake(Wake wake) {
+  if (wake == Wake::Cold || !core::store::unpark("shot", &timer_, sizeof timer_)) loadHistory();  // else it came along
+}
+
 void EspressoApp::loadHistory() {
   uint16_t h[shot::kHistory + 1] = {};  // [0] = count
   if (core::store::load("shots", h, sizeof h)) timer_.loadHistory(h + 1, uint8_t(h[0]));
-  loaded_ = true;
 }
 
 void EspressoApp::saveHistory() {
@@ -61,7 +77,6 @@ static lv_obj_t *rect(lv_obj_t *parent, int32_t x, int32_t y, int32_t w, int32_t
 
 void EspressoApp::onCreate(lv_obj_t *root) {
   using namespace ui;
-  if (!loaded_) loadHistory();
 
   header(root, "ESPRESSO", col::textDim);
   lv_obj_t *target = header(root, "", col::textDim);

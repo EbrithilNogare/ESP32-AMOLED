@@ -5,6 +5,57 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-18 — Phone-style power: BOOT is Power, apps say what they need asleep
+
+**Context:** The owner wants the device to behave like a phone while staying
+very frugal: one button turns the screen off (press) or powers off (hold),
+the other is Back (press) and Home (hold); apps that need to keep working
+with the screen off (rain sound, a running countdown) should keep doing so,
+everything else should sleep as deeply as possible, and a wake should bring
+back the app that was open. Power-off should look different from screen-off
+and never leave pixels lit (the CRT animation left a strip and a glow).
+Peripherals should be on only while used, the screen should stay on longer,
+and the burn-in rules could relax a little.
+**Decision:**
+- **BOOT is the power button**, PWR is Back / Home. Only BOOT (GPIO0, an RTC
+  GPIO) can wake the chip; PWR's IRQ ends at the TCA9554. The owner called
+  the top button the one that boots it; if the top one is PWR after all, the
+  roles still can't swap without losing the wake (open question in
+  ARCHITECTURE §13). Replaces `BUTTON_BACK_IS_BOOT` and the 2026-10-09
+  smartwatch mapping.
+- **A standard question for every app**: `sleepNeed()` → keep the chip
+  awake, and/or wake it at a time. `lib/SleepPlan` turns the merged answer
+  into doze (CPU up at 80 MHz, light sleep between passes; sound, the
+  charger, or a deadline < 5.6 s away), deep sleep with a timer (a later
+  deadline, 0.6 s early), or deep sleep until the button. A deadline wake
+  boots with the panel dark and goes back to sleep after 0.4 s unless an app
+  calls `manager::attention()`. Apps park their running state in RTC memory
+  (`onSleep()`, `store::park()`), restore it in `onWake()`, and a button wake
+  reopens the app that was on screen.
+- **`core::mono()`**, a millisecond clock that carries on through deep sleep
+  (offset + wall-clock time slept, the PCF85063 being the truth), so
+  TimerCore and PomodoroCore objects are parked byte for byte and stay
+  right: no "remaining time" conversions, no new library code.
+- **Power-off is a deep sleep with only the button as wake source**, timers
+  paused and sound stopped, restarting in the menu. Not an AXP2101 shutdown:
+  only PWR can end that, and it would need the button roles swapped. The
+  rails stay up (unknown mapping, no schematic); the AXP's voltage ADCs and
+  the IMU's oscillator go off.
+- **Peripherals on demand**: the IMU is powered down (CTRL1 sensor disable)
+  except while Level is on screen; the touch controller sleeps with the
+  screen (a reset pulse brings it back with the panel); the SD slot is no
+  longer touched (no card, ever, for now).
+- **Longer screen times**: battery dim 30 s / off 40 s (was 10 / 15 / sleep
+  20 s), charger 2 min / 10 min (was 1 min / 5 min black), bot face 1 min,
+  espresso 1 min. The bot face wanders and does idle acts so it never sits
+  still.
+**Consequences:** Deep sleep is entered often (every screen-off on battery
+with nothing running), so its entry and the boot must stay fast; the reboot
+costs ~0.3–0.5 s of ~40 mA per wake, which is why close deadlines doze. The
+power button is the only way to wake the screen: touch, Back and Home do
+nothing with the screen off. NVS is written only at a power-off, not at every
+sleep. Nothing of this is verified on the board yet (ROADMAP M21).
+
 ## 2026-10-15 — Landscape for the Level app only, by turning the LVGL display
 
 **Context:** The owner wants the UI to turn to landscape, but only in the

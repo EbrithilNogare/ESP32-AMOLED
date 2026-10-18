@@ -27,6 +27,7 @@ static lv_obj_t *shape(lv_obj_t *parent) {
 
 void BotFaceApp::onCreate(lv_obj_t *root) {
   face_ = bot::Face(esp_random(), millis());
+  face_.setLively(true, millis());
   eyeL_ = shape(root);
   eyeR_ = shape(root);
   mouthO_ = shape(root);
@@ -42,6 +43,8 @@ void BotFaceApp::onCreate(lv_obj_t *root) {
   nextFrameMs_ = millis();
   draw(millis());
 }
+
+uint32_t BotFaceApp::idleDimMs() const { return BOT_FACE_IDLE_DIM_MS; }
 
 void BotFaceApp::onDestroy() { eyeL_ = eyeR_ = mouth_ = mouthO_ = nullptr; }
 

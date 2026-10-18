@@ -45,6 +45,15 @@ class Face {
 
   void tap(uint32_t nowMs);  // happy; second tap within 320 ms → surprised
 
+  // Lively mode (docs/apps/bot-face.md, "Idle acts"), off by default so the
+  // face matches the mockup exactly: the whole face wanders slowly around
+  // the screen (it stays on longer, so nothing sits still on the AMOLED), and
+  // every 5-11 s (x 1.8 dimmed) it does something: a wink, a sideways
+  // glance, a little hum (two hops), or a yawn (mostly when dimmed). Taps
+  // still win. The acts draw from their own random stream, so the blink and
+  // look schedule stays the mockup's.
+  void setLively(bool on, uint32_t nowMs);
+
   Geometry geometry(uint32_t nowMs) const;  // includes breathing and blink
 
   const Params &params() const;
@@ -65,6 +74,19 @@ class Face {
   bool hopPending_ = false;
   uint32_t lastTapMs_ = 0;
   bool tapped_ = false;
+
+  enum class Act : uint8_t { None, Wink, Glance, Hum, Yawn };
+  float actRand01();
+  void startAct(uint32_t nowMs, bool dimmed);
+  bool lively_ = false;
+  uint32_t actRng_;
+  uint32_t nextActMs_ = 0;
+  Act act_ = Act::None;
+  uint32_t actStartMs_ = 0;
+  bool winkLeft_ = false;
+
+ public:
+  Act act() const { return act_; }  // for tests
 };
 
 }  // namespace bot

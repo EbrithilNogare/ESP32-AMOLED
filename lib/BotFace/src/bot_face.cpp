@@ -53,7 +53,59 @@ Face::Face(uint32_t seed, uint32_t startMs)
       p_(kResting),
       tg_(kResting),
       nextBlinkMs_(startMs + 1500),
-      nextLookMs_(startMs + 1200) {}
+      nextLookMs_(startMs + 1200),
+      actRng_((seed ? seed : 0x9E3779B9u) ^ 0xA5A5A5A5u) {
+  if (!actRng_) actRng_ = 0x2545F491u;
+}
+
+float Face::actRand01() {
+  actRng_ ^= actRng_ << 13;
+  actRng_ ^= actRng_ >> 17;
+  actRng_ ^= actRng_ << 5;
+  return static_cast<float>(actRng_ >> 8) * (1.0f / 16777216.0f);
+}
+
+void Face::setLively(bool on, uint32_t nowMs) {
+  lively_ = on;
+  act_ = Act::None;
+  nextActMs_ = nowMs + 5000;
+}
+
+// An idle act: targets for its length (reacting_ holds them like a tap's).
+void Face::startAct(uint32_t nowMs, bool dimmed) {
+  const float r = actRand01();
+  const float yawnShare = dimmed ? 0.6f : 0.1f;
+  actStartMs_ = nowMs;
+  uint32_t len;
+  if (r < yawnShare) {
+    act_ = Act::Yawn;
+    tg_.mouthO = 1.3f;
+    tg_.open = 0.25f;
+    tg_.curve = 0;
+    len = 1800;
+  } else if (r < yawnShare + (1 - yawnShare) * 0.4f) {
+    act_ = Act::Wink;
+    winkLeft_ = actRand01() < 0.5f;
+    tg_.curve = 0.85f;
+    len = 600;
+  } else if (r < yawnShare + (1 - yawnShare) * 0.75f) {
+    act_ = Act::Glance;
+    tg_.lookX = actRand01() < 0.5f ? -1.0f : 1.0f;
+    tg_.lookY = 0.1f;
+    tg_.open = 0.7f;
+    tg_.width = 1.06f;
+    tg_.curve = 0.4f;
+    len = 1400;
+    nextLookMs_ = nowMs + len;  // don't look elsewhere halfway
+  } else {
+    act_ = Act::Hum;
+    tg_.curve = 0.9f;
+    len = 900;
+  }
+  reacting_ = true;
+  reactUntilMs_ = nowMs + len;
+  nextActMs_ = nowMs + len + static_cast<uint32_t>((5000 + actRand01() * 6000) * (dimmed ? 1.8f : 1.0f));
+}
 
 float Face::rand01() {
   // xorshift32: tiny and deterministic for a given seed (tests rely on it).
@@ -69,14 +121,24 @@ void Face::update(uint32_t nowMs, bool dimmed) {
     // end reactions and let look and blink fire on this update.
     hopPending_ = false;
     reacting_ = false;
+    act_ = Act::None;
     nextLookMs_ = nowMs - 1;
     nextBlinkMs_ = nowMs - 1;
+    nextActMs_ = nowMs + 5000;
   }
   if (hopPending_ && reached(nowMs, hopEndMs_)) {
     tg_.bounce = 0;
     hopPending_ = false;
   }
-  if (reacting_ && after(nowMs, reactUntilMs_)) reacting_ = false;
+  if (reacting_ && after(nowMs, reactUntilMs_)) {
+    reacting_ = false;
+    act_ = Act::None;
+  }
+  if (lively_ && !reacting_ && after(nowMs, nextActMs_)) startAct(nowMs, dimmed);
+  if (act_ == Act::Hum) {  // two quick hops: up 150 ms, down 150 ms, twice
+    const uint32_t e = nowMs - actStartMs_;
+    tg_.bounce = e < 600 && (e / 150) % 2 == 0 ? -8.0f : 0.0f;
+  }
   if (!reacting_) {
     tg_.open = dimmed ? 0.45f : 1.0f;
     tg_.curve = dimmed ? 0.25f : 0.55f;
@@ -115,6 +177,7 @@ void Face::update(uint32_t nowMs, bool dimmed) {
 }
 
 void Face::tap(uint32_t nowMs) {
+  act_ = Act::None;
   if (tapped_ && nowMs - lastTapMs_ < 320) {
     tg_.open = 1.25f;
     tg_.width = 1.15f;
@@ -147,7 +210,32 @@ Geometry Face::geometry(uint32_t nowMs) const {
   // so wrapping there keeps the float argument small without a visible jump.
   const uint32_t t = (nowMs - startMs_) % 84823u;
   const float breathe = 3.0f * sinf(static_cast<float>(t) / 900.0f);
-  return computeGeometry(p_, blink, breathe);
+  Geometry g = computeGeometry(p_, blink, breathe);
+  if (!lively_) return g;
+
+  if (act_ == Act::Wink) {  // one eye closes and opens, 380 ms
+    const uint32_t e = nowMs - actStartMs_;
+    const float amt = e < 380 ? sinf(kPi * e / 380.0f) : 0.0f;
+    Rect &eye = winkLeft_ ? g.eyeL : g.eyeR;
+    const float cy = eye.y + eye.h / 2;
+    eye.h = fmaxf(8.0f, eye.h * (1 - 0.93f * amt));
+    eye.y = cy - eye.h / 2;
+    eye.r = fminf(28.0f, eye.h / 2);
+  }
+  // Wander: two slow sines (37 s and 23 s periods), 0 at the start. The
+  // periods are wrapped like the breathing so the argument stays small.
+  const uint32_t up = nowMs - startMs_;
+  const float dx = 16.0f * sinf(2 * kPi * static_cast<float>(up % 37000u) / 37000.0f);
+  const float dy = 10.0f * sinf(2 * kPi * static_cast<float>(up % 23000u) / 23000.0f);
+  g.eyeL.x += dx;
+  g.eyeL.y += dy;
+  g.eyeR.x += dx;
+  g.eyeR.y += dy;
+  g.mx += dx;
+  g.my += dy;
+  g.oCx += g.mouthIsO ? dx : 0.0f;
+  g.oCy += g.mouthIsO ? dy : 0.0f;
+  return g;
 }
 
 const Params &Face::params() const { return p_; }

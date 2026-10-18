@@ -20,6 +20,7 @@ class WifiApp : public App {
   void onTick(uint32_t nowMs) override;
   bool onBack() override;
   uint32_t idleDimMs() const override;
+  bool resumable() const override { return false; }  // a half-typed password doesn't outlive a sleep
 
   View view() const { return view_; }
   const char *typed() const { return typer_.text(); }

@@ -31,9 +31,13 @@ Simulator frames: `docs/design/screens/28-quick-settings.png`,
 `43-quick-settings-muted.png`.
 
 - The shade covers the status bar, so it repeats the time and battery.
-- **Wi-Fi row:** icon on the left (blue while connected, a crossed-out icon
-  when no network is set up), the network's name on the right ("Set up
-  Wi-Fi" when there is none). Tap: the [Wi-Fi screen](wifi.md).
+- **Wi-Fi row:** icon and "Wi-Fi" on the left, the state on the right:
+  **On · *network*** (blue) when connected, **Connecting…** (amber) while
+  the radio is up but not connected, **Off** (grey, crossed-out icon) when
+  the radio is off, **Set up** when no network is known. The radio runs only
+  while an app needs it, so Off is the usual state; before 2026-10-18 the
+  row showed the network's name even with the radio off. Tap: the
+  [Wi-Fi screen](wifi.md) (`48-quick-settings-wifi-off.png`).
 - **Brightness bar:** one wide bar filled to the current level, 5–70 %.
 - **Volume:** a mute button (speaker icon; red and crossed out while muted)
   and a bar like brightness, 0–100 %. Muted, the bar turns grey and reads

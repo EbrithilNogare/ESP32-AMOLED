@@ -6,9 +6,10 @@
 namespace apps {
 
 // The quick settings shade (docs/apps/quick-settings.md): pulled down from the
-// menu's status bar like on Android. Three rows: Wi-Fi (opens the Wi-Fi
-// screen), a brightness bar, and a volume bar with a mute button. The bars
-// act live while touched and save on release.
+// menu's status bar like on Android. Three rows: Wi-Fi (its state: on with
+// the network, connecting, off; opens the Wi-Fi screen), a brightness bar,
+// and a volume bar with a mute button. The bars act live while touched and
+// save on release.
 class QuickSettings {
  public:
   // `handle`: the status bar that pulls the shade down.
@@ -16,11 +17,12 @@ class QuickSettings {
   bool isOpen() const { return open_; }
   void open();
   void close();
-  void refresh();  // time, Wi-Fi name, brightness, volume
+  void refresh();  // time, Wi-Fi state, brightness, volume
 
  private:
   void setY(int32_t y);  // -kHeight (hidden) .. 0 (open)
   void animateTo(int32_t y);
+  void renderWifi();
   void renderBrightness();
   void renderVolume();
 

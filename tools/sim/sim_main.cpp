@@ -7,10 +7,10 @@
 #include <lvgl.h>
 #include <stdio.h>
 
-#include <chrono>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <chrono>
 
 #include <string>
 
@@ -31,6 +31,7 @@
 #include "core/settings.h"
 #include "core/sound.h"
 #include "core/store.h"
+#include "core/ticks.h"
 #include "sim.h"
 #include "ui/power_anim.h"
 #include "ui/theme.h"
@@ -83,7 +84,8 @@ static void flushCb(lv_display_t *d, const lv_area_t *area, uint8_t *px) {
 // Like core::touch: the panel's (emulated) raw position, corrected unless in raw mode.
 static void readCb(lv_indev_t *, lv_indev_data_t *data) {
   const sim::PanelError &e = sim::panel;
-  const int16_t rawX = int16_t((touchX - e.xOffset) / e.xScale + 0.5), rawY = int16_t((touchY - e.yOffset) / e.yScale + 0.5);
+  const int16_t rawX = int16_t((touchX - e.xOffset) / e.xScale + 0.5),
+                rawY = int16_t((touchY - e.yOffset) / e.yScale + 0.5);
   data->point.x = sim::touchRaw ? rawX : touchcal::mapX(sim::touchCal, rawX);
   data->point.y = sim::touchRaw ? rawY : touchcal::mapY(sim::touchCal, rawY);
   data->state = touchDown ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
@@ -155,7 +157,8 @@ static bool isWithin(lv_obj_t *o, lv_obj_t *ancestor) {
 // `target`, has a background you can see.
 static bool coveredVisibly(lv_obj_t *hit, lv_obj_t *target) {
   for (lv_obj_t *o = hit; o && !isWithin(target, o); o = lv_obj_get_parent(o))
-    if (lv_obj_get_style_bg_opa(o, LV_PART_MAIN) > LV_OPA_TRANSP && lv_obj_get_style_opa(o, LV_PART_MAIN) > LV_OPA_TRANSP)
+    if (lv_obj_get_style_bg_opa(o, LV_PART_MAIN) > LV_OPA_TRANSP &&
+        lv_obj_get_style_opa(o, LV_PART_MAIN) > LV_OPA_TRANSP)
       return true;
   return false;
 }
@@ -304,7 +307,8 @@ int main() {
   apps::manager::add(&timerApp);
   apps::manager::add(&noiseApp);
   apps::manager::add(&systemApp);
-  apps::manager::begin();
+  apps::manager::wake(apps::Wake::Cold);
+  apps::manager::begin(nullptr);
   advance(100);
 
   // ---- menu
@@ -333,7 +337,7 @@ int main() {
   CHECK(haApp.tileCount() == 4);
   const uint8_t gen = apps::ha_client::generation();
   advance(3100);
-  CHECK(sim::haRefreshes >= 1);  // then the states poll
+  CHECK(sim::haRefreshes >= 1);              // then the states poll
   tap(4 + 176 + 8 + 88, 4 + 216 + 8 + 108);  // bottom-right: Porch (n/a), no request
   CHECK(sim::haToggles.empty());
   tap(4 + 88, 4 + 216 + 8 + 108);  // bottom-left: Kitchen
@@ -617,11 +621,14 @@ int main() {
   advance(400);
   CHECK(apps::manager::inMenu());
   CHECK(timerApp.backgroundPolicy() == power::Policy::LowPowerDisplay);
-  advance(51000);  // time's up while in the menu: the alarm beeps
+  const int wakesBefore = sim::wakes;
+  advance(51000);  // time's up while in the menu: the alarm beeps, the Timer comes to the front
   CHECK(timerApp.countdown().state() == timer::State::Done && timerApp.alarming());
   CHECK(!sim::beeps.empty() && sim::beeps.back() == int(core::sound::Pattern::Alarm));
-  tapIcon(&timerApp);  // opening it silences the alarm and shows the overtime
-  CHECK(!timerApp.alarming() && timerApp.tab() == apps::TimerApp::Tab::Countdown);
+  CHECK(apps::manager::current() == &timerApp && sim::wakes > wakesBefore);
+  CHECK(timerApp.tab() == apps::TimerApp::Tab::Countdown);
+  apps::manager::back();  // the first Back silences it; the overtime stays
+  CHECK(!timerApp.alarming() && apps::manager::current() == &timerApp);
   advance(2000);
   capture("37-timer-countdown-done");
   tapText("Stop");
@@ -639,7 +646,7 @@ int main() {
   capture("38-noise-paused");
   tap(184, 224);
   CHECK(sim::noise == int(noise::Kind::Rain));
-  CHECK(noiseApp.powerPolicy() == power::Policy::NoSleep);  // screen may go black, the sound goes on
+  CHECK(noiseApp.sleepNeed(0).awake);  // the screen may go off, the sound goes on (the chip dozes)
   advance(1500);
   capture("39-noise-rain");
   advance(4000);
@@ -716,8 +723,15 @@ int main() {
   CHECK(core::settings::touchCal().xOffset == sim::touchCal.xOffset && sim::touchCal.xScale != 65536);
   CHECK(LV_ABS(core::settings::touchCal().xOffset - 15) <= 1 && LV_ABS(core::settings::touchCal().yOffset + 12) <= 1);
   sim::panel = {};  // back to a perfect panel for the rest
-  core::settings::saveTouchCal(touchcal::Cal{});
-  sim::touchCal = {};
+  // Reset to factory: from the crosses, without tapping any.
+  tap(LCD_WIDTH - 24 - 77, LCD_HEIGHT - 22 - 28);  // "Touch" again
+  CHECK(sim::touchRaw);
+  capture("49-touch-factory");
+  tapText("Reset to factory");
+  advance(50);
+  CHECK(!sim::touchRaw && core::settings::touchCal().xScale == 65536 && core::settings::touchCal().xOffset == 0);
+  CHECK(sim::touchCal.yScale == 65536 && sim::touchCal.yOffset == 0);  // applied too
+  CHECK(findLabel(lv_screen_active(), "Firmware"));                    // back on the info view
 
   apps::manager::home();
   advance(400);
@@ -750,6 +764,7 @@ int main() {
     touchX = 100 + sx + 20 * i;
     advance(15);
   }
+  advance(40);  // held at the end long enough for a touch read there
   touchDown = false;
   advance(100);
   CHECK(core::settings::brightnessPct() == 60);
@@ -772,6 +787,19 @@ int main() {
   CHECK(sim::beeps.size() == 1);
   tap(48, 256);
   CHECK(!core::settings::muted());
+
+  // The Wi-Fi row says what the radio does, not just a name.
+  sim::radio = sim::wifi = false;
+  qs.refresh();
+  advance(50);
+  CHECK(findLabel(lv_screen_active(), "Off"));
+  capture("48-quick-settings-wifi-off");
+  sim::radio = true;
+  qs.refresh();
+  CHECK(findLabel(lv_screen_active(), "Connecting…"));
+  sim::wifi = true;
+  qs.refresh();
+  CHECK(findLabel(lv_screen_active(), "On · HomeNet"));
 
   // ---- Wi-Fi: open from the shade, pick a network, type the password
   sim::networks = {{"HomeNet", -52, true}, {"Neighbour 5G", -68, true}, {"Cafe Guest", -80, false}};
@@ -860,13 +888,118 @@ int main() {
   tap(184, LCD_HEIGHT - 20 - 28);  // Done
   CHECK(apps::manager::inMenu());
 
-  // ---- power-off animation
+  // ---- the screen off: what every app needs (ARCHITECTURE §8)
+  // Nothing running: deep sleep until the button.
+  core::sound::stopNoise();
+  sleepplan::Need need = apps::manager::sleepNeed(core::mono(sim::nowMs));
+  CHECK(!need.awake);
+  // A countdown asks for a wake at its end, noise keeps the chip up, a
+  // pomodoro wakes at its phase end; merged, the earliest wake wins.
+  tapIcon(&timerApp);
+  advance(400);
+  tapText("Countdown");
+  advance(100);
+  tapText("Start");  // 0:54
+  advance(1000);
+  uint64_t m = core::mono(sim::nowMs);
+  need = timerApp.sleepNeed(m);
+  CHECK(!need.awake && need.wakeAtMs > m + 52000 && need.wakeAtMs <= m + 53000);
+  need = apps::manager::sleepNeed(m);
+  CHECK(need.wakeAtMs == timerApp.sleepNeed(m).wakeAtMs);
+  tapText("Stopwatch");
+  advance(100);
+  if (!timerApp.stopwatch().zero()) tapText(ICON_RESTART_ALT);  // left paused earlier: from zero
+  tapText("Start");
+  advance(2000);
+  CHECK(timerApp.stopwatch().running() && timerApp.sleepNeed(m).wakeAtMs == need.wakeAtMs);  // it adds no wake
+  core::sound::startNoise(noise::Kind::Rain);
+  CHECK(apps::manager::sleepNeed(core::mono(sim::nowMs)).awake);
+  core::sound::stopNoise();
+
+  // ---- a deep sleep and the wake after it, emulated: park, move the clock,
+  // and a fresh Timer picks up where this one was.
+  m = core::mono(sim::nowMs);
+  const uint64_t swBefore = timerApp.stopwatch().elapsedMs(m);
+  apps::manager::prepareSleep(sleepplan::Kind::Sleep);
+  core::store::rtcCommit();
+  CHECK(strcmp(core::store::rtc().lastApp, "timer") == 0);
+  CHECK(apps::manager::resumeApp(apps::Wake::FromSleep) == &timerApp);   // the power button reopens it
+  CHECK(apps::manager::resumeApp(apps::Wake::FromPowerOff) == nullptr);  // a power-off opens the menu
+  sim::monoOffset += 600000;                                             // ten minutes asleep
+  {
+    apps::TimerApp woken;
+    woken.onWake(apps::Wake::FromSleep);
+    const uint64_t now = core::mono(sim::nowMs);
+    CHECK(woken.stopwatch().running());
+    CHECK(woken.stopwatch().elapsedMs(now) >= swBefore + 600000 &&
+          woken.stopwatch().elapsedMs(now) < swBefore + 601000);
+    // Its end passed while asleep: due now (service() then rings, as the
+    // countdown above did in the menu).
+    CHECK(woken.countdown().state() == timer::State::Running && woken.countdown().remainingMs(now) == 0);
+    CHECK(woken.sleepNeed(now).wakeAtMs == now);
+    apps::TimerApp cold;
+    cold.onWake(apps::Wake::Cold);  // a cold boot: settings only
+    CHECK(!cold.stopwatch().running() && cold.countdown().state() == timer::State::Idle);
+  }
+  // Power-off pauses: it comes back paused, with its time.
+  apps::manager::prepareSleep(sleepplan::Kind::PowerOff);
+  CHECK(!timerApp.stopwatch().running());
+  {
+    apps::TimerApp woken;
+    woken.onWake(apps::Wake::FromPowerOff);
+    CHECK(!woken.stopwatch().running() && woken.stopwatch().elapsedMs(0) >= swBefore + 600000);
+  }
+  apps::manager::home();
+  advance(400);
+
+  // Dice: the last roll is on screen again after a sleep.
+  tapIcon(&diceApp);
+  advance(400);
+  tap(184, 220);  // roll
+  advance(DICE_ROLL_MS + 1200);
+  CHECK(!diceApp.rolling() && diceApp.showingRoll());
+  apps::manager::prepareSleep(sleepplan::Kind::Sleep);
+  {
+    apps::DiceApp woken;
+    woken.onWake(apps::Wake::FromSleep);
+    lv_obj_t *scr = ui::screen();
+    lv_obj_t *root = ui::box(scr);
+    lv_obj_set_size(root, LCD_WIDTH, LCD_HEIGHT);
+    woken.onCreate(root);
+    CHECK(woken.showingRoll() && !woken.rolling());
+    woken.onDestroy();
+    lv_obj_delete(scr);
+  }
+  apps::manager::home();
+  advance(400);
+
+  // ---- power animations: screen off (the CRT collapse) and power off. Both
+  // end on a fully black screen: no row of the old picture left (that was a
+  // bug: the covers stopped short of the line, which then faded).
+  auto allBlack = []() {
+    lv_obj_invalidate(lv_screen_active());
+    lv_refr_now(nullptr);
+    for (int i = 0; i < LCD_WIDTH * LCD_HEIGHT; i++)
+      if (fb[i]) return false;
+    return true;
+  };
   static bool animDone;
   ui::power_anim::off([]() { animDone = true; });
   advance(450);
   capture("27-power-off");
   advance(700);
-  CHECK(animDone);
+  CHECK(animDone && allBlack());
+  ui::power_anim::on();
+  advance(POWER_ON_ANIM_MS + 100);
+  CHECK(!ui::power_anim::running() && !allBlack());
+  animDone = false;
+  ui::power_anim::shutdown([]() { animDone = true; });
+  advance(SHUTDOWN_ANIM_MS * 40 / 100);
+  capture("50-shutdown-ring");
+  advance(SHUTDOWN_ANIM_MS * 30 / 100);
+  capture("51-shutdown-unwind");
+  advance(SHUTDOWN_ANIM_MS * 30 / 100 + 100);
+  CHECK(animDone && allBlack());
 
   printf("%d tap targets checked\n", targetsChecked);
   printf("%s: %d failure(s)\n", failures ? "FAILED" : "OK", failures);

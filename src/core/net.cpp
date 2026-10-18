@@ -9,9 +9,9 @@
 
 #include "config.h"
 #include "events.h"
+#include "rtc_clock.h"
 #include "secrets_or_example.h"
 #include "settings.h"
-#include "rtc_clock.h"
 #include "ticks.h"
 
 namespace core::net {
@@ -19,7 +19,7 @@ namespace core::net {
 [[maybe_unused]] static const char *TAG = "net";
 
 static int holders;
-static bool radioOn;
+static bool radioUp;
 static bool linkUp;
 static bool suspended;
 static uint32_t startedMs, releasedMs, retryAtMs;
@@ -30,7 +30,7 @@ static int scanCount = -1;
 static Network networks[kMaxNetworks];
 static Join joinSt = Join::Idle;
 static char joinSsid[settings::kSsidMax + 1], joinPassword[settings::kPasswordMax + 1];
-static uint32_t scanAtMs;  // when the last scan finished (0: none, or stale)
+static uint32_t scanAtMs;            // when the last scan finished (0: none, or stale)
 static volatile uint8_t lastReason;  // last STA disconnect reason, written by the Wi-Fi event task
 static uint8_t failReason;           // lastReason when a join on trial failed
 
@@ -86,9 +86,9 @@ static bool configured() { return settings::wifiCount() > 0 || WIFI_SSID[0] != '
 
 // The network on the radio now (or last), and how it was joined.
 static settings::WifiNet cur;
-static bool curCached;     // on its remembered channel / access point
-static bool curLeaseIp;    // with its remembered DHCP lease as a static IP
-static bool fastTried;     // the last network's cached join was tried since the last connect
+static bool curCached;      // on its remembered channel / access point
+static bool curLeaseIp;     // with its remembered DHCP lease as a static IP
+static bool fastTried;      // the last network's cached join was tried since the last connect
 static uint32_t triedMask;  // known networks tried since the last scan, by index
 
 static bool scanFresh(uint32_t now) { return scanAtMs && scanCount >= 0 && now - scanAtMs < WIFI_SCAN_FRESH_MS; }
@@ -236,7 +236,7 @@ static void startRadio(uint32_t now) {
     WiFi.begin(cur.ssid, cur.password, cur.channel, nullptr, true);
   else
     WiFi.begin(cur.ssid, cur.password);
-  radioOn = true;
+  radioUp = true;
   startedMs = now;
   lastReason = 0;
   if (curCached)
@@ -256,8 +256,8 @@ static void stopRadio(uint32_t now) {
   if (joinSt == Join::Trying) {
     joinSt = Join::Failed;
     failReason = lastReason;  // before our own disconnect overwrites it
-    ESP_LOGE(TAG, "join %s failed after %lu ms, reason %u (%s)", joinSsid, (unsigned long)(now - startedMs),
-             failReason, failReason ? WiFi.STA.disconnectReasonName(wifi_err_reason_t(failReason)) : "no answer");
+    ESP_LOGE(TAG, "join %s failed after %lu ms, reason %u (%s)", joinSsid, (unsigned long)(now - startedMs), failReason,
+             failReason ? WiFi.STA.disconnectReasonName(wifi_err_reason_t(failReason)) : "no answer");
   }
   // Otherwise the core's reconnect handler answers our own disconnect by
   // reconnecting a driver that is already stopped (STA disconnect failed /
@@ -265,7 +265,7 @@ static void stopRadio(uint32_t now) {
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(true, false);
   WiFi.mode(WIFI_OFF);
-  radioOn = false;
+  radioUp = false;
   setLink(false, now);
 }
 
@@ -300,7 +300,7 @@ void begin() {
 
 void loop() {
   const uint32_t now = millis();
-  setLink(radioOn && WiFi.status() == WL_CONNECTED, now);
+  setLink(radioUp && WiFi.status() == WL_CONNECTED, now);
 
   if (scanning) {
     const int found = WiFi.scanComplete();
@@ -319,16 +319,16 @@ void loop() {
   }
 
   if (suspended) {
-    if (radioOn) stopRadio(now);
+    if (radioUp) stopRadio(now);
   } else if (holders > 0) {
-    if (!radioOn && configured() && reached(now, retryAtMs)) startRadio(now);
+    if (!radioUp && configured() && reached(now, retryAtMs)) startRadio(now);
     // A cached join that the router turns down (any disconnect reason) is
     // given up at once: the normal join is a better bet than the driver's
     // retries on the same channel.
     const uint32_t timeout = joinSt == Join::Trying ? WIFI_JOIN_TIMEOUT_MS : WIFI_CONNECT_TIMEOUT_MS;
     const bool cachedRefused =
         curCached && joinSt != Join::Trying && lastReason != 0 && lastReason != WIFI_REASON_ASSOC_LEAVE;
-    if (radioOn && !linkUp && !scanning && (now - startedMs > timeout || cachedRefused)) {
+    if (radioUp && !linkUp && !scanning && (now - startedMs > timeout || cachedRefused)) {
       const bool trial = joinSt == Join::Trying;
       stopRadio(now);  // also ends a trial as Failed
       if (trial) {
@@ -345,7 +345,7 @@ void loop() {
         retryAtMs = curCached || nKnown > 1 ? now : now + WIFI_RETRY_MS;
       }
     }
-  } else if (radioOn && now - releasedMs > WIFI_GRACE_MS) {
+  } else if (radioUp && now - releasedMs > WIFI_GRACE_MS) {
     stopRadio(now);
   }
 }
@@ -359,7 +359,7 @@ void release() {
 }
 
 void shutdown() {
-  if (radioOn) stopRadio(millis());
+  if (radioUp) stopRadio(millis());
 }
 
 void suspend(bool on) {
@@ -378,7 +378,7 @@ void join(const char *ssid, const char *password) {
   }
   strlcpy(joinPassword, password, sizeof joinPassword);
   strlcpy(joinSsid, ssid, sizeof joinSsid);
-  if (radioOn) stopRadio(millis());
+  if (radioUp) stopRadio(millis());
   joinSt = Join::Trying;
   retryAtMs = millis();
 }
@@ -393,9 +393,9 @@ void startScan() {
     scanCount = 0;
     return;
   }
-  if (!radioOn) {
+  if (!radioUp) {
     WiFi.mode(WIFI_STA);
-    radioOn = true;
+    radioUp = true;
     startedMs = millis();
   } else if (!linkUp) {
     WiFi.disconnect(false, false);  // the driver can't scan while it's joining
@@ -420,6 +420,7 @@ const char *ssid() {
 bool known(const char *ssid) { return knownIndex(ssid) >= 0; }
 
 bool connected() { return linkUp; }
+bool radioOn() { return radioUp; }
 int rssi() { return linkUp ? WiFi.RSSI() : 0; }
 const char *ip() { return ipText; }
 

@@ -44,10 +44,12 @@ time on stage, fall asleep to the rain.
 - **System**: battery, Wi-Fi, memory, uptime and the **wireless update**
   screen.
 
-It also looks after itself: it dims and blanks the screen when idle, sleeps
-deeply on battery, keeps the screen on while a timer needs it, shifts the
-picture a few pixels now and then so the AMOLED doesn't burn in, and updates
-over Wi-Fi.
+It behaves like a phone: one button turns the screen off and on, holding it
+powers off, and waking brings back the app you were in. With the screen off
+it sleeps as deeply as the apps allow: rain keeps playing, a countdown still
+rings on time, everything else sleeps deeply for weeks. It shifts the picture
+a few pixels now and then so the AMOLED doesn't burn in, and updates over
+Wi-Fi.
 
 ## Quick settings
 
@@ -60,7 +62,9 @@ over Wi-Fi.
 In the menu, **drag the status bar down** (or tap it) and a shade slides
 over the menu, like on a phone:
 
-- **Wi-Fi**: shows the network in use. Tap it to pick another: the board
+- **Wi-Fi**: shows what the radio is doing: **On · *network***,
+  **Connecting…**, or **Off** (the usual state: Wi-Fi comes on only while an
+  app needs it). Tap it to pick another network: the board
   scans, you tap a network and type its password on a phone keypad the old
   way. Tap 2 three times for "c", wait a moment (or press another key) to
   move on; **#** switches between abc, ABC and 123, **\*** has the symbols,
@@ -74,7 +78,7 @@ over the menu, like on a phone:
   plays to hear the level, or let go and it blips once at the new volume.
 
 All settings stay through restarts, sleep and firmware updates. Drag the
-shade up, tap below it or press a button to close it.
+shade up, tap below it or press Back to close it.
 
 ## The apps
 
@@ -94,8 +98,10 @@ can't reach. A red banner means the access token was rejected.
 <img src="docs/design/screens/07-bot-face-happy.png" width="184" alt="Bot face, happy">
 <img src="docs/design/screens/08-bot-face-sleepy.png" width="184" alt="Bot face, sleepy">
 
-It blinks and looks around on its own. Tap it and it's happy; tap twice
-quickly and it's surprised. When the screen dims it gets sleepy.
+It blinks and looks around on its own, drifts slowly around the screen, and
+every few seconds winks, glances sideways, hums or yawns. Tap it and it's
+happy; tap twice quickly and it's surprised. It stays bright for a minute;
+when the screen dims it gets sleepy.
 
 ### Pomodoro
 
@@ -112,6 +118,8 @@ The timer keeps running when you leave the app. While it runs, the screen
 never turns off: after the idle time it switches to the dim **minimal view**
 (minutes and a dotted ring, moving slightly every minute) and the chip
 sleeps between updates. Touch or press a button to get the full view back.
+Turn the screen off with the power button and the device sleeps deeply
+until the phase ends, then beeps and shows the Pomodoro.
 
 ### Espresso
 
@@ -178,8 +186,9 @@ Three tabs at the top:
   in amber until you press Stop (Back just silences it).
 
 The stopwatch and countdown keep running when you leave the app, with the
-same dim, moving view while the device is idle. The countdown remembers its
-last time.
+same dim, moving view while the device is idle, and even with the screen
+off: the device sleeps deeply and wakes itself when the countdown ends (the
+power button silences the alarm). The countdown remembers its last time.
 
 ### Noise
 
@@ -194,10 +203,11 @@ Every sound is generated live and has its own picture: falling rain with
 splashes, drifting snow, twinkling blue points.
 
 It's made for long sessions. The labels fade out after a few seconds, the
-picture never stands still, and the screen dims and goes black as usual
-while the sound plays on, in the menu and in other apps too (open Noise
-again to pause it). The board won't deep-sleep while it plays, so on
-battery it lasts hours, not days. Volume and mute are in quick settings.
+picture never stands still, and the screen dims and goes off as usual
+(or with the power button) while the sound plays on, in the menu and in
+other apps too (open Noise again to pause it). The board stays awake while
+it plays, so on battery it lasts hours, not days. Volume and mute are in
+quick settings.
 
 ### System
 
@@ -206,28 +216,34 @@ battery it lasts hours, not days. Volume and mute are in quick settings.
 
 Firmware version, board revision, battery and charging, Wi-Fi signal and IP,
 free memory, uptime. **Update** opens the wireless update screen (see
-[Updating over Wi-Fi](#updating-over-wi-fi)).
+[Updating over Wi-Fi](#updating-over-wi-fi)). **Touch** calibrates the
+touch screen (tap five crosses); **Reset to factory** there drops the
+calibration again.
 
 ## Using the device
 
 | Do this | What happens |
 | --- | --- |
 | Tap / swipe the screen | use the app; swipe the menu up and down |
-| **BOOT** button, short press | **Back** (inside an app first, e.g. the espresso result, then to the menu) |
-| **PWR** button, short press | **Home**: straight to the menu |
-| Either button, **hold 1 s** | power-off animation, then deep sleep |
-| **BOOT** while asleep | wake up into the menu |
-| Any touch or button while dimmed / black | screen comes back (that touch isn't passed to the app) |
+| **Power** button (BOOT), press | screen off, with a short "old TV" animation; the board sleeps as deeply as the apps allow |
+| **Power** with the screen off | screen on, in the app you were in, as you left it |
+| **Power**, **hold 1.5 s** | **power off**: a longer animation (a ring winds round the power symbol and unwinds); only the Power button starts it again, in the menu, with timers paused |
+| **Back** button (PWR), press | back one step (inside an app first, e.g. the espresso result), then to the menu |
+| **Back** button, **hold 1 s** | **Home**: straight to the menu |
+| Touch or Back while dimmed | screen comes back (that touch isn't passed to the app) |
 
-<img src="docs/design/screens/27-power-off.png" width="184" alt="Power-off animation">
+<img src="docs/design/screens/27-power-off.png" width="184" alt="Screen-off animation">
+<img src="docs/design/screens/50-shutdown-ring.png" width="184" alt="Power-off animation">
 
-**Power.** On battery the screen dims after 10 s, goes black after 15 s and
-the board deep-sleeps after 20 s idle (Espresso and Level wait longer; a
-running Pomodoro, the Timer's clock or a running timer never sleep and show
-a dim minimal view instead; playing Noise blanks the screen but doesn't
-sleep). On the charger it dims after 1 min, goes
-black after 5 min and never sleeps. Apps remember their state across sleep
-(Pomodoro comes back paused). All timings are in `include/config.h`.
+**Power.** On battery the screen dims after 30 s and goes off after 40 s
+idle (the Bot face, Espresso and Level wait a minute before dimming; a
+running Pomodoro, the Timer's clock or a running timer show a dim minimal
+view instead of going off). On the charger it dims after 2 min and goes off
+after 10 min. With the screen off, only the Power button wakes it, and the
+board sleeps as deeply as the apps allow: deeply if nothing needs it (a
+charge should last weeks), awake while Noise plays, deeply with an alarm set
+for a running countdown or Pomodoro. The motion sensor runs only while the
+Level is on screen. All timings are in `include/config.h`.
 
 ## Getting started
 
@@ -310,7 +326,8 @@ Everything you'd want to tweak is in **`include/config.h`**:
 | --- | --- |
 | How many lights, refresh rates | `HA_MAX_LIGHTS`, `HA_POLL_MS`, `HA_LIST_MS` |
 | Brightness range and default (the level itself is set in quick settings) | `BRIGHTNESS_USER_*` |
-| Dim / black / sleep timings | `BAT_IDLE_*`, `CHG_IDLE_*` |
+| Dim / screen-off timings | `BAT_IDLE_*`, `CHG_IDLE_*`, and per app `*_IDLE_DIM_MS` |
+| Hold times of the buttons | `BUTTON_LONG_PRESS_MS` (Home), `BUTTON_POWER_OFF_MS` (power off) |
 | Pomodoro lengths, set size, auto-start, sound | `POMO_*` |
 | Espresso target band | `ESPRESSO_TARGET_MIN_S`, `ESPRESSO_TARGET_MAX_S` |
 | Dice colour and roll time | `DICE_COLOR`, `DICE_ROLL_MS` |
@@ -342,6 +359,8 @@ Rebuild and flash (USB or Wi-Fi) after changing it.
 | Wireless update: no device found | use `--upload-port <IP from the screen>`; PC and board on the same network |
 | Level reads wrong axes | see the axis check in [docs/apps/level.md](docs/apps/level.md) |
 | No serial output | the release build only logs errors; use `amoled-debug` |
+| The screen won't come on | press **Power** (BOOT): touch and Back do nothing while the screen is off |
+| Touch lands in the wrong place | System → Touch: tap the five crosses; or **Reset to factory** there |
 
 ---
 

@@ -103,12 +103,34 @@ and the easing blends back.
 | Double tap (≤ 320 ms) | surprised |
 | Back / Home | back to the menu |
 
+## Idle acts (lively mode)
+
+Added 2026-10-18, beyond the mockup: the face stays on longer now, so it
+does more on its own. `bot::Face::setLively(true)` (the app turns it on; off,
+the face is exactly the mockup's, which the unit tests check):
+
+- **Wander:** the whole face drifts slowly, `x = 16 · sin(2πt / 37 s)`,
+  `y = 10 · sin(2πt / 23 s)`, so nothing sits still on the AMOLED.
+- Every **5–11 s** (× 1.8 dimmed) an act, from its own random stream (the
+  blink and look schedule stays the mockup's):
+
+| Act | Share | Targets | Held for |
+| --- | --- | --- | --- |
+| **Wink** | 40 % of the rest | one eye (random side) closes and opens over 380 ms, curve 0.85 | 600 ms |
+| **Glance** | 35 % of the rest | look hard left or right (lookY 0.1), open 0.7, width 1.06, curve 0.4 | 1400 ms |
+| **Hum** | 25 % of the rest | curve 0.9, two quick hops of −8 px (150 ms up, 150 ms down, twice) | 900 ms |
+| **Yawn** | 10 %, 60 % dimmed | "o" mouth 1.3, eyes 0.25, curve 0 | 1800 ms |
+
+A tap cancels an act and reacts as usual.
+
 ## Power
 
-`Normal`: on battery it follows dim → black → sleep. Animation runs at
-~30 fps while active and drops to ~10 fps while dimmed (the sleepy face moves
-slowly anyway). On the charger it follows the charger timeline (dim at 60 s,
-plain black at 5 min). The eyes keep moving, so the face doesn't burn in.
+`Normal`, with a longer dim delay: `BOT_FACE_IDLE_DIM_MS` (60 s), so the
+face stays bright a minute; then it dims (sleepy face) and the screen goes
+off 10 s later on battery (charger: 2 min / 10 min). Animation runs at
+~30 fps while active and drops to ~10 fps while dimmed. The eyes keep
+moving and the face wanders, so it doesn't burn in. Nothing needed with the
+screen off: a sleep reopens the face.
 
 Only the face's bounding area is redrawn each frame (eyes ~240 × 150 px plus
 mouth ~110 × 70 px), not the full screen, which keeps the frame time low.
@@ -124,6 +146,7 @@ None needed.
 #define BOT_FACE_COLOR       0x00E5FF   // eye/mouth colour (RGB888)
 #define BOT_FACE_FPS         30
 #define BOT_FACE_FPS_DIM     10
+#define BOT_FACE_IDLE_DIM_MS 60000      // stays bright a minute
 ```
 
 ## Implementation notes
@@ -141,8 +164,8 @@ None needed.
 - [ ] Smooth blinking (incl. occasional double blinks) and glances, no tearing
 - [ ] Tap → happy hop; double tap → surprised "o"
 - [ ] Sleepy face when dimmed
-- [ ] On the charger: dims at 60 s, goes black at 5 min, touch restores it
-- [ ] On battery the device still sleeps after the idle timeout
+- [ ] Lively: the face drifts slowly; winks, glances, hums and yawns every few seconds; a tap still wins
+- [ ] Dims after 60 s; the screen goes off 10 s later on battery; Power brings the face back
 
 ## Later
 

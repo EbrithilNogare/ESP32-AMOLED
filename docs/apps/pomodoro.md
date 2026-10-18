@@ -67,7 +67,8 @@ All durations are configurable.
 | Reset button | reset the current phase (confirm by tapping twice) |
 | Long-press ring | skip to the next phase |
 | Back / Home | back to the menu, **timer keeps running** in the background; reopening shows it |
-| Long press (sleep) | timer is saved as **paused**; resume after waking |
+| Power (screen off) | keeps running; the device sleeps until the phase end, then beeps and shows the Pomodoro |
+| Power held (power off) | timer is saved as **paused**; resume after waking |
 
 ## States
 
@@ -97,9 +98,13 @@ starts automatically (`POMO_AUTO_START_NEXT`) or waits for a tap.
 
 ## Power
 
-- Running → `LowPowerDisplay`: never deep sleep; the dim timeout switches to
-  the minimal view instead of dim → black → sleep.
-- Idle / paused → `Normal` (the device may sleep; a paused timer is saved).
+- Running → `LowPowerDisplay`: the dim timeout switches to the minimal view
+  instead of dim → screen off.
+- Idle / paused → `Normal`.
+- **Screen off** (Power, or idle while paused): a running timer asks for a
+  wake at its phase end (`sleepNeed()`), so the device deep-sleeps until
+  then; at the phase end it beeps and the Pomodoro comes to the front with
+  the screen on (`manager::attention()`), wherever the device was.
 - Running in the background (user went back to the menu): the policy still
   applies. When the menu would go to sleep, the device shows the pomodoro
   minimal view instead.
@@ -113,9 +118,12 @@ awake. Measure and record in HARDWARE.md.
 
 ## Persistence
 
-`onSleep()` pauses a running timer and saves `pomo::Saved` (phase, running
-flag, pomodoros completed, remaining ms) to NVS (key `pomo`); it is restored
-when the app next runs. Daily stats come later.
+A sleep parks the whole `pomo::Pomodoro` in RTC memory; its end time is on
+`core::mono()`, which counts on through deep sleep, so it simply carries on
+(phases that ended meanwhile are caught up, as `update()` always does). A
+power-off pauses it, parks it, and also saves `pomo::Saved` (phase, running
+flag, pomodoros completed, remaining ms) to NVS (key `pomo`), which a cold
+boot restores. Daily stats come later.
 
 ## Config
 

@@ -8,17 +8,17 @@ namespace apps {
 // Noise (docs/apps/noise.md): rain with a rain animation; swipe left or
 // right to cycle through white and blue noise. Tap to play / pause. The sound
 // is lib/NoiseGen streamed by core::sound; it keeps playing in the menu and
-// other apps. Long sessions: the labels fade out, the animation never stops
-// moving, and the screen still dims and goes black (policy NoSleep).
+// other apps, and with the screen off (the chip dozes for it). Long
+// sessions: the labels fade out, the animation never stops moving, and the
+// screen still dims and goes off.
 class NoiseApp : public App {
  public:
   const AppInfo &info() const override;
   void onCreate(lv_obj_t *root) override;
   void onDestroy() override;
   void onTick(uint32_t nowMs) override;
-  power::Policy powerPolicy() const override;
-  power::Policy backgroundPolicy() const override;
-  void onSleep() override;
+  sleepplan::Need sleepNeed(uint64_t monoNow) const override;
+  void onSleep(sleepplan::Kind kind) override;
 
   noise::Kind kind() const { return kind_; }
   bool playing() const;

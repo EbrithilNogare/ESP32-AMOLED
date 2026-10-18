@@ -35,7 +35,11 @@ passed, "> n days" when under 2 % was lost (a lower bound).
 Touch calibration (`44-touch-calibration.png`, `45-touch-check.png`): a
 cross near each corner, then the centre (40 px in from the edges), one at a
 time, "n / 5" under the hint. After the fifth, the correction is applied and
-a dot follows the finger to check it, with **Redo** and **Save**.
+a dot follows the finger to check it, with **Redo** and **Save**. While
+the crosses are up, **Reset to factory** (`49-touch-factory.png`, between
+the centre cross and the bottom ones) drops the correction: the panel as it
+reports, saved at once, back to the info view. For when a bad calibration
+makes the crosses themselves hard to hit.
 
 Update screen states: *Connecting Wi-Fi* → *Waiting for upload* (host, IP,
 version) → *Receiving n %* → *Done, restarting…* or *Failed: reason*
@@ -49,13 +53,16 @@ version) → *Receiving n %* → *Done, restarting…* or *Failed: reason*
 | Tap "Touch" | touch calibration |
 | Tap anywhere (calibrating) | records the tap for the cross shown (a tap off the cross counts; it's the panel's error being measured) |
 | Redo / Save (checking) | start over / keep the correction and go back |
+| Reset to factory (calibrating) | no correction (the factory calibration), saved; back to the info view |
 | Back (calibrating or checking) | leave; the saved correction stays in use |
 | Back / Home (waiting) | stop the listener, leave |
 | Back / Home (receiving) | ignored, so a transfer can't be interrupted by accident |
 
 ## Power
 
-Info list: `Normal`. Update screen: `KeepAwake` while open, Wi-Fi on.
+Info list: `Normal`. Update screen: `KeepAwake` while open, Wi-Fi on; Back,
+Home and Power are ignored during the transfer. A sleep reopens System on
+the info view.
 
 ## Touch calibration
 
@@ -86,6 +93,7 @@ disables OTA).
 - [ ] After calibrating, the dot sits under the finger near every edge, and
       the Dice die buttons and stepper react where their icons are
 - [ ] The calibration survives a reboot and a firmware update
+- [ ] Reset to factory drops it (the dot then follows the panel's raw error)
 - [ ] A deliberately crashing test build rolls back to the previous firmware
 - [ ] Listener refuses below 30 % battery when not charging
 

@@ -18,5 +18,8 @@ bool charging();
 int batteryPercent();  // -1 if no battery
 uint16_t batteryMillivolts();
 void refreshLevel();  // read the level now instead of waiting for the next poll
+// Before deep sleep: the voltage ADCs off (begin() turns them on again). The
+// fuel gauge keeps counting.
+void prepareSleep();
 
 }  // namespace core::pmu

@@ -29,10 +29,10 @@ const AppInfo &NoiseApp::info() const { return kInfo; }
 
 bool NoiseApp::playing() const { return core::sound::noisePlaying(); }
 
-power::Policy NoiseApp::powerPolicy() const { return playing() ? power::Policy::NoSleep : power::Policy::Normal; }
-power::Policy NoiseApp::backgroundPolicy() const { return powerPolicy(); }
-
-void NoiseApp::onSleep() { core::sound::stopNoise(); }
+// Playing keeps the chip up with the screen off (it dozes, at a low CPU
+// clock); a power-off stops it. It never deep-sleeps while playing.
+sleepplan::Need NoiseApp::sleepNeed(uint64_t) const { return {playing(), 0}; }
+void NoiseApp::onSleep(sleepplan::Kind) { core::sound::stopNoise(); }
 
 float NoiseApp::rnd() {
   rng_ ^= rng_ << 13;
@@ -228,7 +228,7 @@ void NoiseApp::onTick(uint32_t nowMs) {
   }
   if (!playing() || !core::reached(nowMs, nextFrameMs_)) return;
   const ::power::Stage st = core::power::stage();
-  if (st == ::power::Stage::Black) return;  // panel off: nothing to animate
+  if (st == ::power::Stage::Off) return;  // screen off: nothing to animate
   nextFrameMs_ = nowMs + 1000 / (st == ::power::Stage::Dimmed ? NOISE_FPS_DIM : NOISE_FPS);
   const float dt = fminf(float(nowMs - lastFrameMs_) / 1000.0f, 0.15f);
   lastFrameMs_ = nowMs;

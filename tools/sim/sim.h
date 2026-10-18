@@ -9,8 +9,8 @@
 
 #include "core/net.h"
 #include "core/ota.h"
-#include "touch_cal.h"
 #include "ha_parse.h"
+#include "touch_cal.h"
 
 // Knobs the simulator script turns (see sim_core.cpp).
 namespace sim {
@@ -37,6 +37,9 @@ extern int brightnessApplied;
 extern int volumeApplied;
 extern int noise;               // -1 silent, else the noise::Kind playing
 extern std::vector<int> beeps;  // core::sound::Pattern of every beep played
+extern bool radio;              // net::radioOn()
+extern int wakes;               // core::power::wake() calls (an app wanted the screen)
+extern int64_t monoOffset;      // core::mono() = extend(millis) + this: a "deep sleep" moves it on
 // Touch: the correction core::touch applies, raw mode, and a panel error to
 // emulate (raw = (finger - offset) / scale per axis; identity by default).
 extern touchcal::Cal touchCal;

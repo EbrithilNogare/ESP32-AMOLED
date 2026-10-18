@@ -5,7 +5,6 @@
 
 #include "board.h"
 #include "config.h"
-#include "version.h"
 #include "core/board_init.h"
 #include "core/net.h"
 #include "core/ota.h"
@@ -16,6 +15,7 @@
 #include "core/touch.h"
 #include "ui/power_anim.h"
 #include "ui/theme.h"
+#include "version.h"
 
 namespace apps {
 
@@ -23,8 +23,8 @@ using core::ota::State;
 
 static constexpr uint32_t kAccent = 0x8FA3BF;  // slate
 static const AppInfo kInfo = {"system", "System", ICON_MEMORY, kAccent};
-static const char *const kKeys[SystemApp::kRows] = {"Firmware", "Board",    "Battery",  "Charging", "Standby",
-                                                    "Wi-Fi",    "IP",       "Free RAM", "Uptime"};
+static const char *const kKeys[SystemApp::kRows] = {"Firmware", "Board", "Battery",  "Charging", "Standby",
+                                                    "Wi-Fi",    "IP",    "Free RAM", "Uptime"};
 
 const AppInfo &SystemApp::info() const { return kInfo; }
 
@@ -239,6 +239,11 @@ void SystemApp::onTick(uint32_t nowMs) {
       finishTouch(true);
       showInfo();
       break;
+    case Pending::Factory:
+      cal_ = touchcal::Cal{};  // no correction: the panel as it reports
+      finishTouch(true);
+      showInfo();
+      break;
     case Pending::None: break;
   }
   if (touchView_) return;
@@ -327,7 +332,20 @@ void SystemApp::showTouch() {
   lv_obj_set_user_data(save, reinterpret_cast<void *>(1));
   lv_obj_add_event_cb(save, onTouchButton, LV_EVENT_CLICKED, this);
   lv_obj_set_hidden(buttons_, true);
+
+  // While tapping crosses: back to the factory calibration (no correction),
+  // e.g. when a bad one makes the crosses hard to hit. A big target between
+  // the centre cross and the bottom ones.
+  factory_ = textButton(root_, "Reset to factory", col::textDim, kBtnSmall);
+  lv_obj_set_width(factory_, 228);
+  lv_obj_align(factory_, LV_ALIGN_TOP_MID, 0, 302);
+  lv_obj_set_style_bg_color(factory_, c(col::surface), 0);
+  lv_obj_add_event_cb(factory_, onFactory, LV_EVENT_CLICKED, this);
   placeCross();
+}
+
+void SystemApp::onFactory(lv_event_t *e) {
+  static_cast<SystemApp *>(lv_event_get_user_data(e))->pending_ = Pending::Factory;
 }
 
 void SystemApp::placeCross() {
@@ -364,6 +382,7 @@ void SystemApp::onCatcher(lv_event_t *e) {
   core::touch::setRaw(false);
   lv_obj_set_hidden(self->cross_, true);
   lv_obj_set_hidden(self->step_, true);
+  lv_obj_set_hidden(self->factory_, true);
   lv_obj_set_hidden(self->buttons_, false);
   ui::setText(self->hint_, "Drag around: the dot should follow your finger");
 }
@@ -380,7 +399,7 @@ void SystemApp::finishTouch(bool save) {
   core::touch::setRaw(false);
   if (save) core::settings::saveTouchCal(cal_);
   core::touch::setCalibration(core::settings::touchCal());
-  cross_ = dot_ = hint_ = step_ = buttons_ = nullptr;
+  cross_ = dot_ = hint_ = step_ = buttons_ = factory_ = nullptr;
 }
 
 }  // namespace apps

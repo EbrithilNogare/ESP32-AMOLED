@@ -5,6 +5,33 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## The power-off animation left a strip and a glowing dot on the black screen
+
+Two separate leftovers, both found by a simulator check that the screen is
+all black after the animation. The two black covers stopped
+`kLine / 2` short of the middle, so the 4 px strip behind the line showed
+the old picture again once the line faded. And LVGL draws an object's
+shadow whatever its `bg_opa`: fading the line's background to transparent
+left its 18 px glow lit at 60 %. The covers now meet in the middle, and
+every fade sets `shadow_opa` along with `bg_opa` (same for the shutdown
+animation's dot).
+
+## Simulator: a drag's last position was never read
+
+A drag that moves the finger in 15 ms steps and lifts right after the last
+step can end before LVGL's 30 ms input read sees the last position, so the
+bar landed a few percent short, depending on where the read timer happened
+to be (it changed when other flows were added before it). Hold the finger
+at the end for one read period (`advance(40)`) before lifting.
+
+## A temporary app object must not call `manager::attention()`
+
+The simulator built a second `TimerApp` to check what a wake restores, and
+ran its `service()`: the countdown had ended, so it called
+`apps::manager::attention(this)`, which made the temporary object the open
+app; once it went out of scope the next tick crashed ("pure virtual method
+called"). Check such objects through their getters, not through `service()`.
+
 ## Level: the bubble moved along the wrong axis and the horizon turned backwards
 
 With the QMI8658's axes taken as the screen's, tilting the board flat

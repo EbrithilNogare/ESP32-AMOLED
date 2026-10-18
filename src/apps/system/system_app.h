@@ -6,7 +6,7 @@
 namespace apps {
 
 // System (docs/apps/system.md): device info, the wireless update screen and
-// touch calibration.
+// touch calibration (with a reset to the factory calibration).
 class SystemApp : public App {
  public:
   static constexpr int kRows = 9;  // info rows
@@ -27,6 +27,7 @@ class SystemApp : public App {
   static void onTouchClicked(lv_event_t *e);
   static void onCatcher(lv_event_t *e);
   static void onTouchButton(lv_event_t *e);
+  static void onFactory(lv_event_t *e);
   void updateInfo();
   void updateOta(uint32_t nowMs);
   static void onUpdateClicked(lv_event_t *e);
@@ -43,7 +44,7 @@ class SystemApp : public App {
   bool restarting_ = false;
   bool openUpdate_ = false;  // deferred: the click handler's button gets deleted
   // touch calibration: kCalTargets crosses, then a check with a dot
-  enum class Pending : uint8_t { None, Touch, Redo, Save };
+  enum class Pending : uint8_t { None, Touch, Redo, Save, Factory };
   static constexpr int kCalTargets = 5;
   bool touchView_ = false;
   Pending pending_ = Pending::None;  // deferred like openUpdate_
@@ -51,6 +52,7 @@ class SystemApp : public App {
   touchcal::Sample samples_[kCalTargets] = {};
   touchcal::Cal cal_;
   lv_obj_t *cross_ = nullptr, *dot_ = nullptr, *hint_ = nullptr, *step_ = nullptr, *buttons_ = nullptr;
+  lv_obj_t *factory_ = nullptr;
 };
 
 }  // namespace apps

@@ -7,9 +7,10 @@
 namespace core {
 
 enum class Ev : uint8_t {
-  Back,         // Back button short press
-  Home,         // Home button short press
-  LongPress,    // either button held: power-off request
+  Back,         // PWR short press
+  Home,         // PWR held (BUTTON_LONG_PRESS_MS)
+  Power,        // BOOT short press with the screen on: screen off, sleep
+  PowerOff,     // BOOT held (BUTTON_POWER_OFF_MS): power off
   WifiChanged,  // a = 1 when connected; net::connected() already reflects it
   HaResult,     // a = light index, b = ha_client::pack(): state, result, toggle, list generation
   HaLights,     // the light list was loaded (or not): b = ha::Result

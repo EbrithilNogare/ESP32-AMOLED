@@ -351,6 +351,65 @@ static void test_blinks_resume_after_long_gap() {
   TEST_ASSERT_GREATER_OR_EQUAL(3, blinks);  // first one right away, then every 2-6 s
 }
 
+// ---- lively mode ----
+
+static void test_lively_off_by_default_never_acts() {
+  Face f(5, 0);
+  for (uint32_t t = 0; t < 120000; t += 20) {
+    f.update(t, false);
+    TEST_ASSERT_EQUAL(0, int(f.act()));
+  }
+  TEST_ASSERT_FLOAT_WITHIN(EPS, 184, f.geometry(120000).mx - 8 * f.params().lookX);  // no wander
+}
+
+static void test_lively_acts_every_few_seconds_and_all_kinds_show_up() {
+  Face f(11, 0);
+  f.setLively(true, 0);
+  bool seen[5] = {};
+  int starts = 0, last = 0;
+  uint32_t lastStart = 0, firstStart = 0;
+  for (uint32_t t = 0; t < 600000; t += 20) {
+    f.update(t, false);
+    const int a = int(f.act());
+    if (a && !last) {
+      if (!starts) firstStart = t;
+      if (starts) TEST_ASSERT_TRUE(t - lastStart >= 5000 && t - lastStart <= 11000 + 1800 + 40);
+      lastStart = t;
+      starts++;
+    }
+    seen[a] = true;
+    last = a;
+  }
+  TEST_ASSERT_TRUE(firstStart > 5000 && firstStart < 5100);  // first one 5 s after switching on
+  TEST_ASSERT_GREATER_THAN(40, starts);
+  for (int k = 1; k <= 4; k++) TEST_ASSERT_TRUE(seen[k]);
+}
+
+static void test_lively_wander_stays_within_bounds() {
+  Face f(3, 0);
+  f.setLively(true, 0);
+  float minX = 1e9f, maxX = -1e9f;
+  for (uint32_t t = 0; t < 80000; t += 250) {
+    const Geometry g = f.geometry(t);
+    const float cx = g.eyeL.x + g.eyeL.w / 2;  // look is 0 without update()
+    minX = fminf(minX, cx);
+    maxX = fmaxf(maxX, cx);
+  }
+  TEST_ASSERT_FLOAT_WITHIN(0.5f, 124 - 16, minX);
+  TEST_ASSERT_FLOAT_WITHIN(0.5f, 124 + 16, maxX);
+}
+
+static void test_tap_cancels_an_act() {
+  Face f(11, 0);
+  f.setLively(true, 0);
+  uint32_t t = 0;
+  for (; t < 20000 && !int(f.act()); t += 20) f.update(t, false);
+  TEST_ASSERT_TRUE(int(f.act()) != 0);
+  f.tap(t);
+  TEST_ASSERT_EQUAL(0, int(f.act()));
+  TEST_ASSERT_EQUAL_FLOAT(1, f.targets().curve);  // the happy face, not the act's
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_rest_geometry_matches_mockup);
@@ -374,5 +433,9 @@ int main() {
   RUN_TEST(test_easing_matches_mockup_per_frame_rate);
   RUN_TEST(test_easing_frame_rate_independent);
   RUN_TEST(test_time_going_backwards_is_harmless);
+  RUN_TEST(test_lively_off_by_default_never_acts);
+  RUN_TEST(test_lively_acts_every_few_seconds_and_all_kinds_show_up);
+  RUN_TEST(test_lively_wander_stays_within_bounds);
+  RUN_TEST(test_tap_cancels_an_act);
   return UNITY_END();
 }

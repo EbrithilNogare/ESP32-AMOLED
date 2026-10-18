@@ -22,10 +22,10 @@ using level::View;
 
 static const AppInfo kInfo = {"level", "Level", ICON_STRAIGHTEN, LEVEL_COLOR};
 
-static constexpr int32_t kStageH = 376;   // everything above the bottom bar
+static constexpr int32_t kStageH = 376;                            // everything above the bottom bar
 static constexpr int32_t kLandW = LCD_HEIGHT, kLandH = LCD_WIDTH;  // the screen turned
-static constexpr int32_t kColW = 116;     // landscape: readouts and buttons right of the disc
-static constexpr uint32_t kFrameMs = 33;  // at most 30 redraws a second
+static constexpr int32_t kColW = 116;                              // landscape: readouts and buttons right of the disc
+static constexpr uint32_t kFrameMs = 33;                           // at most 30 redraws a second
 static constexpr float kD2R = 0.01745329f;
 static constexpr uint32_t kVial = 0x0B0A06, kVialRim = 0x2E2A1C, kRings = 0x6B5E2E;
 static constexpr uint32_t kSky = 0x08101A, kGround = 0x1C1604;
@@ -334,6 +334,15 @@ void LevelApp::onRotated() {
   lv_obj_clean(root_);
   build();
   sample();  // the readings follow the new orientation
+}
+
+// The IMU runs only while Level is on screen: off with the screen, back
+// (with a fresh filter) when it returns.
+void LevelApp::onScreen(bool on) {
+  core::imu::enable(on);
+  if (!on) return;
+  filter_.reset();
+  nextSampleMs_ = millis();
 }
 
 void LevelApp::onDestroy() {

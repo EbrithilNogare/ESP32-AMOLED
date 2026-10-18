@@ -86,7 +86,7 @@ you press Stop.
 
 | What's going on | Policy |
 | --- | --- |
-| Clock tab open | `LowPowerDisplay`: never black, never asleep |
+| Clock tab open | `LowPowerDisplay`: never off by itself, only by Power |
 | Stopwatch or countdown running (or a finished countdown not yet stopped), open or in the background | `LowPowerDisplay` |
 | Otherwise | `Normal` |
 
@@ -97,17 +97,26 @@ user's brightness). It shows what the open tab shows; from the background,
 a running countdown, else the stopwatch.
 
 - **Clock:** hours over minutes in 160 px digits. Redraws at each wall-clock
-  minute; the CPU light-sleeps in between (and still wakes once a second to
-  poll PWR, see ARCHITECTURE §8.2).
+  minute; the CPU light-sleeps in between (waking at most every 5 s to poll
+  the charger, ARCHITECTURE §8.3).
 - **Countdown / stopwatch:** mm:ss and a small caption, redrawn each second.
 - Every minute the digits move to a new spot (±40 px across, ±50 px / ±110 px
   down) so no pixel stays lit; only about 5 % of the pixels are on.
 
 ## Persistence
 
-NVS key `timer`: the countdown's set time and the last tab. A long-press
-power-off stops a running stopwatch or countdown (the device can't sleep
-on its own while one runs).
+NVS key `timer`: the countdown's set time and the last tab.
+
+**Screen off** (Power): both timers carry on, parked in RTC memory as they
+are (their clock, `core::mono()`, counts on through deep sleep). A running
+countdown asks for a wake at its end (`sleepNeed()`): the device deep-sleeps
+until then, wakes with the screen dark, and the countdown rings and comes to
+the front with the screen on (`manager::attention()`). A stopwatch needs
+nothing: it just reads right after the wake. The alarm also comes to the
+front when it ends while another app is open. Power (screen off) or Back
+silences it.
+
+**Power-off** (Power held): both timers pause and come back paused.
 
 ## Config
 

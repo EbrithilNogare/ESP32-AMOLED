@@ -44,7 +44,7 @@ Simulator frames: `docs/design/screens/38-noise-paused.png` …
 | Swipe left / right | next / previous sound (Rain → White → Blue → Rain), and play it |
 | Any touch | the labels come back for 4 s |
 | Back / Home | to the menu; **the sound keeps playing**. Open the app again to pause it |
-| Long press (power off) | stops the sound |
+| Power held (power off) | stops the sound |
 
 Volume and mute are in the [quick settings](quick-settings.md). While muted,
 the app says so ("Muted: unmute in quick settings") and the speaker
@@ -52,15 +52,18 @@ amplifier stays off.
 
 ## Power and burn-in
 
-- Playing → policy `NoSleep` (open or in the background): the screen dims
-  and goes black on the normal timeline, but the chip never deep-sleeps, so
-  the sound goes on. With the panel off, nothing is drawn. Paused → `Normal`.
+- Policy `Normal`: the screen dims and goes off on the normal timeline (or
+  with Power). While it plays (open or in the background) Noise asks to
+  keep the chip awake with the screen off (`sleepNeed().awake`): the device
+  dozes, CPU at 80 MHz, and the sound goes on. With the screen off nothing
+  is drawn. Paused, nothing is needed and the device deep-sleeps.
+- A power-off stops the sound; afterwards Noise opens paused.
 - No light sleep while sound plays (it would stop the I2S stream). If a
   minimal view is up meanwhile (a running Pomodoro or Timer), it stays, just
   without light sleep.
 - The animation runs at 24 fps, 8 fps when dimmed. Every particle keeps
-  moving, the labels hide after 4 s, and the screen goes black after the idle
-  time (15 s on battery, 5 min on the charger): nothing static stays lit.
+  moving, the labels hide after 4 s, and the screen goes off after the idle
+  time (40 s on battery, 10 min on the charger): nothing static stays lit.
 - Battery: the speaker, amplifier and an awake CPU drain it in hours, not
   days. Measure and record in HARDWARE.md.
 

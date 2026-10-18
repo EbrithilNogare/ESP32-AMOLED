@@ -12,7 +12,8 @@ namespace core::touch {
 // swallows that touch until the finger lifts (used when a touch only wakes
 // the screen). `onActivity` is called on every read while a finger is down.
 bool begin(uint8_t i2cAddress, bool (*onPress)(), void (*onActivity)());
-void sleep();  // controller deep sleep before ESP deep sleep
+void sleep();  // controller sleep (screen off, deep sleep): no touches until a reset
+void wake();   // after the reset that woke it (board::resetPanelAndTouch()): forget the old touch
 void kick();   // read on the next poll (after light sleep the INT edge may be missed)
 
 // Raw panel position → screen pixels (lib/TouchCal), applied to every touch.

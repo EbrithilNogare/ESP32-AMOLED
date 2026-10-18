@@ -1,7 +1,8 @@
 // Idle timeline: which power stage the device is in, and how bright the
 // panel should be, given idle time, power profile and the app's policy.
 // Pure functions, no state: the PowerManager owns the idle clock and the
-// fades; this only decides (docs/ARCHITECTURE.md §3, §8).
+// fades; this only decides (docs/ARCHITECTURE.md §3, §8). How deep the
+// device sleeps once the screen is Off is lib/SleepPlan's call.
 #pragma once
 
 #include <stdint.h>
@@ -9,16 +10,16 @@
 namespace power {
 
 enum class Profile : uint8_t { Battery, Charger };
-// NoSleep: the Normal timeline without deep sleep: the screen dims and goes
-// black as usual, but the chip stays up (e.g. sound is playing).
-enum class Policy : uint8_t { Normal, KeepAwake, LowPowerDisplay, NoSleep };
-enum class Stage : uint8_t { Active, Dimmed, Black, Minimal, Sleep };
+enum class Policy : uint8_t { Normal, KeepAwake, LowPowerDisplay };
+// Off: the screen and touch are off, like a phone after its power button;
+// the chip dozes or deep-sleeps, whatever the apps need (lib/SleepPlan).
+enum class Stage : uint8_t { Active, Dimmed, Minimal, Off };
 
 // Idle thresholds in ms (time since the last touch/button). Meant to be
-// non-decreasing per profile (dim <= black <= sleep); a threshold below an
-// earlier one is raised to it, so the stages always run in order.
+// non-decreasing per profile (dim <= off); a threshold below an earlier one
+// is raised to it, so the stages always run in order.
 struct Timings {
-  uint32_t batDimMs, batBlackMs, batSleepMs, chgDimMs, chgBlackMs;
+  uint32_t batDimMs, batOffMs, chgDimMs, chgOffMs;
 };
 
 // Brightness levels, 0..255 (panel command 0x51).

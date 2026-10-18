@@ -3,18 +3,21 @@
 One spec per app. The system they plug into (app interface, power policies,
 menu, burn-in rules) is in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 
-| App | id | Power policy | Network | Spec |
-| --- | --- | --- | --- | --- |
-| Home Assistant lights | `home_assistant` | Normal | Wi-Fi | [home-assistant.md](home-assistant.md) |
-| Bot face | `bot_face` | Normal | — | [bot-face.md](bot-face.md) |
-| Pomodoro | `pomodoro` | LowPowerDisplay while running | — | [pomodoro.md](pomodoro.md) |
-| Espresso shot timer | `espresso` | KeepAwake while running | — | [espresso-timer.md](espresso-timer.md) |
-| Dice | `dice` | Normal | — | [dice.md](dice.md) |
-| Level | `level` | Normal (dims after 60 s) | — | [level.md](level.md) |
-| Timer (clock, stopwatch, countdown) | `timer` | LowPowerDisplay on the clock tab and while a timer runs | — | [timer.md](timer.md) |
-| Noise (rain, white, blue) | `noise` | NoSleep while playing | — | [noise.md](noise.md) |
-| System (info + OTA) | `system` | Normal; KeepAwake on the update screen | Wi-Fi | [system.md](system.md) |
-| Wi-Fi settings (not in the menu) | `wifi` | Normal (dims after 60 s) | Wi-Fi | [wifi.md](wifi.md) |
+| App | id | Power policy (screen on) | Screen off (`sleepNeed`) | After a sleep | Network | Spec |
+| --- | --- | --- | --- | --- | --- | --- |
+| Home Assistant lights | `home_assistant` | Normal | — | cached states | Wi-Fi | [home-assistant.md](home-assistant.md) |
+| Bot face | `bot_face` | Normal (dims after 60 s) | — | reopens | — | [bot-face.md](bot-face.md) |
+| Pomodoro | `pomodoro` | LowPowerDisplay while running | wake at the phase end | carries on | — | [pomodoro.md](pomodoro.md) |
+| Espresso shot timer | `espresso` | KeepAwake while running | — | the last shot (a running one stops) | — | [espresso-timer.md](espresso-timer.md) |
+| Dice | `dice` | Normal | — | the last roll | — | [dice.md](dice.md) |
+| Level | `level` | Normal (dims after 60 s) | — (IMU off with the screen) | reopens | — | [level.md](level.md) |
+| Timer (clock, stopwatch, countdown) | `timer` | LowPowerDisplay on the clock tab and while a timer runs | wake at the countdown's end; awake while the alarm rings | both timers carry on | — | [timer.md](timer.md) |
+| Noise (rain, white, blue) | `noise` | Normal | awake while playing (doze) | paused | — | [noise.md](noise.md) |
+| System (info + OTA) | `system` | Normal; KeepAwake on the update screen | — | info view | Wi-Fi | [system.md](system.md) |
+| Wi-Fi settings (not in the menu) | `wifi` | Normal (dims after 60 s) | — | menu (not resumable) | Wi-Fi | [wifi.md](wifi.md) |
+
+A power-off pauses every timer and stops the sound; the device then starts
+in the menu, with the timers paused where they were.
 
 Part of the menu rather than an app: the [quick settings](quick-settings.md)
 shade (Wi-Fi, brightness, volume), pulled down from the status bar.
@@ -34,6 +37,11 @@ from Home Assistant, HA scenes.
    and use `ICON_<NAME>` in the app's `AppInfo` (see
    [tools/README.md](../../tools/README.md)).
 4. Register the app in `main.cpp`; that's its position in the menu.
+   Decide what it does with the screen off (ARCHITECTURE §8): settings go
+   to NVS in `onWake()` / on change; running state is parked in
+   `onSleep()` (`core::store::park()`) and restored in `onWake()`; a
+   deadline is a `sleepNeed()` wake time on `core::mono()`, sound is
+   `awake`; news for the user is `apps::manager::attention(this)`.
 5. App settings go in a `// ---- <app> ----` block in `include/config.h`;
    secrets, if any, in `secrets.example.h`.
 6. Add a row to the table above and a milestone to ROADMAP.md.
@@ -56,10 +64,11 @@ ASCII sketch(es) of each screen/state.
 State machine (mermaid) if the app has one.
 
 ## Power
-Policy, when it changes, what minimal mode looks like (if any).
+Policy, when it changes, what minimal mode looks like (if any), and what it
+needs with the screen off (`sleepNeed()`).
 
 ## Persistence
-What survives deep sleep / power-off.
+What survives a sleep (parked in RTC memory), a power-off, a reset (NVS).
 
 ## Config
 `config.h` keys with defaults.

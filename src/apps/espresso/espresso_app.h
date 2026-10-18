@@ -17,6 +17,8 @@ class EspressoApp : public App {
   bool onBack() override;
   power::Policy powerPolicy() const override;
   uint32_t idleDimMs() const override;
+  void onSleep(sleepplan::Kind kind) override;
+  void onWake(Wake wake) override;
 
   const shot::ShotTimer &timer() const { return timer_; }
 
@@ -29,7 +31,6 @@ class EspressoApp : public App {
   static void onLongPress(lv_event_t *e);
 
   shot::ShotTimer timer_;
-  bool loaded_ = false;
   lv_obj_t *digits_ = nullptr, *fill_ = nullptr, *msg_ = nullptr, *hist_ = nullptr;
   uint32_t nextFrameMs_ = 0;
 };

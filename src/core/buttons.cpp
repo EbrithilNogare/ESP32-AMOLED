@@ -9,34 +9,29 @@
 
 namespace core::buttons {
 
-static bool (*pressHook)();
-static btn::Button boot({BUTTON_DEBOUNCE_MS, BUTTON_LONG_PRESS_MS});
-static bool bootSwallow;
+static bool (*powerHook)();
+static bool (*navHook)();
+static btn::Button boot({BUTTON_DEBOUNCE_MS, BUTTON_POWER_OFF_MS});
 static bool ignoreFirst;
 
-static constexpr Ev kBootEv = BUTTON_BACK_IS_BOOT ? Ev::Back : Ev::Home;
-static constexpr Ev kPwrEv = BUTTON_BACK_IS_BOOT ? Ev::Home : Ev::Back;
-
-void begin(bool (*onPress)()) {
-  pressHook = onPress;
+void begin(bool (*onPower)(), bool (*onNav)()) {
+  powerHook = onPower;
+  navHook = onNav;
   pinMode(PIN_BOOT_BUTTON, INPUT_PULLUP);
 }
 
 void poll(const pmu::KeyEvents &pwr) {
   switch (boot.update(digitalRead(PIN_BOOT_BUTTON) == LOW, millis())) {
-    case btn::Event::Pressed:
-      if (ignoreFirst && millis() < BUTTON_WAKE_IGNORE_MS) {  // uptime, not a deadline
-        boot.suppress();                                      // cancels Short and Long for this press
-        bootSwallow = true;
-      } else {
-        bootSwallow = pressHook && !pressHook();
-      }
+    case btn::Event::Pressed: {
+      const bool wakePress = ignoreFirst && millis() < BUTTON_WAKE_IGNORE_MS;  // uptime, not a deadline
       ignoreFirst = false;
+      // A press that only wakes the screen must not power off when held a
+      // little long either: suppress cancels both Short and Long.
+      if (wakePress || (powerHook && !powerHook())) boot.suppress();
       break;
-    case btn::Event::Short:
-      if (!bootSwallow) events::post({kBootEv, 0, 0});
-      break;
-    case btn::Event::Long: events::post({Ev::LongPress, 0, 0}); break;
+    }
+    case btn::Event::Short: events::post({Ev::Power, 0, 0}); break;
+    case btn::Event::Long: events::post({Ev::PowerOff, 0, 0}); break;
     default: break;
   }
 
@@ -44,10 +39,9 @@ void poll(const pmu::KeyEvents &pwr) {
   // release, long after BUTTON_LONG_PRESS_MS, see pmu.cpp), so "press
   // started" and "action" coincide.
   if (pwr.longPress) {
-    if (pressHook) pressHook();
-    events::post({Ev::LongPress, 0, 0});
+    if (!navHook || navHook()) events::post({Ev::Home, 0, 0});
   } else if (pwr.shortPress) {
-    if (!pressHook || pressHook()) events::post({kPwrEv, 0, 0});
+    if (!navHook || navHook()) events::post({Ev::Back, 0, 0});
   }
 }
 

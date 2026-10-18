@@ -96,16 +96,18 @@ void QuickSettings::create(lv_obj_t *root, lv_obj_t *handle, App *wifiApp) {
   battery_ = label(shade_, &font_caption, col::textDim, "");
   lv_obj_align(battery_, LV_ALIGN_TOP_RIGHT, -kEdge, kOverhang + 28);
 
-  // Wi-Fi: icon on the left, the network's name on the right.
+  // Wi-Fi: icon and "Wi-Fi" on the left, its state on the right (the radio
+  // runs only while an app needs it, so "Off" is the usual state).
   lv_obj_t *wifi = row(shade_, kPad, kRowWifi, kRowW);
   lv_obj_set_style_pad_hor(wifi, 18, 0);
   pressable(wifi);
   lv_obj_add_event_cb(wifi, onWifi, LV_EVENT_CLICKED, this);
   wifiIcon_ = label(wifi, &font_icon_28, col::text, ICON_WIFI);
   lv_obj_align(wifiIcon_, LV_ALIGN_LEFT_MID, 0, 0);
-  wifiName_ = label(wifi, &font_body_medium, col::text, "");
+  lv_obj_align(label(wifi, &font_body_medium, col::text, "Wi-Fi"), LV_ALIGN_LEFT_MID, 40, 0);
+  wifiName_ = label(wifi, &font_body, col::textDim, "");
   lv_label_set_long_mode(wifiName_, LV_LABEL_LONG_MODE_DOTS);
-  lv_obj_set_style_max_width(wifiName_, kRowW - 36 - 70, 0);
+  lv_obj_set_style_max_width(wifiName_, kRowW - 36 - 40 - 76, 0);
   lv_obj_align(wifiName_, LV_ALIGN_RIGHT_MID, 0, 0);
 
   // Brightness: one big bar, filled to the current level.
@@ -180,14 +182,32 @@ void QuickSettings::refresh() {
   else
     ui::setText(battery_, core::pmu::onCharger() ? "USB power" : "");
 
-  const char *ssid = core::net::ssid();
-  const bool up = core::net::connected();
-  ui::setText(wifiIcon_, ssid[0] ? ICON_WIFI : ICON_WIFI_OFF);
-  lv_obj_set_style_text_color(wifiIcon_, ui::c(up ? ui::col::info : ui::col::textDim), 0);
-  ui::setText(wifiName_, ssid[0] ? ssid : "Set up Wi-Fi");
-  lv_obj_set_style_text_color(wifiName_, ui::c(ssid[0] ? ui::col::text : ui::col::textDim), 0);
+  renderWifi();
   renderBrightness();
   renderVolume();
+}
+
+// On (connected, with the network's name), Connecting, Off, or Set up when
+// no network is known.
+void QuickSettings::renderWifi() {
+  using namespace ui;
+  const char *ssid = core::net::ssid();
+  const bool up = core::net::connected(), on = core::net::radioOn();
+  uint32_t color = col::textDim;
+  if (!ssid[0]) {
+    setText(wifiName_, "Set up");
+  } else if (up) {
+    setTextFmt(wifiName_, "On · %s", ssid);
+    color = col::info;
+  } else if (on) {
+    setText(wifiName_, "Connecting…");
+    color = col::warning;
+  } else {
+    setText(wifiName_, "Off");
+  }
+  setText(wifiIcon_, up || on ? ICON_WIFI : ICON_WIFI_OFF);
+  lv_obj_set_style_text_color(wifiIcon_, c(up ? col::info : col::textDim), 0);
+  lv_obj_set_style_text_color(wifiName_, c(color), 0);
 }
 
 void QuickSettings::renderBrightness() {

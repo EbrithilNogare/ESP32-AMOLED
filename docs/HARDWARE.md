@@ -122,7 +122,7 @@ From the vendor examples (no board schematic is published yet):
 | 0, 1, 2 | outputs — LCD and touch reset. Vendor init: set LOW, wait ~20 ms, set HIGH. An ESP restart alone does **not** reset the panel/touch. |
 | 4 | input — HIGH while the PWR button is pressed (vendor `12_LVGL_AXP2101_ADC_Data`) |
 | 5 | input — AXP2101 IRQ. It reaches only the expander, not an ESP GPIO, so a PWR press can't wake the chip from light or deep sleep (the firmware polls the PMU). |
-| 7 | output — microSD D3/CS; drive HIGH before `SD_MMC.begin()` |
+| 7 | output — microSD D3/CS; drive HIGH before `SD_MMC.begin()`. The firmware leaves it alone: no SD card is used (DECISIONS 2026-10-18). |
 
 ### Audio — ES8311 over I2S
 
@@ -136,6 +136,8 @@ From the vendor examples (no board schematic is published yet):
 | Speaker amp enable (PA) | 46, HIGH = on. Not an RTC pin: held low through deep sleep with `gpio_hold_en` + `gpio_deep_sleep_hold_en`, released in `sound::begin()`. |
 
 ### microSD — SDMMC 1-bit
+
+Not used by the firmware (no card, and none planned); kept here for reference.
 
 | Signal | GPIO |
 | --- | --- |
@@ -152,8 +154,11 @@ SD_MMC.begin("/sdcard", true /* 1-bit */);
 
 | Function | GPIO |
 | --- | --- |
-| BOOT button | 0 (LOW = pressed; hold at power-on → download mode) |
-| PWR button | AXP2101 PEK — short press IRQ via PMU; also EXIO4 |
+| BOOT button | 0 (LOW = pressed; hold at power-on → download mode). The firmware's **Power** button: an RTC GPIO, so it wakes light sleep (GPIO wake) and deep sleep (ext1). |
+| PWR button | AXP2101 PEK — short/long press IRQs via PMU; also EXIO4. The firmware's **Back** (press) / **Home** (hold). Can't wake the chip: its IRQ ends at the TCA9554. |
+
+Which of the two is the upper one on the case isn't confirmed here; the owner
+describes the upper one as the power button (ROADMAP M21 checks it).
 | USB D− / D+ | 19 / 20 (native USB, USB-C) |
 | UART0 TX / RX | 43 / 44 |
 
@@ -188,19 +193,29 @@ and has to be put to sleep by firmware:
 
 | Part | State while the ESP sleeps | Expected (estimate, not measured) |
 | --- | --- | --- |
-| ESP32-S3 | deep sleep, RTC peripherals on (BOOT pull-up for ext1) | ~8 µA (datasheet) |
+| ESP32-S3 | deep sleep, RTC peripherals on (BOOT pull-up for ext1; the RTC timer for a deadline wake) | ~8 µA (datasheet) |
 | PSRAM / flash | unpowered with the ESP's VDD_SPI | ~0 |
 | CO5300 panel | display off `0x28` + sleep-in `0x10` | tens of µA |
 | CST820 touch | sleep `0xE5 = 0x03` | a few µA |
-| QMI8658 IMU | standby (CTRL7 = 0) | a few µA |
+| QMI8658 IMU | powered down: CTRL7 = 0 and CTRL1 sensor disable (oscillator off) | < 1 µA (was a few µA in standby) |
 | ES8311 codec | powered down after every playback (`powerDownCodec()`) | a few µA |
 | Speaker amp | PA_EN held low | < 1 µA |
 | TCA9554, PCF85063 | running (the RTC keeps time) | ~1 µA |
-| AXP2101 | on, rails up, gauge running | tens of µA |
-| microSD card, if inserted | idle, powered | 50–200 µA depending on the card |
+| AXP2101 | on, rails up, gauge running; voltage ADCs off (`pmu::prepareSleep()`) | tens of µA |
+| microSD card, if inserted | idle, powered (not used: leave the slot empty) | 50–200 µA depending on the card |
 
 Expected total: roughly 0.1–0.2 mA without a card, i.e. **2–5 months** on
-400 mAh. Until it's measured, treat that as a guess.
+400 mAh. Until it's measured, treat that as a guess. A power-off (Power
+held) is the same deep sleep without the timer, so the same figure; the
+screen going off on battery with nothing running is this deep sleep too.
+
+The other screen-off states (ARCHITECTURE §8.2), also estimates:
+
+| State | What runs | Expected |
+| --- | --- | --- |
+| doze, no sound (charger, or a deadline < 5.6 s away) | light sleep, waking every ≤ 5 s | ~1–2 mA (light sleep with PSRAM, plus the wakes) |
+| doze with noise playing | CPU at 80 MHz, I2S, codec and amp | ~20–40 mA: hours, not days |
+| a deadline wake that goes back to sleep | one boot with the panel dark (~0.4 s at ~40 mA) | ~4 mC each; a countdown costs one |
 
 **Measuring it** (needs the board, not done yet):
 
@@ -211,7 +226,7 @@ Expected total: roughly 0.1–0.2 mA without a card, i.e. **2–5 months** on
    ~1 s boot draw 100 mA+, which the µA range's burden voltage can brown
    out. Better: a source-measure unit such as a Nordic PPK2 in source
    mode at 3.8 V instead of the cell.
-3. Long-press to sleep, wait ~10 s for things to settle, then switch to the
+3. Press Power (BOOT) with nothing running, wait ~10 s for things to settle, then switch to the
    µA range (or read the PPK2 average over a minute).
 4. Over ~450 µA: find the part by elimination (remove the SD card; check
    the rails list; compare with the vendor's factory firmware asleep).

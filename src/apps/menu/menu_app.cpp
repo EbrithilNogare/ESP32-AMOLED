@@ -8,6 +8,7 @@
 #include "core/net.h"
 #include "core/pmu.h"
 #include "core/rtc_clock.h"
+#include "core/store.h"
 #include "core/ticks.h"
 #include "ui/theme.h"
 
@@ -110,7 +111,18 @@ void MenuApp::onCreate(lv_obj_t *root) {
   quick_.create(root, bar, wifiSettings_);
   nextStatusMs_ = millis();
   lv_obj_update_layout(list_);
+  if (scrollY_) lv_obj_scroll_to_y(list_, scrollY_, LV_ANIM_OFF);  // where it was before a sleep
   applyFocus(list_);
+}
+
+// The scroll position outlives a sleep (RTC memory), not a power-off.
+void MenuApp::onSleep(sleepplan::Kind kind) {
+  const int32_t y = kind == sleepplan::Kind::Sleep && list_ ? lv_obj_get_scroll_y(list_) : 0;
+  core::store::park("menu", &y, sizeof y);
+}
+
+void MenuApp::onWake(Wake wake) {
+  if (wake == Wake::Cold || !core::store::unpark("menu", &scrollY_, sizeof scrollY_)) scrollY_ = 0;
 }
 
 void MenuApp::updateStatus() {
