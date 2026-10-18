@@ -1,0 +1,7 @@
+{
+  "name": "PetCore",
+  "version": "0.1.0",
+  "description": "Hephy the virtual pet: meters, forging and the shelf on the wall clock",
+  "platforms": "*",
+  "frameworks": "*"
+}

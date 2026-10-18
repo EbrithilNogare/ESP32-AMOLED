@@ -7,7 +7,8 @@ A little smartwatch-style gadget for the desk: firmware for the
 a palm-sized board with a 1.8" touch AMOLED screen, a battery charger, a
 motion sensor, a clock chip and a speaker. Swipe through round app icons,
 switch your lights, time your espresso, roll dice, level a shelf, keep the
-time on stage, fall asleep to the rain.
+time on stage, fall asleep to the rain, ask the Magic 8-ball, play 2048,
+and look after Hephy, a little forge spirit.
 
 <p>
   <img src="docs/design/screens/01-menu.png" width="184" alt="App menu">
@@ -16,6 +17,9 @@ time on stage, fall asleep to the rain.
   <img src="docs/design/screens/24-level-edge.png" width="184" alt="Level standing on an edge">
   <img src="docs/design/screens/32-timer-clock.png" width="184" alt="Timer: big clock">
   <img src="docs/design/screens/39-noise-rain.png" width="184" alt="Noise: rain">
+  <img src="docs/design/screens/54-magic8-answer.png" width="184" alt="Magic 8-ball">
+  <img src="docs/design/screens/57-hephy-forging.png" width="184" alt="Hephy forging">
+  <img src="docs/design/screens/62-2048-playing.png" width="184" alt="2048">
 </p>
 
 > **Status:** everything builds, the logic is unit-tested and every screen
@@ -41,6 +45,13 @@ time on stage, fall asleep to the rain.
   in), a stopwatch, and a countdown up to 99:59.
 - **Noise**: rain with falling rain on screen; swipe for white or blue
   noise. Keeps playing while you use other apps.
+- **Magic 8**: shake (or tap) for one of the 20 classic answers, in brush
+  lettering on a red paint swipe.
+- **2048**: the sliding-tile game, swipe to play; your board and best score
+  are kept.
+- **Hephy**: a pet with the Bot face's face that forges trinkets for your
+  shelf in real time. Feed him coal, play Strike, start a forge, come back
+  later. He never dies and asks for no daily care.
 - **System**: battery, Wi-Fi, memory, uptime and the **wireless update**
   screen.
 
@@ -49,7 +60,9 @@ powers off, and waking brings back the app you were in. With the screen off
 it sleeps as deeply as the apps allow: rain keeps playing, a countdown still
 rings on time, everything else sleeps deeply for weeks. It shifts the picture
 a few pixels now and then so the AMOLED doesn't burn in, and updates over
-Wi-Fi.
+Wi-Fi. What each app costs from the battery, open and asleep, is estimated in
+[docs/POWER.md](docs/POWER.md): about 7–8 hours of screen time, or months
+asleep, on a 400 mAh cell.
 
 ## Quick settings
 
@@ -209,6 +222,52 @@ other apps too (open Noise again to pause it). The board stays awake while
 it plays, so on battery it lasts hours, not days. Volume and mute are in
 quick settings.
 
+### Magic 8-ball
+
+<img src="docs/design/screens/52-magic8-idle.png" width="184" alt="Magic 8-ball idle">
+<img src="docs/design/screens/53-magic8-shaking.png" width="184" alt="Shaking">
+<img src="docs/design/screens/54-magic8-answer.png" width="184" alt="An answer">
+
+Ask a yes/no question, then **shake** the device (or tap the ball). When it's
+still again, the answer floats up on a red paint swipe, lettered like the
+Far Cry 3 menus (Permanent Marker, the closest open font). It's one of the
+20 classic answers, never the same twice in a row. The motion sensor only
+runs while the ball is on screen.
+
+### 2048
+
+<img src="docs/design/screens/62-2048-playing.png" width="184" alt="2048">
+<img src="docs/design/screens/63-2048-won.png" width="184" alt="2048 reached">
+<img src="docs/design/screens/64-2048-over.png" width="184" alt="Game over">
+
+Swipe on the board to slide every tile; equal tiles merge. Reach 2048 and
+keep going if you like. ⟲ starts a new game (tap it twice while a game is
+running). The board and the best score survive sleep, power-off and resets.
+
+### Hephy
+
+<img src="docs/design/screens/55-hephy-main.png" width="184" alt="Hephy">
+<img src="docs/design/screens/58-hephy-strike.png" width="184" alt="Strike">
+<img src="docs/design/screens/59-hephy-asleep.png" width="184" alt="Hephy asleep">
+<img src="docs/design/screens/60-hephy-reveal.png" width="184" alt="A forged trinket">
+<img src="docs/design/screens/61-hephy-shelf.png" width="184" alt="The shelf">
+
+Hephy is a small forge spirit, named after Hephaestus, the smith of the gods.
+He forges trinkets for your shelf: 24 to collect, from a key to a golden owl.
+
+- **Coal** feeds him.
+- **Strike** is a 5-tap timing game. Perfect hits speed up the forge.
+- **Forge** starts a trinket, which takes 1 to 12 real hours. Come back
+  later to collect it.
+
+He's made for a few visits a week:
+- His energy and joy sink slowly while you're away, but only to a floor.
+- After a long absence he's asleep, and greets you when you tap him.
+- He never dies, and nothing is ever lost.
+
+He costs nothing while the device sleeps: everything is worked out from the
+clock when you open him.
+
 ### System
 
 <img src="docs/design/screens/25-system.png" width="184" alt="System info">
@@ -336,6 +395,9 @@ Everything you'd want to tweak is in **`include/config.h`**:
 | Timer colour, first countdown, minimal-view brightness | `TIMER_COLOR`, `TIMER_DEFAULT_COUNTDOWN_S`, `TIMER_MINIMAL_BRIGHTNESS` |
 | How long a finished countdown beeps | `SOUND_ALARM_MS` |
 | Noise colour, animation speed, fade | `NOISE_*` |
+| Magic 8-ball colours, shake strength, reveal speed | `MAGIC8_*` |
+| Hephy colours, how long he stays bright | `HEPHY_*` |
+| 2048 accent, slide speed | `G2048_*` |
 | Volume default and range (the level itself is set in quick settings) | `SOUND_VOLUME_DEFAULT_PCT`, `SOUND_VOLUME_RANGE_DB` |
 | Device name on the network | `OTA_HOSTNAME` |
 

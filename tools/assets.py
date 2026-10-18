@@ -674,15 +674,18 @@ def build_header(fonts: list[FontResult], images: list[tuple[str, str]],
     out.append("\n/* ---- Images ---- */\n")
     if not images:
         out.append("/* (none) */\n")
+    # Plain externs, not LV_IMAGE_DECLARE: that macro comes with the image
+    # widget (LV_USE_IMAGE), which the firmware leaves out; lv_draw_image()
+    # draws these without it.
     for sym, desc in images:
-        out.append(f"LV_IMAGE_DECLARE({sym});  /* {c_comment_safe(desc)} */\n")
+        out.append(f"extern const lv_image_dsc_t {sym};  /* {c_comment_safe(desc)} */\n")
     out.append("\n/* ---- Sprites ---- */\n")
     if not sprites:
         out.append("/* (none) */\n")
     for s in sprites:
         out.append(f"/* {c_comment_safe(s.desc)} */\n")
         for fr in s.frames:
-            out.append(f"LV_IMAGE_DECLARE({fr});\n")
+            out.append(f"extern const lv_image_dsc_t {fr};\n")
         out.append(f"extern const lv_image_dsc_t *const sprite_{s.name}_frames[{len(s.frames)}];\n")
         out.append(f"extern const SpriteInfo sprite_{s.name};\n\n")
 

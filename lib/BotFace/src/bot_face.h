@@ -35,6 +35,28 @@ struct Geometry {
 // drawing a static face (e.g. a thumbnail).
 Geometry computeGeometry(const Params &p, float blink, float breathe);
 
+// The same shapes at another size and place: scaled by `s` about the face's
+// centre (184, 257) and moved so that centre lands on (cx, cy). For faces
+// that share the screen (Hephy). Corner radii and "o" radii scale too.
+Geometry scaled(const Geometry &g, float s, float cx, float cy);
+
+// Resting expression, between reactions (Normal = the mockup's face).
+enum class Mood : uint8_t {
+  Normal,
+  Happy,    // big smile
+  Sleepy,   // half-closed eyes, small smile
+  Sad,      // flat mouth, looking down
+  Focused,  // narrowed eyes looking down (working at an anvil)
+  Asleep,   // eyes shut, no looking around, no idle acts
+};
+
+// One-off reactions besides tap(): they win over the mood for their length.
+enum class Reaction : uint8_t {
+  Chew,       // happy squint, mouth opening and closing (1.2 s)
+  ShakeHead,  // looks left-right-left (no thanks, 0.9 s)
+  Startle,    // wide eyes and "o" mouth, then a hop (woken up, 1 s)
+};
+
 class Face {
  public:
   explicit Face(uint32_t seed = 1, uint32_t startMs = 0);
@@ -44,6 +66,10 @@ class Face {
   void update(uint32_t nowMs, bool dimmed);
 
   void tap(uint32_t nowMs);  // happy; second tap within 320 ms → surprised
+  void react(Reaction r, uint32_t nowMs);
+  void setMood(Mood m) { mood_ = m; }
+  Mood mood() const { return mood_; }
+  bool reacting() const { return reacting_; }
 
   // Lively mode (docs/apps/bot-face.md, "Idle acts"), off by default so the
   // face matches the mockup exactly: the whole face wanders slowly around
@@ -75,7 +101,7 @@ class Face {
   uint32_t lastTapMs_ = 0;
   bool tapped_ = false;
 
-  enum class Act : uint8_t { None, Wink, Glance, Hum, Yawn };
+  enum class Act : uint8_t { None, Wink, Glance, Hum, Yawn, Chew, ShakeHead, Startle };
   float actRand01();
   void startAct(uint32_t nowMs, bool dimmed);
   bool lively_ = false;
@@ -84,6 +110,7 @@ class Face {
   Act act_ = Act::None;
   uint32_t actStartMs_ = 0;
   bool winkLeft_ = false;
+  Mood mood_ = Mood::Normal;
 
  public:
   Act act() const { return act_; }  // for tests

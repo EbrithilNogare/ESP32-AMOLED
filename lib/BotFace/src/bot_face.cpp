@@ -46,6 +46,25 @@ Geometry computeGeometry(const Params &p, float blink, float breathe) {
   return g;
 }
 
+Geometry scaled(const Geometry &g, float s, float cx, float cy) {
+  constexpr float kCx = 184.0f, kCy = 257.0f;  // between the eyes (196) and the mouth (318)
+  auto px = [&](float x) { return cx + (x - kCx) * s; };
+  auto py = [&](float y) { return cy + (y - kCy) * s; };
+  auto rect = [&](const Rect &r) { return Rect{px(r.x), py(r.y), r.w * s, r.h * s, r.r * s}; };
+  Geometry o = g;
+  o.eyeL = rect(g.eyeL);
+  o.eyeR = rect(g.eyeR);
+  o.mx = px(g.mx);
+  o.my = py(g.my);
+  if (g.mouthIsO) {
+    o.oCx = px(g.oCx);
+    o.oCy = py(g.oCy);
+    o.oRx = g.oRx * s;
+    o.oRy = g.oRy * s;
+  }
+  return o;
+}
+
 Face::Face(uint32_t seed, uint32_t startMs)
     : rng_(seed ? seed : 0x9E3779B9u),  // xorshift32 is stuck at 0
       startMs_(startMs),
@@ -134,10 +153,19 @@ void Face::update(uint32_t nowMs, bool dimmed) {
     reacting_ = false;
     act_ = Act::None;
   }
-  if (lively_ && !reacting_ && after(nowMs, nextActMs_)) startAct(nowMs, dimmed);
+  if (lively_ && !reacting_ && mood_ != Mood::Asleep && after(nowMs, nextActMs_)) startAct(nowMs, dimmed);
   if (act_ == Act::Hum) {  // two quick hops: up 150 ms, down 150 ms, twice
     const uint32_t e = nowMs - actStartMs_;
     tg_.bounce = e < 600 && (e / 150) % 2 == 0 ? -8.0f : 0.0f;
+  }
+  if (reacting_) {
+    const uint32_t e = nowMs - actStartMs_;
+    if (act_ == Act::Chew) tg_.mouthO = (e / 160) % 2 == 0 ? 1.0f : 0.0f;
+    if (act_ == Act::ShakeHead) {
+      tg_.lookX = (e / 150) % 2 == 0 ? -1.0f : 1.0f;
+      nextLookMs_ = reactUntilMs_;
+    }
+    if (act_ == Act::Startle && e >= 600) tg_.bounce = e < 780 ? -14.0f : 0.0f;
   }
   if (!reacting_) {
     tg_.open = dimmed ? 0.45f : 1.0f;
@@ -145,6 +173,38 @@ void Face::update(uint32_t nowMs, bool dimmed) {
     tg_.mouthO = 0;
     tg_.bounce = 0;
     tg_.width = 1;
+    switch (mood_) {
+      case Mood::Normal: break;
+      case Mood::Happy: tg_.curve = dimmed ? 0.5f : 0.95f; break;
+      case Mood::Sleepy:
+        tg_.open = dimmed ? 0.3f : 0.45f;
+        tg_.curve = 0.2f;
+        break;
+      case Mood::Sad:
+        tg_.open = dimmed ? 0.4f : 0.8f;
+        tg_.curve = 0.0f;
+        break;
+      case Mood::Focused:
+        tg_.open = 0.55f;
+        tg_.width = 1.08f;
+        tg_.curve = 0.3f;
+        break;
+      case Mood::Asleep:
+        tg_.open = 0.0f;
+        tg_.curve = 0.12f;
+        tg_.lookX = 0;
+        tg_.lookY = 0.2f;
+        nextLookMs_ = nowMs + 1000;  // no looking around in its sleep
+        break;
+    }
+  }
+  if (!reacting_ && (mood_ == Mood::Sad || mood_ == Mood::Focused)) {
+    // Gaze stays low: the look schedule only picks the side.
+    if (after(nowMs, nextLookMs_)) {
+      tg_.lookX = rand01() * 1.2f - 0.6f;
+      tg_.lookY = mood_ == Mood::Focused ? 0.55f : 0.45f;
+      nextLookMs_ = nowMs + static_cast<uint32_t>(1400 + rand01() * 2200);
+    }
   }
 
   // Same order of random draws as the mockup (centre?, x, y, interval).
@@ -199,6 +259,43 @@ void Face::tap(uint32_t nowMs) {
   reacting_ = true;
   lastTapMs_ = nowMs;
   tapped_ = true;
+}
+
+void Face::react(Reaction r, uint32_t nowMs) {
+  actStartMs_ = nowMs;
+  hopPending_ = false;
+  uint32_t len = 1000;
+  switch (r) {
+    case Reaction::Chew:
+      act_ = Act::Chew;
+      tg_.open = 0.4f;
+      tg_.width = 1.05f;
+      tg_.curve = 0.8f;
+      tg_.bounce = 0;
+      len = 1200;
+      break;
+    case Reaction::ShakeHead:
+      act_ = Act::ShakeHead;
+      tg_.open = 0.9f;
+      tg_.curve = 0.1f;
+      tg_.mouthO = 0;
+      tg_.lookY = 0;
+      len = 900;
+      break;
+    case Reaction::Startle:
+      act_ = Act::Startle;
+      tg_.open = 1.25f;
+      tg_.width = 1.15f;
+      tg_.mouthO = 1;
+      tg_.curve = 0;
+      tg_.bounce = -6;
+      tg_.lookX = 0;
+      tg_.lookY = 0;
+      len = 1000;
+      break;
+  }
+  reacting_ = true;
+  reactUntilMs_ = nowMs + len;
 }
 
 Geometry Face::geometry(uint32_t nowMs) const {

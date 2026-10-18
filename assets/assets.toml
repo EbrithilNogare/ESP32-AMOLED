@@ -26,6 +26,10 @@
 #                  checked against the pinned SHA-256, cached in tools/.cache/,
 #                  then subset + instanced with fontTools. Apache-2.0
 #                  (MaterialSymbols-LICENSE.txt).
+#   Permanent Marker — google/fonts main, apache/permanentmarker/
+#                  PermanentMarker-Regular.ttf, byte-identical (fetched
+#                  2026-10-18, sha256 28f82c8a…46c5). Apache-2.0
+#                  (PermanentMarker-LICENSE.txt).
 
 # ---------------------------------------------------------------------------
 # Remote sources (pinned commit + SHA-256). A font uses one with `source = "…"`
@@ -145,6 +149,25 @@ size    = 160
 bpp     = 4
 symbols = "0123456789-"
 
+# Magic 8-ball answers (docs/apps/magic8.md): Permanent Marker, a hand-painted
+# brush capital in the spirit of the Far Cry 3 menus. Capitals and the
+# answers' punctuation only.
+[[font]]
+name    = "marker_30"
+file    = "fonts/PermanentMarker-Regular.ttf"
+size    = 30
+bpp     = 4
+symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-"
+range   = ["0x2019", "0x2026"]
+
+# The "8" on the idle ball.
+[[font]]
+name    = "marker_96"
+file    = "fonts/PermanentMarker-Regular.ttf"
+size    = 96
+bpp     = 4
+symbols = "8"
+
 # ---------------------------------------------------------------------------
 # Icon fonts — Material Symbols Rounded, filled (FILL 1), weight 500, grade 0.
 # `variations` pins every axis of the variable font. opsz (optical size,
@@ -170,6 +193,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 [[font]]
@@ -189,6 +216,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 [[font]]
@@ -208,6 +239,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 [[font]]
@@ -227,10 +262,26 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 # ---------------------------------------------------------------------------
-# Images and sprites — none yet. Templates:
+# Images
+# ---------------------------------------------------------------------------
+
+# The Magic 8-ball's paint swipe: an alpha mask drawn by tools/gen_brush.py,
+# tinted with MAGIC8_COLOR in code.
+[[image]]
+name   = "brush"
+file   = "images/brush.png"
+format = "A8"
+dest   = "flash"
+
+# ---------------------------------------------------------------------------
+# More images and sprites — templates:
 #
 # [[image]]
 # name   = "bulb_on"                 # -> const lv_image_dsc_t img_bulb_on

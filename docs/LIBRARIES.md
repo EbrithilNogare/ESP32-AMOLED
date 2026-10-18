@@ -58,6 +58,8 @@ and `lv_animimg` sprites (no app needs files or sprite sheets so far).
 | **LVGLImage.py** (from LVGL `scripts/`, same tag as the firmware LVGL) | 9.6.0 | MIT | Python 3 + `pypng`, `lz4` (`tools/requirements.txt`) | PNG → LVGL C array or `.bin` |
 | `tools/assets.py` (ours) | — | — | Python 3.11+ (stdlib `tomllib`), `fonttools` | reads `assets/assets.toml`, instances the icon font, runs both converters, writes `src/ui/generated/` (`--check` in CI) |
 | `tools/sim/shots.py` (ours) | — | — | Python 3 + Pillow | simulator frames → `docs/design/screens/` and a contact sheet |
+| `tools/gen_brush.py` (ours) | — | — | Python 3 + Pillow | draws the 8-ball's paint swipe mask |
+| `tools/power_model.py` (ours) | — | — | Python 3 | the estimate tables in `docs/POWER.md` |
 | clang-format | any recent | Apache-2.0 | `.clang-format` (Google style, 120 columns) | formatting; generated files are excluded |
 
 ## Fonts & art
@@ -67,6 +69,8 @@ and `lv_animimg` sprites (no app needs files or sprite sheets so far).
 | **Inter** | SIL OFL 1.1 | UI text |
 | **Roboto Mono** | SIL OFL 1.1 | big timer digits (monospaced, so they don't jitter while counting) |
 | **Material Symbols Rounded** | Apache-2.0 | icon font: app icons, status bar, buttons |
+| **Permanent Marker** | Apache-2.0 | Magic 8-ball lettering (brush capitals). Rejected after rendering them side by side: Rubik Dirt / Distressed (too busy at 30 px), Frijole, Black Ops One (stencil), Bangers (comic), Rock Salt (thin), Sedgwick Ave Display, Caveat Brush, Rubik Wet Paint |
+| paint swipe (`assets/images/brush.png`) | ours (`tools/gen_brush.py`) | the 8-ball's red swipe, an A8 mask |
 
 The variable Material Symbols font is instanced to static ones (fill 1,
 weight 500, optical size per pixel size) with fontTools `varLib.instancer`

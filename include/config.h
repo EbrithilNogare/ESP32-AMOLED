@@ -158,6 +158,25 @@
 #define NOISE_FPS_DIM 8       // ... while dimmed
 #define NOISE_FADE_MS 400     // sound fades in and out instead of clicking
 
+// ---- magic 8-ball (docs/apps/magic8.md) ----
+#define MAGIC8_COLOR 0xC8102E  // the paint swipe (and menu accent)
+#define MAGIC8_GLOW 0x5A0A14   // the red glow behind the ball (built up from faint washes)
+#define MAGIC8_SHAKE_G 0.6f    // a jolt: |a| differs from 1 g by this much
+#define MAGIC8_SETTLE_MS 500   // still this long after shaking: the answer surfaces
+#define MAGIC8_REVEAL_MS 900   // the answer fading in
+#define MAGIC8_SAMPLE_MS 20    // IMU reads while open (50 Hz)
+#define MAGIC8_FPS 30          // while the ball shakes or the answer surfaces
+
+// ---- hephy (docs/apps/hephy.md) ----
+#define HEPHY_COLOR 0xFF5E3A      // the face, menu accent: ember
+#define HEPHY_JOY_COLOR 0xFF6FA8  // joy meter
+#define HEPHY_IDLE_DIM_MS 60000   // a face: it stays bright a minute, like Bot face
+#define HEPHY_FPS 30              // face, sparks (dimmed: BOT_FACE_FPS_DIM)
+
+// ---- 2048 (docs/apps/g2048.md) ----
+#define G2048_COLOR 0xEDC22E  // menu accent: the 2048 tile's gold
+#define G2048_SLIDE_MS 90     // tiles sliding into place
+
 // ---- IMU (QMI8658) axis mapping ----
 // Raw sensor axis (0 = X, 1 = Y, 2 = Z) and sign for each screen axis: x to the
 // right edge, y to the top edge, z out of the screen. Lying face up must read

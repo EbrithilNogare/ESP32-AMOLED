@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <chrono>
 
+#include <initializer_list>
 #include <string>
 
 #include "Arduino.h"
@@ -19,8 +20,11 @@
 #include "apps/bot_face/bot_face_app.h"
 #include "apps/dice/dice_app.h"
 #include "apps/espresso/espresso_app.h"
+#include "apps/g2048/g2048_app.h"
+#include "apps/hephy/hephy_app.h"
 #include "apps/home_assistant/ha_app.h"
 #include "apps/level/level_app.h"
+#include "apps/magic8/magic8_app.h"
 #include "apps/menu/menu_app.h"
 #include "apps/noise/noise_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
@@ -40,9 +44,12 @@ static apps::WifiApp wifiApp;  // opened from the quick settings, not listed in 
 static apps::MenuApp menuApp(&wifiApp);
 static apps::HomeAssistantApp haApp;
 static apps::BotFaceApp botApp([]() { return sim::stage == power::Stage::Dimmed; });
+static apps::HephyApp hephyApp([]() { return sim::stage == power::Stage::Dimmed; });
 static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
 static apps::DiceApp diceApp;
+static apps::Magic8App magic8App;
+static apps::G2048App g2048App;
 static apps::LevelApp levelApp;
 static apps::TimerApp timerApp;
 static apps::NoiseApp noiseApp;
@@ -303,9 +310,12 @@ int main() {
   apps::manager::add(&pomodoroApp);
   apps::manager::add(&espressoApp);
   apps::manager::add(&diceApp);
+  apps::manager::add(&magic8App);
   apps::manager::add(&levelApp);
   apps::manager::add(&timerApp);
   apps::manager::add(&noiseApp);
+  apps::manager::add(&g2048App);
+  apps::manager::add(&hephyApp);
   apps::manager::add(&systemApp);
   apps::manager::wake(apps::Wake::Cold);
   apps::manager::begin(nullptr);
@@ -405,7 +415,7 @@ int main() {
   CHECK(apps::manager::inMenu());
 
   // ---- pomodoro: start, run, minimal view, back to menu while running
-  tap(iconX(2), iconY(2));
+  tapIcon(&pomodoroApp);
   CHECK(apps::manager::current() == &pomodoroApp);
   capture("09-pomodoro-ready");
   tap(184, 216);  // the ring area toggles
@@ -425,7 +435,7 @@ int main() {
   // ---- espresso: scroll the menu one row (176 px), run a 27.4 s shot
   drag(184, 380, 204);
   capture("12-menu-scrolled");
-  tap(iconX(3), iconY(3) - 176);  // after snapping one row up
+  tapIcon(&espressoApp);
   CHECK(apps::manager::current() == &espressoApp);
   capture("13-espresso-ready");
   tap(184, 200);
@@ -523,6 +533,173 @@ int main() {
   apps::manager::back();
   advance(400);
   CHECK(apps::manager::inMenu());
+
+  // ---- magic 8-ball: idle, a shake (IMU jolts), the answer; a tap asks too
+  tapIcon(&magic8App);
+  CHECK(apps::manager::current() == &magic8App);
+  sim::accel = {0, 0, 1};
+  advance(300);
+  CHECK(magic8App.phase() == apps::Magic8App::Phase::Idle);
+  capture("52-magic8-idle");
+  for (int j = 0; j < 3; j++) {  // three jolts at 2 g, 200 ms apart
+    sim::accel = {0.3f, 0.2f, 2.0f};
+    advance(60);
+    sim::accel = {0, 0, 1};
+    advance(140);
+  }
+  CHECK(magic8App.phase() == apps::Magic8App::Phase::Shaking);
+  capture("53-magic8-shaking");
+  advance(MAGIC8_SETTLE_MS + 100);  // still: the answer surfaces
+  CHECK(magic8App.phase() == apps::Magic8App::Phase::Revealing);
+  advance(MAGIC8_REVEAL_MS + 100);
+  CHECK(magic8App.phase() == apps::Magic8App::Phase::Answer && magic8App.answer() >= 0);
+  capture("54-magic8-answer");
+  {
+    const int first = magic8App.answer();
+    tap(184, 206);  // the ball
+    advance(600 + MAGIC8_REVEAL_MS);
+    CHECK(magic8App.phase() == apps::Magic8App::Phase::Answer && magic8App.answer() != first);
+  }
+  // Every answer's lines fit across the paint swipe (its solid part is ~300 px).
+  for (int i = 0; i < eightball::kAnswers; i++) {
+    char buf[32];
+    strlcpy(buf, eightball::answer(i).text, sizeof buf);
+    for (char *p = buf, *line; (line = strsep(&p, "\n"));) {
+      lv_point_t sz;
+      lv_text_get_size(&sz, line, &font_marker_30, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+      if (sz.x > 290) printf("FAIL: 8-ball answer line \"%s\" is %d px wide\n", line, int(sz.x));
+      failures += sz.x > 290;
+    }
+  }
+  apps::manager::prepareSleep(sleepplan::Kind::Sleep);  // the answer is on screen again after a sleep
+  {
+    apps::Magic8App woken;
+    woken.onWake(apps::Wake::FromSleep);
+    CHECK(woken.phase() == apps::Magic8App::Phase::Answer && woken.answer() == magic8App.answer());
+  }
+  apps::manager::home();
+  advance(400);
+
+  // ---- hephy: fresh, coal, a forge, a Strike round; a day and a half away:
+  // asleep, woken by a tap, the forged trinket revealed; the shelf
+  tapIcon(&hephyApp);
+  CHECK(apps::manager::current() == &hephyApp);
+  advance(600);
+  CHECK(hephyApp.view() == apps::HephyApp::View::Main && !hephyApp.asleep());
+  CHECK(hephyApp.state().energy == 80 && hephyApp.state().forging == pet::kNone);
+  CHECK(strcmp(hephyApp.status(), "Ready to forge") == 0);
+  capture("55-hephy-main");
+  const int32_t btnY = 350 + 28;
+  touchX = 184 - 104;  // Coal
+  touchY = btnY;
+  touchDown = true;
+  advance(40);
+  touchDown = false;
+  advance(260);
+  capture("56-hephy-coal");  // the coal in flight
+  advance(1600);
+  CHECK(hephyApp.state().energy == 100);
+  tap(184 - 104, btnY);  // full: he shakes his head
+  CHECK(strcmp(hephyApp.status(), "I'm full!") == 0 && hephyApp.state().energy == 100);
+  advance(2600);
+  tap(184 + 104, btnY);  // Forge
+  CHECK(hephyApp.state().forging != pet::kNone && hephyApp.state().energy == 75);
+  CHECK(strstr(hephyApp.status(), "on the anvil") != nullptr);
+  advance(700);
+  capture("57-hephy-forging");
+  const int64_t forgeLeft = pet::forgeLeftSec(hephyApp.state(), sim::wallSec);
+  tap(184, btnY);  // Strike
+  CHECK(hephyApp.view() == apps::HephyApp::View::Strike);
+  const uint32_t xpBefore = hephyApp.state().xp;
+  for (int i = 0; i < pet::kStrikes; i++) {
+    tap(184, 120);  // anywhere strikes
+    if (i == 1) capture("58-hephy-strike");
+  }
+  advance(1600);  // the round's result, then back
+  CHECK(hephyApp.view() == apps::HephyApp::View::Main);
+  CHECK(hephyApp.state().energy == 70 && hephyApp.state().xp >= xpBefore);
+  CHECK(pet::forgeLeftSec(hephyApp.state(), sim::wallSec) <= forgeLeft);
+  apps::manager::home();
+  advance(400);
+  sim::wallSec += 36 * 3600;  // a day and a half away: the forge is done, he fell asleep
+  tapIcon(&hephyApp);
+  advance(1500);
+  CHECK(hephyApp.asleep() && !hephyApp.revealing());
+  CHECK(hephyApp.state().gift != pet::kNone);
+  capture("59-hephy-asleep");
+  tap(184, 168);  // the face: he wakes up
+  CHECK(!hephyApp.asleep());
+  advance(1200);
+  CHECK(hephyApp.revealing());
+  capture("60-hephy-reveal");
+  tap(184, 224);  // keep it
+  advance(100);
+  CHECK(!hephyApp.revealing() && pet::owned(hephyApp.state()) == 1 && hephyApp.state().gift == pet::kNone);
+  tap(LCD_WIDTH - 24 - 28, 14 + 28);  // the shelf
+  CHECK(hephyApp.view() == apps::HephyApp::View::Shelf);
+  capture("61-hephy-shelf");
+  CHECK(hephyApp.onBack() && hephyApp.view() == apps::HephyApp::View::Main);
+  advance(100);
+  apps::manager::home();
+  advance(400);
+  {  // everything is in NVS
+    apps::HephyApp later(nullptr);
+    later.onWake(apps::Wake::Cold);
+    CHECK(pet::owned(later.state()) == 1 && later.state().xp == hephyApp.state().xp);
+  }
+
+  // ---- 2048: swipes slide and merge; 2048 reached; game over; new game
+  tapIcon(&g2048App);
+  CHECK(apps::manager::current() == &g2048App);
+  advance(300);
+  CHECK(g2048::tiles(g2048App.board()) == 2 && !g2048App.overlayShown());
+  auto boardOf = [](std::initializer_list<int> exps, uint32_t score) {
+    g2048::Board b{};
+    int i = 0;
+    for (int e : exps) b.cell[i++] = uint8_t(e);
+    b.score = score;
+    return b;
+  };
+  g2048App.setBoard(boardOf({1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 0, 2, 0, 1}, 9620));
+  advance(100);
+  swipe(330, 60, 260);  // left on the board
+  advance(300);
+  CHECK(g2048App.board().cell[0] == 2 && g2048App.board().cell[1] == 2 && g2048App.board().score == 9624);
+  CHECK(g2048::tiles(g2048App.board()) == 13);  // 12 after the merge, plus the new tile
+  drag(184, 380, 120);                          // up
+  advance(300);
+  capture("62-2048-playing");
+  g2048App.setBoard(boardOf({10, 10, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 20000));
+  swipe(330, 60, 140);
+  advance(400);
+  CHECK(g2048App.board().won && g2048App.overlayShown());
+  capture("63-2048-won");
+  tapText("Keep going");
+  advance(100);
+  CHECK(!g2048App.overlayShown());
+  // Stuck: reopening shows Game over; New game starts afresh, the best stays.
+  g2048App.setBoard(boardOf({1, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1, 2, 1}, 3120));
+  apps::manager::home();
+  advance(400);
+  tapIcon(&g2048App);
+  advance(300);
+  CHECK(g2048App.overlayShown());
+  capture("64-2048-over");
+  CHECK(g2048App.best() >= 20004);
+  tapText("New game");
+  advance(100);
+  CHECK(!g2048App.overlayShown() && g2048::tiles(g2048App.board()) == 2 && g2048App.board().score == 0);
+  swipe(330, 60, 260);
+  swipe(60, 330, 260);
+  swipe(330, 60, 260);
+  apps::manager::prepareSleep(sleepplan::Kind::Sleep);  // the same board after a sleep
+  {
+    apps::G2048App woken;
+    woken.onWake(apps::Wake::FromSleep);
+    CHECK(memcmp(&woken.board(), &g2048App.board(), sizeof(g2048::Board)) == 0 && woken.best() == g2048App.best());
+  }
+  apps::manager::home();
+  advance(400);
 
   // ---- level: flat and tilted, flat and level, on an edge; Hold and Zero
   tapIcon(&levelApp);

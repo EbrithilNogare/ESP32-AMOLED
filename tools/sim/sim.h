@@ -39,6 +39,7 @@ extern int noise;               // -1 silent, else the noise::Kind playing
 extern std::vector<int> beeps;  // core::sound::Pattern of every beep played
 extern bool radio;              // net::radioOn()
 extern int wakes;               // core::power::wake() calls (an app wanted the screen)
+extern int64_t wallSec;         // core::clock::wallMs() / 1000 (moved on by hand: "time away")
 extern int64_t monoOffset;      // core::mono() = extend(millis) + this: a "deep sleep" moves it on
 // Touch: the correction core::touch applies, raw mode, and a panel error to
 // emulate (raw = (finger - offset) / scale per axis; identity by default).

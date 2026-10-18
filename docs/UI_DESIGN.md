@@ -62,11 +62,19 @@ Per-app **accent** (icon glyph + ring, in-app highlights):
 | Espresso | `#C8915A` crema |
 | Dice | `#FF8A1F` orange (`DICE_COLOR`) |
 | Level | `#FFD54F` yellow (`LEVEL_COLOR`) |
+| Timer | `#B388FF` lavender (`TIMER_COLOR`) |
+| Noise | `#6E8BFF` rain blue (`NOISE_COLOR`) |
+| Magic 8-ball | `#C8102E` paint red (`MAGIC8_COLOR`) |
+| 2048 | `#EDC22E` tile gold (`G2048_COLOR`) |
+| Hephy | `#FF5E3A` ember (`HEPHY_COLOR`) |
 | System | `#8FA3BF` slate |
 | Wi-Fi settings, quick settings | `#4DA3FF` (`col::info`) |
 
-New apps pick a hue not already in use. The accent at ~15 % brightness on black
-is the "tinted surface" (`accent_dim`, computed by the theme).
+New apps pick a hue not already in use, and a menu position where no
+neighbour (beside or above/below, two icons per row) has a similar one: Hephy's
+ember sits far from Pomodoro's tomato, and 2048's gold away from Level's
+yellow. The accent at ~15 % brightness on black is the "tinted surface"
+(`accent_dim`, computed by the theme).
 
 ## 3. Typography
 
@@ -85,6 +93,8 @@ The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
 | `digits_80` | Roboto Mono Medium | 80 | pomodoro full view, dice |
 | `digits_120` | Roboto Mono Medium | 120 | espresso timer |
 | `digits_160` | Roboto Mono Medium | 160 | Timer clock (digits and "-" only) |
+| `marker_30` | Permanent Marker | 30 | Magic 8-ball answers and caption (capitals only) |
+| `marker_96` | Permanent Marker | 96 | the "8" on the idle ball |
 | `icon_18`, `icon_28` | Material Symbols Rounded | 18, 28 | status bar, inline icons |
 | `icon_56`, `icon_64` | Material Symbols Rounded | 56, 64 | light tiles and System; app icons |
 
@@ -98,6 +108,10 @@ The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
   of them also have − (U+2212).
 - Every icon font carries the same icon set (the `icons` lists in
   `assets.toml`), so any `ICON_*` macro works at any size.
+- **Permanent Marker** (Apache 2.0) is the one display face: a hand-painted
+  brush capital for the Magic 8-ball, in the spirit of the Far Cry 3 menus
+  (whose lettering is custom and not available). Only capitals, digits and
+  the answers' punctuation are converted.
 
 ## 4. Spacing, shape, motion
 
@@ -154,7 +168,7 @@ Drawn by LVGL, no bitmap needed:
    face wanders around the screen while it's on.
 5. The screen goes off after 40 s idle on battery and 10 min on the charger
    (dim at 30 s / 2 min); apps that need longer ask for it (`idleDimMs()`:
-   bot face, level, espresso 1 min).
+   bot face, Hephy, level, espresso 1 min).
 
 ## 7. Assets: where they live and how they're built
 
@@ -162,7 +176,7 @@ Drawn by LVGL, no bitmap needed:
 assets/                       SOURCES — committed, the only place you edit
 ├── assets.toml               manifest: every asset, its format and destination
 ├── fonts/                    .ttf/.otf + LICENSE per family
-├── images/                   .png (sRGB, exported at 1:1 pixel size) (none yet)
+├── images/                   .png (sRGB, exported at 1:1 pixel size): brush.png (8-ball swipe mask)
 ├── icons/                    custom app icons, 128×128 .png (none yet)
 ├── sprites/<name>/           sheet.png (grid of frames) (none yet)
 └── sounds/                   .wav, 16 kHz mono (none yet)
@@ -171,12 +185,13 @@ tools/
 ├── assets.py                 builds everything from assets.toml
 ├── requirements.txt          fonttools, pypng, lz4
 ├── package.json              lv_font_conv 1.5.3
+├── gen_brush.py              draws assets/images/brush.png (seeded, reproducible)
 └── lvgl/LVGLImage.py         copied from LVGL v9.6.0 scripts/ (same tag as the firmware)
 
 src/ui/generated/             OUTPUT — committed, never hand-edited
 ├── assets.h                  one header declaring every font / image / sprite
 ├── fonts/*.c
-├── images/*.c                (none yet)
+├── images/*.c                img_brush (A8)
 └── sprites/*.c               (none yet)
 
 data/                         OUTPUT for LittleFS (big or optional assets as LVGL .bin) (none yet)
@@ -238,6 +253,12 @@ drift from sources.
 
 The display renders in `RGB565_SWAPPED`; LVGL converts while drawing, so
 sources stay plain RGB565.
+
+The firmware leaves LVGL's image *widget* out (`LV_USE_IMAGE 0`), so images
+are drawn with `lv_draw_image()` in a draw event (the Magic 8-ball's swipe:
+an A8 mask, `recolor` = the colour, `recolor_opa` = cover). `assets.h`
+declares them as plain `extern const lv_image_dsc_t`, not
+`LV_IMAGE_DECLARE`, which only exists with the widget.
 
 ### Flash (C array) vs. filesystem (`.bin` in LittleFS)
 

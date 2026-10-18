@@ -19,9 +19,10 @@ test/
     └── test_main.cpp
 ```
 
-Current libraries: `BotFace`, `ButtonLogic`, `DiceCore`, `HaParse`,
-`LevelCore`, `MultiTap`, `NoiseGen`, `PixelShift`, `PomodoroCore`, `PowerFsm`,
-`ShotTimer`, `SleepLog`, `SleepPlan`, `TimerCore`, `TouchCal`, `WireRaster`.
+Current libraries: `BotFace`, `ButtonLogic`, `DiceCore`, `EightBall`,
+`Game2048`, `HaParse`, `LevelCore`, `MultiTap`, `NoiseGen`, `PetCore`,
+`PixelShift`, `PomodoroCore`, `PowerFsm`, `ShotTimer`, `SleepLog`,
+`SleepPlan`, `TimerCore`, `TouchCal`, `WireRaster`.
 Adapters in `src/` connect them to hardware and LVGL.
 
 Third-party libraries go into `lib_deps` in `platformio.ini` instead.
