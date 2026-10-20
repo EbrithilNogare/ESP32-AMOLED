@@ -410,6 +410,95 @@ static void test_tap_cancels_an_act() {
   TEST_ASSERT_EQUAL_FLOAT(1, f.targets().curve);  // the happy face, not the act's
 }
 
+// ---- moods, reactions, scaling (Hephy) ----
+
+static void run(Face &f, uint32_t from, uint32_t to) {
+  for (uint32_t t = from; t <= to; t += 33) f.update(t, false);
+}
+
+static void test_scaled_geometry() {
+  const Geometry g = computeGeometry(REST, 1, 0);
+  const Geometry s = scaled(g, 0.5f, 184, 257);  // about its own centre
+  TEST_ASSERT_FLOAT_WITHIN(EPS, 184 + (g.eyeL.x - 184) * 0.5f, s.eyeL.x);
+  TEST_ASSERT_FLOAT_WITHIN(EPS, g.eyeL.w * 0.5f, s.eyeL.w);
+  TEST_ASSERT_FLOAT_WITHIN(EPS, g.eyeL.r * 0.5f, s.eyeL.r);
+  TEST_ASSERT_FLOAT_WITHIN(EPS, 257 + (318 - 257) * 0.5f, s.my);
+  const Geometry m = scaled(g, 1, 100, 157);  // a plain move
+  TEST_ASSERT_FLOAT_WITHIN(EPS, g.eyeR.x - 84, m.eyeR.x);
+  TEST_ASSERT_FLOAT_WITHIN(EPS, g.eyeR.y - 100, m.eyeR.y);
+}
+
+static void test_moods_set_the_resting_face() {
+  Face f(3, 0);
+  f.setMood(Mood::Asleep);
+  run(f, 0, 3000);
+  TEST_ASSERT_FLOAT_WITHIN(0.02f, 0, f.params().open);
+  TEST_ASSERT_FLOAT_WITHIN(0.02f, 0, f.params().lookX);
+  TEST_ASSERT_EQUAL_FLOAT(8, computeGeometry(f.params(), 1, 0).eyeL.h);  // a closed pill
+  f.setMood(Mood::Happy);
+  run(f, 3000, 5000);
+  TEST_ASSERT_TRUE(f.params().curve > 0.9f);
+  f.setMood(Mood::Sad);
+  run(f, 5000, 9000);
+  TEST_ASSERT_FLOAT_WITHIN(0.02f, 0, f.params().curve);
+  TEST_ASSERT_TRUE(f.targets().lookY > 0.4f);  // looking down
+  f.setMood(Mood::Focused);
+  run(f, 9000, 12000);
+  TEST_ASSERT_FLOAT_WITHIN(0.02f, 0.55f, f.params().open);
+}
+
+static void test_asleep_does_no_idle_acts() {
+  Face f(9, 0);
+  f.setLively(true, 0);
+  f.setMood(Mood::Asleep);
+  for (uint32_t t = 0; t < 60000; t += 33) {
+    f.update(t, false);
+    TEST_ASSERT_EQUAL(0, int(f.act()));
+  }
+}
+
+static void test_chew_opens_and_closes_the_mouth() {
+  Face f(1, 0);
+  run(f, 0, 1000);
+  f.react(Reaction::Chew, 1000);
+  bool open = false, closed = false;
+  for (uint32_t t = 1000; t < 2200; t += 20) {
+    f.update(t, false);
+    open |= computeGeometry(f.params(), 1, 0).mouthIsO;
+    closed |= !computeGeometry(f.params(), 1, 0).mouthIsO;
+  }
+  TEST_ASSERT_TRUE(open && closed);
+  run(f, 2200, 4000);
+  TEST_ASSERT_FALSE(f.reacting());
+  TEST_ASSERT_FALSE(computeGeometry(f.params(), 1, 0).mouthIsO);
+}
+
+static void test_shake_head_looks_both_ways() {
+  Face f(1, 0);
+  f.react(Reaction::ShakeHead, 0);
+  float minX = 0, maxX = 0;
+  for (uint32_t t = 0; t < 900; t += 20) {
+    f.update(t, false);
+    minX = fminf(minX, f.params().lookX);
+    maxX = fmaxf(maxX, f.params().lookX);
+  }
+  TEST_ASSERT_TRUE(minX < -0.5f && maxX > 0.5f);
+}
+
+static void test_startle_wakes_wide_eyed() {
+  Face f(1, 0);
+  f.setMood(Mood::Asleep);
+  run(f, 0, 2000);
+  f.react(Reaction::Startle, 2000);
+  f.setMood(Mood::Happy);
+  run(f, 2000, 2400);
+  TEST_ASSERT_TRUE(f.params().open > 1.0f);
+  TEST_ASSERT_TRUE(computeGeometry(f.params(), 1, 0).mouthIsO);
+  run(f, 2400, 4500);
+  TEST_ASSERT_FALSE(f.reacting());
+  TEST_ASSERT_TRUE(f.params().curve > 0.9f);  // happy afterwards
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(test_rest_geometry_matches_mockup);
@@ -437,5 +526,11 @@ int main() {
   RUN_TEST(test_lively_acts_every_few_seconds_and_all_kinds_show_up);
   RUN_TEST(test_lively_wander_stays_within_bounds);
   RUN_TEST(test_tap_cancels_an_act);
+  RUN_TEST(test_scaled_geometry);
+  RUN_TEST(test_moods_set_the_resting_face);
+  RUN_TEST(test_asleep_does_no_idle_acts);
+  RUN_TEST(test_chew_opens_and_closes_the_mouth);
+  RUN_TEST(test_shake_head_looks_both_ways);
+  RUN_TEST(test_startle_wakes_wide_eyed);
   return UNITY_END();
 }

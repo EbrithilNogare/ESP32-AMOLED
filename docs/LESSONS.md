@@ -5,6 +5,33 @@ something cost time to figure out. Newest first.
 
 Format: `## Short symptom` — what happened, the cause, the fix.
 
+## The first image broke the build: `LV_IMAGE_DECLARE` was undefined
+
+`tools/assets.py` declared images with `LV_IMAGE_DECLARE`. That macro is
+defined in `widgets/lv_image.h`, inside `#if LV_USE_IMAGE`, and the firmware
+turns the image widget off. Fonts never hit it (`LV_FONT_DECLARE` is
+always there). The generator now writes plain
+`extern const lv_image_dsc_t …;`, and images are drawn with
+`lv_draw_image()`, which doesn't need the widget.
+
+## Dark greys and faint white wash turn green on the panel
+
+In RGB565, green has 6 bits and red and blue 5. A faint white overlay (a
+highlight at opacity 9–16 on near-black) moves the green channel one step
+before red and blue move at all, so it shows as a greenish blob. Neutral
+near-black greys tint the same way. Tint such overlays slightly
+toward red and blue (`#FFB8C4` instead of white, `#0C080A` instead of
+`#0B0B0B`), or keep them bright enough that every channel moves. (Seen on
+the first, ball-shaped Magic 8-ball.)
+
+## Deleting the object whose event is running
+
+A button inside an overlay that its click closes, or a view switch that
+deletes the container of the tapped button, deletes objects LVGL is still
+dispatching an event to. 2048's overlay buttons and Hephy's view buttons
+set a flag instead, and `onTick()` acts on it a moment later. Same rule
+as for apps that close themselves.
+
 ## The power-off animation left a strip and a glowing dot on the black screen
 
 Two separate leftovers, both found by a simulator check that the screen is

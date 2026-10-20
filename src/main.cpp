@@ -8,8 +8,11 @@
 #include "apps/bot_face/bot_face_app.h"
 #include "apps/dice/dice_app.h"
 #include "apps/espresso/espresso_app.h"
+#include "apps/g2048/g2048_app.h"
+#include "apps/hephy/hephy_app.h"
 #include "apps/home_assistant/ha_app.h"
 #include "apps/level/level_app.h"
+#include "apps/magic8/magic8_app.h"
 #include "apps/menu/menu_app.h"
 #include "apps/noise/noise_app.h"
 #include "apps/pomodoro/pomodoro_app.h"
@@ -42,9 +45,12 @@ static apps::WifiApp wifiApp;  // opened from the quick settings, not listed in 
 static apps::MenuApp menuApp(&wifiApp);
 static apps::HomeAssistantApp haApp;
 static apps::BotFaceApp botApp([]() { return core::power::stage() == power::Stage::Dimmed; });
+static apps::HephyApp hephyApp([]() { return core::power::stage() == power::Stage::Dimmed; });
 static apps::PomodoroApp pomodoroApp;
 static apps::EspressoApp espressoApp;
 static apps::DiceApp diceApp;
+static apps::Magic8App magic8App;
+static apps::G2048App g2048App;
 static apps::LevelApp levelApp;
 static apps::TimerApp timerApp;
 static apps::NoiseApp noiseApp;
@@ -120,9 +126,12 @@ void setup() {
   apps::manager::add(&pomodoroApp);
   apps::manager::add(&espressoApp);
   apps::manager::add(&diceApp);
+  apps::manager::add(&magic8App);
   apps::manager::add(&levelApp);
   apps::manager::add(&timerApp);
   apps::manager::add(&noiseApp);
+  apps::manager::add(&g2048App);
+  apps::manager::add(&hephyApp);
   apps::manager::add(&systemApp);
   const apps::Wake wake = wakeFor(boot);
   apps::manager::wake(wake);

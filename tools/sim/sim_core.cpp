@@ -57,6 +57,7 @@ std::vector<int> beeps;
 bool radio = true;
 int wakes = 0;
 int64_t monoOffset = 0;
+int64_t wallSec = 1792000000;  // October 2026
 touchcal::Cal touchCal;
 bool touchRaw = false;
 PanelError panel;
@@ -115,6 +116,7 @@ uint16_t batteryMillivolts() { return 3950; }
 
 namespace clock {
 bool valid() { return true; }
+int64_t wallMs() { return sim::wallSec * 1000 + sim::nowMs % 1000; }
 }  // namespace clock
 
 namespace power {

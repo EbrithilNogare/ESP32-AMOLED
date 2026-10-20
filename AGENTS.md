@@ -23,6 +23,7 @@ Waveshare ESP32-S3-Touch-AMOLED-1.8 (ESP32-S3R8, 16 MB flash, 8 MB OPI PSRAM,
 | `docs/ROADMAP.md` | milestones with on-device acceptance checklists — find the current one before coding |
 | `docs/DECISIONS.md` | why things are the way they are — check before changing toolchain, layout, partitions |
 | `docs/LESSONS.md` | gotchas learned on real hardware and in the toolchain |
+| `docs/POWER.md` | estimated battery current of every app, open and asleep, and the device's sleep states (`tools/power_model.py`) |
 | `README.md` | layout, build/flash, environments |
 
 ## Memory — keep it current

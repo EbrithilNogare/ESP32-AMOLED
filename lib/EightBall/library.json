@@ -1,0 +1,7 @@
+{
+  "name": "EightBall",
+  "version": "0.1.0",
+  "description": "Magic 8-ball: the 20 classic answers and a shake detector",
+  "platforms": "*",
+  "frameworks": "*"
+}

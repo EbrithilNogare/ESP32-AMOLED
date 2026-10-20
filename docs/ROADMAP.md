@@ -231,6 +231,32 @@ and mute in quick settings.
 
 **On device:** spec acceptance list; listen to the rain first.
 
+### M22 — Magic 8-ball ◐ — [spec](apps/magic8.md)
+
+`lib/EightBall` (22 answers with their colours, the shake detector;
+host-tested), text only in Permanent Marker, rattling out and rising in;
+IMU on only while it's on screen.
+
+**On device:** spec acceptance list; does a real shake trigger it, and a
+tilt not?
+
+### M23 — Hephy ◐ — [spec](apps/hephy.md)
+
+`lib/PetCore` (meters, forge, shelf, xp on the wall clock; host-tested),
+`lib/BotFace` moods and reactions (asleep, sad, focused, chew, shake head,
+startle) and `scaled()`; Main, Strike, Shelf and the reveal; NVS only, no
+wakes.
+
+**On device:** spec acceptance list; a forge across a power-off; the RTC
+keeping time through deep sleep.
+
+### M24 — 2048 ◐ — [spec](apps/g2048.md)
+
+`lib/Game2048` (slides, merges, the moves to animate; host-tested), one
+object per tile, slide → pop/grow in two steps, swipe on the board.
+
+**On device:** spec acceptance list; do fast swipes all register?
+
 ## Networked apps
 
 ### M11 — Wi-Fi ◐
@@ -287,4 +313,6 @@ DECISIONS/LESSONS updated, currents recorded in HARDWARE.md, then the PR into
 ## Later
 
 Settings app (timeouts), HA WebSocket push, IMU features (bot reactions, espresso auto-start), OTA pull from GitHub
-Releases, more apps from [apps/README.md](apps/README.md).
+Releases, more apps from [apps/README.md](apps/README.md). Measure the power
+figures in [POWER.md](POWER.md) and cut the screen-on cost if needed (CPU
+frequency scaling between animations).

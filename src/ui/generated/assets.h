@@ -35,10 +35,12 @@ LV_FONT_DECLARE(font_digits_56)    /* RobotoMono-Medium.ttf, 56 px, 4 bpp, 0x221
 LV_FONT_DECLARE(font_digits_80)    /* RobotoMono-Medium.ttf, 80 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_120)   /* RobotoMono-Medium.ttf, 120 px, 4 bpp, 0x2212, "0123456789:.-% " */
 LV_FONT_DECLARE(font_digits_160)   /* RobotoMono-Medium.ttf, 160 px, 4 bpp, "0123456789-" */
-LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 44 icons */
-LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 44 icons */
-LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 44 icons */
-LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 44 icons */
+LV_FONT_DECLARE(font_marker_44)    /* PermanentMarker-Regular.ttf, 44 px, 4 bpp, 0x2019, 0x2026, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%" */
+LV_FONT_DECLARE(font_marker_30)    /* PermanentMarker-Regular.ttf, 30 px, 4 bpp, 0x2019, 0x2026, "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%" */
+LV_FONT_DECLARE(font_icon_18)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=20,wght=500, 18 px, 4 bpp, 73 icons */
+LV_FONT_DECLARE(font_icon_28)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=28,wght=500, 28 px, 4 bpp, 73 icons */
+LV_FONT_DECLARE(font_icon_56)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 56 px, 4 bpp, 73 icons */
+LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,opsz=48,wght=500, 64 px, 4 bpp, 73 icons */
 
 /* ---- Images ---- */
 /* (none) */
@@ -48,50 +50,79 @@ LV_FONT_DECLARE(font_icon_64)      /* material_symbols_rounded FILL=1,GRAD=0,ops
 
 /* ---- Icons: UTF-8 strings for the icon fonts ---- */
 /* Glyphs in: font_icon_18, font_icon_28, font_icon_56, font_icon_64 (unless noted). Codepoints from the official .codepoints file. */
-#define ICON_LIGHTBULB           "\xEE\xA4\x8F"  /* U+E90F */
-#define ICON_SENTIMENT_SATISFIED "\xEE\xA0\x93"  /* U+E813 */
-#define ICON_TIMER               "\xEE\x90\xA5"  /* U+E425 */
-#define ICON_COFFEE              "\xEE\xBF\xAF"  /* U+EFEF */
-#define ICON_MEMORY              "\xEE\x8C\xA2"  /* U+E322 */
-#define ICON_WIFI                "\xEE\x98\xBE"  /* U+E63E */
-#define ICON_WIFI_OFF            "\xEE\x99\x88"  /* U+E648 */
-#define ICON_WIFI_TETHERING      "\xEE\x87\xA2"  /* U+E1E2 */
-#define ICON_BOLT                "\xEE\xA8\x8B"  /* U+EA0B */
-#define ICON_BATTERY_FULL        "\xEE\x86\xA5"  /* U+E1A5 */
-#define ICON_BATTERY_6_BAR       "\xEF\x82\xA1"  /* U+F0A1 */
-#define ICON_BATTERY_5_BAR       "\xEF\x82\xA0"  /* U+F0A0 */
-#define ICON_BATTERY_4_BAR       "\xEF\x82\x9F"  /* U+F09F */
-#define ICON_BATTERY_3_BAR       "\xEF\x82\x9E"  /* U+F09E */
-#define ICON_BATTERY_2_BAR       "\xEF\x82\x9D"  /* U+F09D */
-#define ICON_BATTERY_1_BAR       "\xEF\x82\x9C"  /* U+F09C */
-#define ICON_BATTERY_0_BAR       "\xEE\xAF\x9C"  /* U+EBDC */
-#define ICON_BATTERY_ALERT       "\xEE\x86\x9C"  /* U+E19C */
-#define ICON_PAUSE               "\xEE\x80\xB4"  /* U+E034 */
-#define ICON_PLAY_ARROW          "\xEE\x80\xB7"  /* U+E037 */
-#define ICON_RESTART_ALT         "\xEF\x81\x93"  /* U+F053 */
-#define ICON_SKIP_NEXT           "\xEE\x81\x84"  /* U+E044 */
-#define ICON_CHECK_CIRCLE        "\xEF\x82\xBE"  /* U+F0BE */
-#define ICON_SYSTEM_UPDATE       "\xEF\x8B\x8D"  /* U+F2CD */
-#define ICON_ERROR               "\xEF\xA2\xB6"  /* U+F8B6 */
-#define ICON_CANCEL              "\xEE\xA2\x88"  /* U+E888 */
-#define ICON_POWER_SETTINGS_NEW  "\xEF\xA3\x87"  /* U+F8C7 */
-#define ICON_SCHEDULE            "\xEE\xBF\x96"  /* U+EFD6 */
-#define ICON_CASINO              "\xEE\xAD\x80"  /* U+EB40 */
-#define ICON_STRAIGHTEN          "\xEE\x90\x9C"  /* U+E41C */
-#define ICON_LOCK                "\xEE\xA2\x99"  /* U+E899 */
-#define ICON_LIGHT_MODE          "\xEE\x94\x98"  /* U+E518 */
-#define ICON_NETWORK_WIFI_1_BAR  "\xEE\xAF\xA4"  /* U+EBE4 */
-#define ICON_NETWORK_WIFI_2_BAR  "\xEE\xAF\x96"  /* U+EBD6 */
-#define ICON_NETWORK_WIFI_3_BAR  "\xEE\xAF\xA1"  /* U+EBE1 */
-#define ICON_BACKSPACE           "\xEE\x85\x8A"  /* U+E14A */
-#define ICON_REFRESH             "\xEE\x97\x95"  /* U+E5D5 */
-#define ICON_CHEVRON_RIGHT       "\xEE\x97\x8C"  /* U+E5CC */
-#define ICON_ALARM               "\xEE\xA1\x95"  /* U+E855 */
-#define ICON_RAINY               "\xEF\x85\xB6"  /* U+F176 */
-#define ICON_VOLUME_UP           "\xEE\x81\x90"  /* U+E050 */
-#define ICON_VOLUME_OFF          "\xEE\x81\x8F"  /* U+E04F */
-#define ICON_EXPAND_LESS         "\xEE\x97\x8E"  /* U+E5CE */
-#define ICON_EXPAND_MORE         "\xEE\x97\x8F"  /* U+E5CF */
+#define ICON_LIGHTBULB             "\xEE\xA4\x8F"  /* U+E90F */
+#define ICON_SENTIMENT_SATISFIED   "\xEE\xA0\x93"  /* U+E813 */
+#define ICON_TIMER                 "\xEE\x90\xA5"  /* U+E425 */
+#define ICON_COFFEE                "\xEE\xBF\xAF"  /* U+EFEF */
+#define ICON_MEMORY                "\xEE\x8C\xA2"  /* U+E322 */
+#define ICON_WIFI                  "\xEE\x98\xBE"  /* U+E63E */
+#define ICON_WIFI_OFF              "\xEE\x99\x88"  /* U+E648 */
+#define ICON_WIFI_TETHERING        "\xEE\x87\xA2"  /* U+E1E2 */
+#define ICON_BOLT                  "\xEE\xA8\x8B"  /* U+EA0B */
+#define ICON_BATTERY_FULL          "\xEE\x86\xA5"  /* U+E1A5 */
+#define ICON_BATTERY_6_BAR         "\xEF\x82\xA1"  /* U+F0A1 */
+#define ICON_BATTERY_5_BAR         "\xEF\x82\xA0"  /* U+F0A0 */
+#define ICON_BATTERY_4_BAR         "\xEF\x82\x9F"  /* U+F09F */
+#define ICON_BATTERY_3_BAR         "\xEF\x82\x9E"  /* U+F09E */
+#define ICON_BATTERY_2_BAR         "\xEF\x82\x9D"  /* U+F09D */
+#define ICON_BATTERY_1_BAR         "\xEF\x82\x9C"  /* U+F09C */
+#define ICON_BATTERY_0_BAR         "\xEE\xAF\x9C"  /* U+EBDC */
+#define ICON_BATTERY_ALERT         "\xEE\x86\x9C"  /* U+E19C */
+#define ICON_PAUSE                 "\xEE\x80\xB4"  /* U+E034 */
+#define ICON_PLAY_ARROW            "\xEE\x80\xB7"  /* U+E037 */
+#define ICON_RESTART_ALT           "\xEF\x81\x93"  /* U+F053 */
+#define ICON_SKIP_NEXT             "\xEE\x81\x84"  /* U+E044 */
+#define ICON_CHECK_CIRCLE          "\xEF\x82\xBE"  /* U+F0BE */
+#define ICON_SYSTEM_UPDATE         "\xEF\x8B\x8D"  /* U+F2CD */
+#define ICON_ERROR                 "\xEF\xA2\xB6"  /* U+F8B6 */
+#define ICON_CANCEL                "\xEE\xA2\x88"  /* U+E888 */
+#define ICON_POWER_SETTINGS_NEW    "\xEF\xA3\x87"  /* U+F8C7 */
+#define ICON_SCHEDULE              "\xEE\xBF\x96"  /* U+EFD6 */
+#define ICON_CASINO                "\xEE\xAD\x80"  /* U+EB40 */
+#define ICON_STRAIGHTEN            "\xEE\x90\x9C"  /* U+E41C */
+#define ICON_LOCK                  "\xEE\xA2\x99"  /* U+E899 */
+#define ICON_LIGHT_MODE            "\xEE\x94\x98"  /* U+E518 */
+#define ICON_NETWORK_WIFI_1_BAR    "\xEE\xAF\xA4"  /* U+EBE4 */
+#define ICON_NETWORK_WIFI_2_BAR    "\xEE\xAF\x96"  /* U+EBD6 */
+#define ICON_NETWORK_WIFI_3_BAR    "\xEE\xAF\xA1"  /* U+EBE1 */
+#define ICON_BACKSPACE             "\xEE\x85\x8A"  /* U+E14A */
+#define ICON_REFRESH               "\xEE\x97\x95"  /* U+E5D5 */
+#define ICON_CHEVRON_RIGHT         "\xEE\x97\x8C"  /* U+E5CC */
+#define ICON_ALARM                 "\xEE\xA1\x95"  /* U+E855 */
+#define ICON_RAINY                 "\xEF\x85\xB6"  /* U+F176 */
+#define ICON_VOLUME_UP             "\xEE\x81\x90"  /* U+E050 */
+#define ICON_VOLUME_OFF            "\xEE\x81\x8F"  /* U+E04F */
+#define ICON_EXPAND_LESS           "\xEE\x97\x8E"  /* U+E5CE */
+#define ICON_EXPAND_MORE           "\xEE\x97\x8F"  /* U+E5CF */
+#define ICON_COUNTER_8             "\xEF\x9D\xBD"  /* U+F77D */
+#define ICON_GRID_VIEW             "\xEE\xA6\xB0"  /* U+E9B0 */
+#define ICON_HARDWARE              "\xEE\xA9\x99"  /* U+EA59 */
+#define ICON_CONSTRUCTION          "\xEE\xA8\xBC"  /* U+EA3C */
+#define ICON_LOCAL_FIRE_DEPARTMENT "\xEE\xBD\x95"  /* U+EF55 */
+#define ICON_FAVORITE              "\xEE\xA1\xBE"  /* U+E87E */
+#define ICON_SHELVES               "\xEF\xA1\xAE"  /* U+F86E */
+#define ICON_KEY                   "\xEE\x9C\xBC"  /* U+E73C */
+#define ICON_ANCHOR                "\xEF\x87\x8D"  /* U+F1CD */
+#define ICON_SETTINGS              "\xEE\xA2\xB8"  /* U+E8B8 */
+#define ICON_NOTIFICATIONS         "\xEE\x9F\xB5"  /* U+E7F5 */
+#define ICON_HOURGLASS_TOP         "\xEE\xA9\x9B"  /* U+EA5B */
+#define ICON_KETTLE                "\xEE\x8A\xB9"  /* U+E2B9 */
+#define ICON_BUILD                 "\xEF\xA3\x8D"  /* U+F8CD */
+#define ICON_TOKEN                 "\xEE\xA8\xA5"  /* U+EA25 */
+#define ICON_SHIELD                "\xEE\xA7\xA0"  /* U+E9E0 */
+#define ICON_SWORDS                "\xEF\xA2\x89"  /* U+F889 */
+#define ICON_CHESS_KNIGHT          "\xEF\x89\x9E"  /* U+F25E */
+#define ICON_EXPLORE               "\xEE\xA1\xBA"  /* U+E87A */
+#define ICON_WATCH                 "\xEE\x8C\xB4"  /* U+E334 */
+#define ICON_ROCKET                "\xEE\xAE\xA5"  /* U+EBA5 */
+#define ICON_CASTLE                "\xEE\xAA\xB1"  /* U+EAB1 */
+#define ICON_DIAMOND               "\xEE\xAB\x95"  /* U+EAD5 */
+#define ICON_CROWN                 "\xEE\xB2\xB3"  /* U+ECB3 */
+#define ICON_WORKSPACE_PREMIUM     "\xEE\x9E\xAF"  /* U+E7AF */
+#define ICON_EMOJI_EVENTS          "\xEE\xA8\xA3"  /* U+EA23 */
+#define ICON_WAND_STARS            "\xEF\x8C\x9E"  /* U+F31E */
+#define ICON_OWL                   "\xEF\x8E\xB4"  /* U+F3B4 */
+#define ICON_FLARE                 "\xEE\x8F\xA4"  /* U+E3E4 */
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -1,0 +1,7 @@
+{
+  "name": "Game2048",
+  "version": "0.1.0",
+  "description": "2048 board logic: slides, merges, spawns and the moves to animate",
+  "platforms": "*",
+  "frameworks": "*"
+}

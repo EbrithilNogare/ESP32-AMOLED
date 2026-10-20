@@ -5,6 +5,45 @@ make a choice someone might later question.
 
 Format: `## YYYY-MM-DD — title`, then *Context*, *Decision*, *Consequences*.
 
+## 2026-10-18 — Magic 8-ball, Hephy and 2048: fonts, a pet without wakes, menu places
+
+**Context:** The owner asked for a Magic 8-ball "in the style of the Far Cry
+3 menu font on a dark background", a virtual pet named Hephy that reuses the
+Bot face's look and suits a small screen opened only a few times (no daily
+feeding, no dying), and 2048 with touch controls.
+**Decision:**
+- **Permanent Marker** (Apache 2.0, google/fonts) for the 8-ball. Far Cry
+  3's lettering is custom (no font of it is published); of ten open brush
+  and grunge faces rendered side by side (Rubik Dirt, Frijole, Black Ops
+  One, Bangers, …), it's the most hand-painted while staying readable.
+- **The 8-ball is text only.** A first version drew a black ball with a red
+  dry-brush swipe behind the answer. The owner didn't like it: now there's
+  only the text, bigger (44 px), each answer in its own colour, and most of
+  the answers are funnier than the classics. The colours live with the
+  answers in `lib/EightBall`, so adding an answer is one table row.
+- **Hephy lives on the wall clock, not on wakes.** Its state (`lib/PetCore`)
+  is advanced by the elapsed time whenever the app opens. Meters sink only
+  to a floor, so there's no death, no illness and no loss. A forge is real
+  time (1–12 h), and a finished one waits for the next visit. No deadline
+  wakes (`sleepNeed` empty): a pet lighting the screen at 3 am is worse than
+  finding the trinket later, and it keeps the sleep at the deep-sleep floor.
+  A backward clock jump (the RTC lost power) moves every stored time back
+  with it instead of punishing or rewarding.
+- **The face is shared, not copied:** `lib/BotFace` gained moods
+  (resting expressions), reactions (chew, shake head, startle) and
+  `scaled()`. The Bot face app uses none of them and looks exactly as
+  before (its tests are unchanged).
+- **Persistence follows §8.5:** state is parked in RTC memory on every sleep,
+  and written to NVS only on user actions (Hephy), on closing the app (2048)
+  and at a power-off. Never at every sleep.
+- **Menu places by colour:** Magic 8 after Dice, then 2048 and Hephy after
+  Noise. Hephy's ember is nearly Pomodoro's tomato, and 2048's gold nearly
+  Level's yellow. With two icons per row, none of those pairs are
+  neighbours (beside or above/below). Existing apps keep their order.
+**Consequences:** three new pure libraries with host tests. Flash use goes
+from 42.2 % to about 46 % (fonts, icons). The 8-ball turns the IMU on
+like Level does, only while it's on screen.
+
 ## 2026-10-18 — Phone-style power: BOOT is Power, apps say what they need asleep
 
 **Context:** The owner wants the device to behave like a phone while staying

@@ -19,6 +19,10 @@
    - [Espresso shot timer](apps/espresso-timer.md): stopwatch for espresso shots
    - [Dice](apps/dice.md): wireframe dice roller
    - [Level](apps/level.md): spirit level and inclinometer (QMI8658 IMU)
+   - [Timer](apps/timer.md), [Noise](apps/noise.md): clock / stopwatch / countdown; rain and noise
+   - [Magic 8-ball](apps/magic8.md): shake for an answer (IMU)
+   - [2048](apps/g2048.md): the sliding-tile game
+   - [Hephy](apps/hephy.md): a virtual pet on the wall clock, with the Bot face's face
    - [System](apps/system.md): version, battery, Wi-Fi, memory, and **wireless firmware update (OTA)**
 3. **Power like a phone's, at a fraction of the drain:** the screen dims and
    goes off after a while or when the power button is pressed. With the
@@ -127,7 +131,7 @@ is on:
 
 | Policy | Meaning | Used by |
 | --- | --- | --- |
-| `Normal` | follow the profile's dim → screen off timeline | menu, Home Assistant, bot face (1 min dim delay), dice, level (1 min), espresso and System when idle, Noise |
+| `Normal` | follow the profile's dim → screen off timeline | menu, Home Assistant, bot face (1 min dim delay), Hephy (1 min), dice, Magic 8, 2048, level (1 min), espresso and System when idle, Noise |
 | `KeepAwake` | full UI stays on while the app says it's busy | espresso timer *while running*, System *while the update screen is open* |
 | `LowPowerDisplay` | after the dim timeout switch to the app's **minimal render mode** (few dim pixels, rare refresh, CPU light-sleeps between refreshes) instead of going off | pomodoro *while a timer runs* (also in the background); Timer *on the clock tab* and *while a stopwatch or countdown runs* |
 
@@ -210,6 +214,9 @@ flowchart TB
         level["Level"]
         timer["Timer"]
         noise["Noise"]
+        m8["Magic8"]
+        g2048["2048"]
+        hephy["Hephy"]
         sys["System"]
     end
     main --> core
@@ -223,6 +230,7 @@ flowchart TB
     timer --> sound
     noise --> sound
     level --> imu
+    m8 --> imu
     sys --> net
 ```
 
@@ -305,6 +313,10 @@ src/
 │   ├── espresso/
 │   ├── dice/             wireframe dice roller
 │   ├── level/            spirit level + inclinometer
+│   ├── timer/  noise/
+│   ├── magic8/           shake for an answer
+│   ├── g2048/            2048
+│   ├── hephy/            virtual pet (Bot face's face, lib/PetCore)
 │   └── system/           info + wireless update
 └── ui/
     ├── theme.{h,cpp}     design tokens and shared widgets
@@ -315,9 +327,10 @@ include/   board.h  config.h  secrets.example.h  lv_conf.h
 lib/       Arduino-free logic (host-testable):
            PowerFsm/  SleepPlan/  ButtonLogic/  PomodoroCore/  TimerCore/  ShotTimer/  BotFace/  HaParse/
            PixelShift/  DiceCore/  LevelCore/  MultiTap/  NoiseGen/  SleepLog/  TouchCal/  WireRaster/
+           EightBall/  Game2048/  PetCore/
 test/      Unity tests for lib/ (run with `pio test -e native`)
 assets/    asset sources + assets.toml        (UI_DESIGN.md §7)
-tools/     assets.py, version.py, size_check.py, sim/ (PC simulator + screenshots)
+tools/     assets.py, version.py, size_check.py, power_model.py, sim/ (PC simulator + screenshots)
 docs/apps/ one spec per app
 ```
 
@@ -537,12 +550,12 @@ mode (ROADMAP M21).
 
 | What | Where | Survives |
 | --- | --- | --- |
-| running state of the apps (timers, last roll, menu scroll, last shot) | RTC memory, `core::store::park()` | deep sleep and power-off (both are deep sleeps); not a reset or a flat battery |
+| running state of the apps (timers, last roll, menu scroll, last shot, last 8-ball answer, the 2048 board, Hephy since his last save) | RTC memory, `core::store::park()` | deep sleep and power-off (both are deep sleeps); not a reset or a flat battery |
 | `mono()` and the wall clock at the sleep, the app on screen, the kind of sleep | `RtcState` | same |
 | cached HA states (by list position) | `RtcState` | same |
 | deep-sleep drain log (§8.6) | `RtcState` | same |
 | the Home Assistant light list (`halights`) | NVS | everything but erase flash |
-| espresso shot history, pomodoro settings and paused state (at a power-off), timer and dice settings | NVS | same |
+| espresso shot history, pomodoro settings and paused state (at a power-off), timer and dice settings, the 2048 board and best (on close and at a power-off), Hephy (`pet::State`, on every action) | NVS | same |
 | brightness, volume + mute, touch calibration, saved Wi-Fi networks with channel / BSSID / lease | NVS (`core::settings`) | power-off and firmware updates (USB and OTA write only the app partition); not "erase flash" |
 
 NVS writes happen only on user actions or a power-off, never periodically
@@ -557,7 +570,9 @@ right after the wake: its end is simply in the past or the future.
 ### 8.6 Battery life asleep
 
 Goal: **at least a month in deep sleep** on the ~400 mAh cell. The budget
-and how to measure it are in HARDWARE.md (Power → Deep-sleep current).
+and how to measure it are in HARDWARE.md (Power → Deep-sleep current); what
+each app costs open and asleep is estimated in [POWER.md](POWER.md)
+(`tools/power_model.py`).
 
 The device also measures it itself (`lib/SleepLog`, `core::power`): going
 to sleep it notes the AXP2101 gauge level, the battery voltage and the wall
@@ -631,7 +646,7 @@ optional static-IP fields. Placeholders go in `secrets.example.h`.
 - **Host tests (`[env:native]` + Unity, `test/`):** pure logic lives in
   Arduino-free libraries under `lib/` (`PowerFsm`, `ButtonLogic`,
   `PomodoroCore`, `ShotTimer`, `BotFace`, `HaParse`, `PixelShift`, `DiceCore`,
-  `LevelCore`, `MultiTap`), so it compiles and runs on the PC. Adapters in
+  `LevelCore`, `MultiTap`, `EightBall`, `Game2048`, `PetCore`, …), so it compiles and runs on the PC. Adapters in
   `src/` connect them to hardware and LVGL. CI runs these tests next to the
   firmware builds.
 - **Simulator (`[env:sim]`, `tools/sim/`):** the real apps, UI and LVGL run

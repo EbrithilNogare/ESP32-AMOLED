@@ -62,11 +62,19 @@ Per-app **accent** (icon glyph + ring, in-app highlights):
 | Espresso | `#C8915A` crema |
 | Dice | `#FF8A1F` orange (`DICE_COLOR`) |
 | Level | `#FFD54F` yellow (`LEVEL_COLOR`) |
+| Timer | `#B388FF` lavender (`TIMER_COLOR`) |
+| Noise | `#6E8BFF` rain blue (`NOISE_COLOR`) |
+| Magic 8-ball | `#C8102E` deep red (`MAGIC8_COLOR`); its answers each have their own colour |
+| 2048 | `#EDC22E` tile gold (`G2048_COLOR`) |
+| Hephy | `#FF5E3A` ember (`HEPHY_COLOR`) |
 | System | `#8FA3BF` slate |
 | Wi-Fi settings, quick settings | `#4DA3FF` (`col::info`) |
 
-New apps pick a hue not already in use. The accent at ~15 % brightness on black
-is the "tinted surface" (`accent_dim`, computed by the theme).
+New apps pick a hue not already in use, and a menu position where no
+neighbour (beside or above/below, two icons per row) has a similar one: Hephy's
+ember sits far from Pomodoro's tomato, and 2048's gold away from Level's
+yellow. The accent at ~15 % brightness on black is the "tinted surface"
+(`accent_dim`, computed by the theme).
 
 ## 3. Typography
 
@@ -85,6 +93,8 @@ The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
 | `digits_80` | Roboto Mono Medium | 80 | pomodoro full view, dice |
 | `digits_120` | Roboto Mono Medium | 120 | espresso timer |
 | `digits_160` | Roboto Mono Medium | 160 | Timer clock (digits and "-" only) |
+| `marker_44` | Permanent Marker | 44 | Magic 8-ball answers (capitals only) |
+| `marker_30` | Permanent Marker | 30 | Magic 8-ball caption |
 | `icon_18`, `icon_28` | Material Symbols Rounded | 18, 28 | status bar, inline icons |
 | `icon_56`, `icon_64` | Material Symbols Rounded | 56, 64 | light tiles and System; app icons |
 
@@ -98,6 +108,10 @@ The fonts are listed in `assets/assets.toml`; each becomes `font_<name>`.
   of them also have − (U+2212).
 - Every icon font carries the same icon set (the `icons` lists in
   `assets.toml`), so any `ICON_*` macro works at any size.
+- **Permanent Marker** (Apache 2.0) is the one display face: a hand-painted
+  brush capital for the Magic 8-ball, in the spirit of the Far Cry 3 menus
+  (whose lettering is custom and not available). Only capitals, digits and
+  the answers' punctuation are converted.
 
 ## 4. Spacing, shape, motion
 
@@ -154,7 +168,7 @@ Drawn by LVGL, no bitmap needed:
    face wanders around the screen while it's on.
 5. The screen goes off after 40 s idle on battery and 10 min on the charger
    (dim at 30 s / 2 min); apps that need longer ask for it (`idleDimMs()`:
-   bot face, level, espresso 1 min).
+   bot face, Hephy, level, espresso 1 min).
 
 ## 7. Assets: where they live and how they're built
 
@@ -238,6 +252,12 @@ drift from sources.
 
 The display renders in `RGB565_SWAPPED`; LVGL converts while drawing, so
 sources stay plain RGB565.
+
+The firmware leaves LVGL's image *widget* out (`LV_USE_IMAGE 0`), so images
+are drawn with `lv_draw_image()` in a draw event (an A8 mask: `recolor` =
+the colour, `recolor_opa` = cover). `assets.h` declares them as plain
+`extern const lv_image_dsc_t`, not `LV_IMAGE_DECLARE`, which only exists
+with the widget.
 
 ### Flash (C array) vs. filesystem (`.bin` in LittleFS)
 

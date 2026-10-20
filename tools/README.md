@@ -140,6 +140,12 @@ sprites small (64×64 × 12 frames RGB565A8 ≈ 147 KB of flash).
   commit `package-lock.json`, regenerate and review the diff.
 - **fontTools**: bump `requirements.txt`, regenerate, review the icon diff.
 
+## Power estimates (`power_model.py`)
+
+Prints the battery-current tables in `docs/POWER.md` from the part figures
+and per-app picture levels at its top. They're estimates; after measuring
+the board, change the numbers and paste the output into the doc again.
+
 ## Firmware version (`version.py`)
 
 PlatformIO pre-build script (`extra_scripts = pre:tools/version.py`). It sets

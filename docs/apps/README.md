@@ -13,6 +13,9 @@ menu, burn-in rules) is in [../ARCHITECTURE.md](../ARCHITECTURE.md).
 | Level | `level` | Normal (dims after 60 s) | — (IMU off with the screen) | reopens | — | [level.md](level.md) |
 | Timer (clock, stopwatch, countdown) | `timer` | LowPowerDisplay on the clock tab and while a timer runs | wake at the countdown's end; awake while the alarm rings | both timers carry on | — | [timer.md](timer.md) |
 | Noise (rain, white, blue) | `noise` | Normal | awake while playing (doze) | paused | — | [noise.md](noise.md) |
+| Magic 8-ball | `magic8` | Normal | — (IMU off with the screen) | the last answer | — | [magic8.md](magic8.md) |
+| 2048 | `g2048` | Normal | — | the same board (also after a reset) | — | [g2048.md](g2048.md) |
+| Hephy (virtual pet) | `hephy` | Normal (dims after 60 s) | — (lives on the wall clock, no wakes) | reopens; time away counted | — | [hephy.md](hephy.md) |
 | System (info + OTA) | `system` | Normal; KeepAwake on the update screen | — | info view | Wi-Fi | [system.md](system.md) |
 | Wi-Fi settings (not in the menu) | `wifi` | Normal (dims after 60 s) | — | menu (not resumable) | Wi-Fi | [wifi.md](wifi.md) |
 
@@ -23,7 +26,8 @@ Part of the menu rather than an app: the [quick settings](quick-settings.md)
 shade (Wi-Fi, brightness, volume), pulled down from the status bar.
 
 The menu is built for 10+ apps; candidates for later: coin flip, weather
-from Home Assistant, HA scenes.
+from Home Assistant, HA scenes. What each app costs from the battery, open
+and asleep: [../POWER.md](../POWER.md).
 
 ## Adding an app
 

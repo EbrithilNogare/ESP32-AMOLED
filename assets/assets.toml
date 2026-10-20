@@ -26,6 +26,10 @@
 #                  checked against the pinned SHA-256, cached in tools/.cache/,
 #                  then subset + instanced with fontTools. Apache-2.0
 #                  (MaterialSymbols-LICENSE.txt).
+#   Permanent Marker — google/fonts main, apache/permanentmarker/
+#                  PermanentMarker-Regular.ttf, byte-identical (fetched
+#                  2026-10-18, sha256 28f82c8a…46c5). Apache-2.0
+#                  (PermanentMarker-LICENSE.txt).
 
 # ---------------------------------------------------------------------------
 # Remote sources (pinned commit + SHA-256). A font uses one with `source = "…"`
@@ -145,6 +149,25 @@ size    = 160
 bpp     = 4
 symbols = "0123456789-"
 
+# Magic 8-ball (docs/apps/magic8.md): Permanent Marker, a hand-painted brush
+# capital in the spirit of the Far Cry 3 menus. Capitals, digits and the
+# answers' punctuation only. 44 px: the answers; 30 px: the caption.
+[[font]]
+name    = "marker_44"
+file    = "fonts/PermanentMarker-Regular.ttf"
+size    = 44
+bpp     = 4
+symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%"
+range   = ["0x2019", "0x2026"]
+
+[[font]]
+name    = "marker_30"
+file    = "fonts/PermanentMarker-Regular.ttf"
+size    = 30
+bpp     = 4
+symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ,.'!?-%"
+range   = ["0x2019", "0x2026"]
+
 # ---------------------------------------------------------------------------
 # Icon fonts — Material Symbols Rounded, filled (FILL 1), weight 500, grade 0.
 # `variations` pins every axis of the variable font. opsz (optical size,
@@ -170,6 +193,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 [[font]]
@@ -189,6 +216,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 [[font]]
@@ -208,6 +239,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 [[font]]
@@ -227,6 +262,10 @@ icons      = [
     "lock", "light_mode", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar",
     "backspace", "refresh", "chevron_right",
     "alarm", "rainy", "volume_up", "volume_off", "expand_less", "expand_more",
+    "counter_8", "grid_view", "hardware", "construction", "local_fire_department", "favorite", "shelves",
+    "key", "anchor", "settings", "notifications", "hourglass_top", "kettle", "build", "token",
+    "shield", "swords", "chess_knight", "explore", "watch", "rocket", "castle",
+    "diamond", "crown", "workspace_premium", "emoji_events", "wand_stars", "owl", "flare",
 ]
 
 # ---------------------------------------------------------------------------
